@@ -134,6 +134,24 @@ body{
   padding:16px 24px;color:var(--hi);font-size:19px;line-height:1.55;max-width:720px;
   text-shadow:0 0 8px var(--g);box-shadow:0 0 34px rgba(65,255,126,.45),inset 0 0 18px rgba(65,255,126,.12);
   font-style:italic;letter-spacing:.3px}
+#voiceCfg{position:absolute;inset:0;z-index:88;display:flex;align-items:center;justify-content:center;background:rgba(3,8,5,.8)}
+#voiceCfg.hidden{display:none}
+.vc-box{width:min(560px,92%);max-height:92%;overflow:auto;background:linear-gradient(180deg,#0d1b0c,#0a1409);
+  border:1px solid var(--g);border-radius:10px;box-shadow:0 0 40px rgba(65,255,126,.3);padding:16px 18px;font-size:13px}
+.vc-title{color:var(--hi);letter-spacing:2px;font-size:13px;text-shadow:var(--glow) var(--hi);margin-bottom:12px}
+.vc-line{display:flex;align-items:center;gap:10px;margin:9px 0;flex-wrap:wrap}
+.vc-k{color:var(--dim);font-size:11px;letter-spacing:1px;min-width:54px}
+.vc-s{color:var(--amb);font-size:11px;flex:1;min-width:120px}
+.vc-box select{flex:1;min-width:150px;background:var(--deep);color:var(--g);border:1px solid var(--faint);border-radius:5px;
+  font-family:var(--mono);font-size:13px;padding:6px 8px;outline:none}
+.vc-bar{height:7px;border:1px solid var(--faint);border-radius:4px;background:var(--deep);overflow:hidden;margin:2px 0 6px}
+.vc-bar>span{display:block;height:100%;width:0;background:var(--g);box-shadow:var(--glow) var(--g)}
+.vc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:10px 0;border:1px solid var(--faint);border-radius:7px;padding:10px}
+.vc-grid label{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);letter-spacing:1px;margin-bottom:3px}
+.vc-grid b{color:var(--g);font-weight:400}
+.vc-grid input[type=range]{width:100%;accent-color:var(--g)}
+.vc-btns{justify-content:flex-end;margin-top:6px}
+.vc-note{color:var(--faint);font-size:10px;line-height:1.5;margin-top:8px}
 </style>
 </head>
 <body>
@@ -221,7 +239,8 @@ body{
     <div class="bottom">
       <section class="panel">
         <div class="tb"><span class="led on" id="micLed"></span><span class="n">Voice Scope · HAL</span><span class="sp"></span>
-          <button class="btn" id="talkBtn">WAKE HAL ▸</button></div>
+          <button class="btn" id="voiceCfgBtn" style="padding:2px 8px">⚙ VOICE</button>
+          <button class="btn" id="talkBtn" style="margin-left:6px">WAKE HAL ▸</button></div>
         <div class="bd" style="padding:4px"><div class="scope-bd"><canvas id="voice"></canvas><div id="heard"></div></div></div>
       </section>
       <section class="panel">
@@ -240,6 +259,36 @@ body{
   </div>
   <div id="flash"></div>
   <div id="jarvisBanner"><span id="jarvisText"></span></div>
+  <div id="voiceCfg" class="hidden">
+    <div class="vc-box">
+      <div class="vc-title">HAL VOICE — on-device · free · unlimited</div>
+      <div class="vc-line"><span class="vc-k">ENGINE</span><span id="vcStatus" class="vc-s">browser fallback (tap LOAD for the free neural voice)</span>
+        <button class="btn" id="vcLoad">LOAD FREE VOICE</button></div>
+      <div class="vc-bar"><span id="vcBar"></span></div>
+      <div class="vc-line"><span class="vc-k">VOICE</span>
+        <select id="vcVoice">
+          <option value="am_michael">Michael — US male (calm)</option>
+          <option value="am_onyx">Onyx — US male (deep)</option>
+          <option value="am_fenrir">Fenrir — US male (resonant)</option>
+          <option value="am_adam">Adam — US male</option>
+          <option value="am_eric">Eric — US male</option>
+          <option value="bm_george">George — UK male (measured)</option>
+          <option value="bm_daniel">Daniel — UK male</option>
+        </select></div>
+      <div class="vc-grid">
+        <div><label>PACE <b id="vcPaceV"></b></label><input type="range" id="vcPace" min="0.6" max="1.2" step="0.02"></div>
+        <div><label>DEPTH <b id="vcDepthV"></b></label><input type="range" id="vcDepth" min="0.8" max="1.06" step="0.01"></div>
+        <div><label>REVERB <b id="vcReverbV"></b></label><input type="range" id="vcReverb" min="0" max="0.6" step="0.02"></div>
+        <div><label>WARMTH <b id="vcWarmthV"></b></label><input type="range" id="vcWarmth" min="2200" max="9000" step="100"></div>
+      </div>
+      <div class="vc-line vc-btns">
+        <button class="btn" id="vcTest">🔊 TEST</button>
+        <button class="btn amb" id="vcPreset">↺ HAL preset</button>
+        <button class="btn" id="vcDone">DONE</button>
+      </div>
+      <div class="vc-note">Free neural voice (Kokoro) running on your device — no quota, no cost. Changes apply to Hal instantly. First LOAD downloads the model once, then it’s cached &amp; offline. Until loaded, Hal uses the browser voice.</div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
@@ -349,6 +398,7 @@ tick();setInterval(tick,1000);
   document.getElementById('talkBtn').addEventListener('click',async()=>{
     const btn=document.getElementById('talkBtn');const led=document.getElementById('micLed');
     if(window.halUnlock) window.halUnlock();   // unlock audio silently — Hal does NOT speak on tap
+    try{if(localStorage.getItem('cc_kokoro_ready')&&window.halLoadVoice)window.halLoadVoice();}catch(e){}  // warm the free voice from cache
     if(micTried) return;
     micTried=true; btn.textContent='REQUESTING MIC…';
     let stream=null;
@@ -530,6 +580,49 @@ tick();setInterval(tick,1000);
   window.halUnlock=function(){try{const a=ensureAudio();a.muted=true;
     a.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
     const p=a.play();if(p&&p.then)p.then(()=>{a.pause();a.currentTime=0;a.muted=false;}).catch(()=>{a.muted=false;});}catch(e){}};
+
+  // ---- FREE on-device voice (Kokoro) + live tuning ----
+  const VOICE_DEFAULTS={voice:'am_michael',pace:0.9,depth:0.94,reverb:0.18,warmth:5500};
+  let voiceCfg=Object.assign({},VOICE_DEFAULTS);
+  try{const s=JSON.parse(localStorage.getItem('cc_hal_voice')||'null');if(s)voiceCfg=Object.assign({},VOICE_DEFAULTS,s);}catch(e){}
+  function saveVoiceCfg(){try{localStorage.setItem('cc_hal_voice',JSON.stringify(voiceCfg));}catch(e){}}
+  let kokoroTTS=null,kokoroReady=false,kokoroLoading=false,kokoroCtx=null;
+  function halImpulse(ctx,dur=1.7,decay=2.6){const rate=ctx.sampleRate,len=Math.floor(rate*dur),b=ctx.createBuffer(2,len,rate);
+    for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}return b;}
+  async function loadKokoro(onProgress){
+    if(kokoroReady)return true; if(kokoroLoading)return false; kokoroLoading=true;
+    let K;
+    try{({KokoroTTS:K}=await import('https://esm.sh/kokoro-js@1.2.0'));}
+    catch(e){try{({KokoroTTS:K}=await import('https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm'));}catch(e2){kokoroLoading=false;return false;}}
+    const gpu=!!navigator.gpu;
+    try{
+      try{ kokoroTTS=await K.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:gpu?'fp32':'q8',device:gpu?'webgpu':'wasm',progress_callback:onProgress}); }
+      catch(e1){ if(gpu){ kokoroTTS=await K.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm',progress_callback:onProgress}); } else throw e1; }
+      kokoroReady=true; kokoroLoading=false; try{localStorage.setItem('cc_kokoro_ready','1');}catch(e){}
+      return true;
+    }catch(e){ kokoroLoading=false; return false; }
+  }
+  window.halLoadVoice=loadKokoro;
+  async function kokoroSpeak(text){
+    if(!kokoroReady||!kokoroTTS)return false;
+    const o=voiceCfg;
+    const raw=await kokoroTTS.generate(text,{voice:o.voice,speed:o.pace});
+    const blob=raw.toBlob();
+    if(kokoroCtx){try{kokoroCtx.close();}catch(_){}}
+    const ctx=new (window.AudioContext||window.webkitAudioContext)(); kokoroCtx=ctx;
+    const ab=await ctx.decodeAudioData(await blob.arrayBuffer());
+    const src=ctx.createBufferSource(); src.buffer=ab; src.playbackRate.value=o.depth;
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=o.warmth; lp.Q.value=0.5;
+    const dry=ctx.createGain(); dry.gain.value=1;
+    const conv=ctx.createConvolver(); conv.buffer=halImpulse(ctx);
+    const wet=ctx.createGain(); wet.gain.value=o.reverb;
+    src.connect(lp); lp.connect(dry).connect(ctx.destination); lp.connect(conv).connect(wet).connect(ctx.destination);
+    if(levelIv)clearInterval(levelIv);
+    levelIv=setInterval(()=>{window.HAL.level=0.5+0.5*Math.random();},110);
+    src.onended=()=>{ if(levelIv){clearInterval(levelIv);levelIv=null;} try{ctx.close();}catch(_){} endSpeak(); };
+    src.start();
+    return true;
+  }
   function endSpeak(){ if(!speaking)return; if(levelIv){clearInterval(levelIv);levelIv=null;}
     speaking=false; window.HAL.speaking=false; window.HAL.level=0; cd=Date.now()+2000; setTimeout(startRec,400); }
   function browserSpeak(text){
@@ -564,9 +657,10 @@ tick();setInterval(tick,1000);
     banner(text);
     speaking=true; window.HAL.speaking=true; window.HAL.level=1; stopRec();
     try{speechSynthesis&&speechSynthesis.cancel();}catch(e){}
-    let ok=false; try{ ok=await elevenSpeak(text); }catch(e){ ok=false; }
+    let ok=false;
+    if(kokoroReady){ try{ ok=await kokoroSpeak(text); }catch(e){ ok=false; } }
     if(!ok) browserSpeak(text);
-    setTimeout(()=>{ if(speaking) endSpeak(); }, Math.max(14000, text.length*230));
+    setTimeout(()=>{ if(speaking) endSpeak(); }, Math.max(16000, text.length*260));
   }
   function panelVal(panelName,key){
     const ps=[...document.querySelectorAll('.panel')];
@@ -615,6 +709,31 @@ tick();setInterval(tick,1000);
     rec.onend=()=>{ if(listening&&!speaking){ setTimeout(()=>{try{rec.start();}catch(e){}},250); } };
     try{rec.start();listening=true;return true;}catch(e){listening=false;return false;}
   };
+
+  (function wireVoiceUI(){
+    const $=id=>document.getElementById(id);
+    const cfg=$('voiceCfg'), openBtn=$('voiceCfgBtn');
+    if(!cfg||!openBtn)return;
+    function labels(){ $('vcPaceV').textContent=(+voiceCfg.pace).toFixed(2)+'×'; $('vcDepthV').textContent=(+voiceCfg.depth).toFixed(2)+'×';
+      $('vcReverbV').textContent=Math.round(voiceCfg.reverb*100)+'%'; $('vcWarmthV').textContent=voiceCfg.warmth+' Hz'; }
+    function reflect(){ $('vcVoice').value=voiceCfg.voice; $('vcPace').value=voiceCfg.pace; $('vcDepth').value=voiceCfg.depth;
+      $('vcReverb').value=voiceCfg.reverb; $('vcWarmth').value=voiceCfg.warmth; labels();
+      if(kokoroReady){$('vcStatus').textContent='✅ on-device voice ready';$('vcBar').style.width='100%';} }
+    openBtn.addEventListener('click',()=>{ reflect(); cfg.classList.toggle('hidden'); });
+    $('vcDone').addEventListener('click',()=>cfg.classList.add('hidden'));
+    cfg.addEventListener('click',e=>{ if(e.target===cfg)cfg.classList.add('hidden'); });
+    $('vcVoice').addEventListener('change',()=>{voiceCfg.voice=$('vcVoice').value;saveVoiceCfg();});
+    [['vcPace','pace'],['vcDepth','depth'],['vcReverb','reverb'],['vcWarmth','warmth']].forEach(([id,k])=>{
+      $(id).addEventListener('input',()=>{voiceCfg[k]=+$(id).value;labels();saveVoiceCfg();}); });
+    $('vcPreset').addEventListener('click',()=>{Object.assign(voiceCfg,VOICE_DEFAULTS);reflect();saveVoiceCfg();});
+    $('vcTest').addEventListener('click',()=>{ if(!speaking) say('Good evening, Adam. This is my voice. I am ready when you are.'); });
+    $('vcLoad').addEventListener('click',async()=>{
+      $('vcStatus').textContent='loading the free voice engine…'; $('vcLoad').disabled=true;
+      const ok=await loadKokoro(p=>{ if(p&&p.status==='progress'&&p.total){const pc=Math.round(100*p.loaded/p.total);$('vcStatus').textContent='downloading model… '+pc+'%';$('vcBar').style.width=pc+'%';} });
+      if(ok){$('vcStatus').textContent='✅ on-device voice ready — Hal now speaks free & unlimited.';$('vcBar').style.width='100%';}
+      else{$('vcStatus').textContent='load failed — staying on browser voice. Try Chrome on a Mac.';$('vcLoad').disabled=false;}
+    });
+  })();
 })();
 </script>
 </body>
