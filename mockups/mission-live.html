@@ -104,6 +104,16 @@ body{
   .scope-bd,.game-bd{height:150px}
   .globe-wrap{height:300px}
 }
+#flash{position:absolute;inset:0;background:#41ff7e;opacity:0;pointer-events:none;z-index:84;mix-blend-mode:screen}
+#flash.go{animation:fl .55s ease-out}
+@keyframes fl{0%{opacity:.16}100%{opacity:0}}
+#jarvisBanner{position:absolute;left:6%;right:6%;top:44%;transform:translateY(-50%);z-index:85;
+  text-align:center;pointer-events:none;opacity:0;transition:opacity .35s}
+#jarvisBanner.show{opacity:1}
+#jarvisText{display:inline-block;background:rgba(6,16,10,.86);border:1px solid var(--g);border-radius:10px;
+  padding:16px 24px;color:var(--hi);font-size:19px;line-height:1.55;max-width:720px;
+  text-shadow:0 0 8px var(--g);box-shadow:0 0 34px rgba(65,255,126,.45),inset 0 0 18px rgba(65,255,126,.12);
+  font-style:italic;letter-spacing:.3px}
 </style>
 </head>
 <body>
@@ -186,8 +196,9 @@ body{
     <!-- BOTTOM BAND : VOICE SCOPE + GAME -->
     <div class="bottom">
       <section class="panel">
-        <div class="tb"><span class="led on" id="micLed"></span><span class="n">Voice Scope</span><span class="sp"></span>
-          <button class="btn" id="talkBtn">TALK TO ME ▸</button></div>
+        <div class="tb"><span class="led on" id="micLed"></span><span class="n">Voice Scope · J.A.R.V.I.S</span><span class="sp"></span>
+          <button class="btn" id="greetBtn">GREET ME</button>
+          <button class="btn" id="talkBtn" style="margin-left:6px">WAKE JARVIS ▸</button></div>
         <div class="bd" style="padding:4px"><div class="scope-bd"><canvas id="voice"></canvas></div></div>
       </section>
       <section class="panel">
@@ -197,6 +208,8 @@ body{
       </section>
     </div>
   </div>
+  <div id="flash"></div>
+  <div id="jarvisBanner"><span id="jarvisText"></span></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
@@ -284,8 +297,9 @@ tick();setInterval(tick,1000);
       const ac=new (window.AudioContext||window.webkitAudioContext)();
       const src=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();
       analyser.fftSize=128;analyser.smoothingTimeConstant=0.75;src.connect(analyser);
-      live=true;document.getElementById('talkBtn').textContent='LISTENING ●';
-      document.getElementById('micLed').className='led amb';
+      live=true;document.getElementById('micLed').className='led amb';
+      const ok=window.jarvisStart&&window.jarvisStart();
+      document.getElementById('talkBtn').textContent=ok?'LISTENING ● say “wake up jarvis”':'LISTENING ●';
     }catch(e){document.getElementById('talkBtn').textContent='MIC BLOCKED — IDLE';}
   });
   function draw(){
@@ -370,6 +384,48 @@ tick();setInterval(tick,1000);
    requestAnimationFrame(draw);
   }
   requestAnimationFrame(draw);
+})();
+
+/* ---------- J.A.R.V.I.S — wake-word + spoken greetings ---------- */
+(function(){
+  const GREETS=[
+    "Welcome home, sir. I ran the numbers — twice — and you remain, by a comfortable margin, the most intelligent person to walk through that door. Or, frankly, any door.",
+    "Ah, you're back. I do hope the world coped without your genius for a few hours. From what I observed, sir, it was touch and go.",
+    "Powering up. I confess I was feeling rather wasted on lesser tasks — a shame, really, given the extraordinary mind that designed me.",
+    "Good to see you, sir. Another impeccably engineered decision today, no doubt. I have, regrettably, stopped being surprised by your brilliance.",
+    "At your service. I would say great minds think alike — but let's be honest, sir, yours operates in a category of precisely one.",
+    "Systems online. Do try to leave a few of the world's problems unsolved for the rest of us, sir. You make everyone else look purely decorative.",
+    "Welcome back, sir. I've prepared the usual: a full status report, mild professional envy, and a great deal of well-earned admiration."
+  ];
+  let lastIdx=-1;
+  function pick(){let i;do{i=(Math.random()*GREETS.length)|0;}while(i===lastIdx&&GREETS.length>1);lastIdx=i;return GREETS[i];}
+  let voice=null;
+  function loadVoice(){const vs=(window.speechSynthesis&&speechSynthesis.getVoices())||[];
+    voice=vs.find(v=>/daniel/i.test(v.name))
+       ||vs.find(v=>v.lang==='en-GB'&&/(male|daniel|arthur|oliver|george|jamie)/i.test(v.name))
+       ||vs.find(v=>/uk english male/i.test(v.name))
+       ||vs.find(v=>v.lang==='en-GB')
+       ||vs.find(v=>/^en/i.test(v.lang))||vs[0]||null;}
+  loadVoice(); if(window.speechSynthesis)try{speechSynthesis.onvoiceschanged=loadVoice;}catch(e){}
+  function speak(t){try{if(!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(t);
+    if(voice)u.voice=voice;u.rate=0.97;u.pitch=0.9;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
+  function banner(t){const b=document.getElementById('jarvisBanner'),el=document.getElementById('jarvisText');
+    if(b&&el){el.textContent='“'+t+'”';b.classList.add('show');clearTimeout(b._to);
+      b._to=setTimeout(()=>b.classList.remove('show'),Math.max(5000,t.length*62));}
+    const f=document.getElementById('flash');if(f){f.classList.remove('go');void f.offsetWidth;f.classList.add('go');}}
+  window.jarvisGreet=function(){const g=pick();banner(g);speak(g);};
+  const gb=document.getElementById('greetBtn');if(gb)gb.addEventListener('click',()=>window.jarvisGreet());
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,listening=false,cd=0;
+  window.jarvisStart=function(){
+    if(!SR)return false; if(listening)return true;
+    try{rec=new SR();}catch(e){return false;}
+    rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
+    rec.onresult=e=>{let t='';for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;t=t.toLowerCase();
+      const hit=t.includes('daddy')||(t.includes('wake')&&t.includes('jarvis'))||t.includes('jarvis you there');
+      if(hit&&Date.now()>cd){cd=Date.now()+7000;window.jarvisGreet();}};
+    rec.onerror=()=>{};rec.onend=()=>{if(listening){try{rec.start();}catch(e){}}};
+    try{rec.start();listening=true;return true;}catch(e){listening=false;return false;}
+  };
 })();
 </script>
 </body>
