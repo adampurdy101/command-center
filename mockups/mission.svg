@@ -1,0 +1,355 @@
+<svg width="100%" viewBox="0 0 680 824" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>ADAM // COMMAND CENTER — MISSION CONTROL '76</title>
+<desc>A 1970s NASA/NORAD green-phosphor mission control CRT: a rotating wireframe globe with a terminator sweep and great-circle travel arcs to Bangkok, Tokyo and Seattle, a sweeping radar line and orbiting satellite blip, multi-city clocks, oscilloscope waveforms, station panels with live data, a scrolling telemetry log, and a marching crew of little green guys along a status rail.</desc>
+<defs>
+<radialGradient id="vig" cx="50%" cy="44%" r="76%">
+<stop offset="52%" stop-color="#000000" stop-opacity="0"/>
+<stop offset="100%" stop-color="#000000" stop-opacity="0.9"/>
+</radialGradient>
+<radialGradient id="screenglow" cx="50%" cy="38%" r="78%">
+<stop offset="0%" stop-color="#10260f" stop-opacity="1"/>
+<stop offset="62%" stop-color="#0a1a0b" stop-opacity="1"/>
+<stop offset="100%" stop-color="#050d08" stop-opacity="1"/>
+</radialGradient>
+<radialGradient id="globefill" cx="42%" cy="36%" r="72%">
+<stop offset="0%" stop-color="#123a1c" stop-opacity="1"/>
+<stop offset="70%" stop-color="#0a1f10" stop-opacity="1"/>
+<stop offset="100%" stop-color="#06140a" stop-opacity="1"/>
+</radialGradient>
+<linearGradient id="termgrad" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="#41ff7e" stop-opacity="0"/>
+<stop offset="50%" stop-color="#9dffc4" stop-opacity="0.5"/>
+<stop offset="100%" stop-color="#41ff7e" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="radarwedge" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="#7dffb0" stop-opacity="0.65"/>
+<stop offset="55%" stop-color="#41ff7e" stop-opacity="0.22"/>
+<stop offset="100%" stop-color="#41ff7e" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="bezel" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="#34372a"/>
+<stop offset="50%" stop-color="#2b2e22"/>
+<stop offset="100%" stop-color="#22241a"/>
+</linearGradient>
+<pattern id="scan" width="3" height="3" patternUnits="userSpaceOnUse">
+<rect width="680" height="1.5" fill="#000000" opacity="0.26"/>
+</pattern>
+<pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
+<path d="M34 0 L0 0 0 34" fill="none" stroke="#1c8f46" stroke-width="0.5" stroke-opacity="0.32"/>
+</pattern>
+<clipPath id="globeclip"><circle cx="340" cy="356" r="118"/></clipPath>
+<clipPath id="crewclip"><rect x="31" y="514" width="618" height="26"/></clipPath>
+<style>
+.lbl{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;fill:#2bd964;}
+.brt{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;fill:#41ff7e;}
+.hi{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;fill:#9dffc4;}
+.amb{fill:#ffd24a;}
+.red{fill:#ff6b5a;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes term{0%{transform:translateX(-160px);}100%{transform:translateX(160px);}}
+@keyframes drift{0%{transform:translateY(0);}100%{transform:translateY(3px);}}
+@keyframes march{0%{transform:translateX(-40px);}100%{transform:translateX(700px);}}
+@keyframes legs{0%,49%{transform:scaleX(1);}50%,100%{transform:scaleX(-1);}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.18;}}
+@keyframes softblink{0%,100%{opacity:1;}50%{opacity:0.45;}}
+@keyframes dash{to{stroke-dashoffset:-340;}}
+@keyframes barpulse{0%,100%{opacity:0.5;}50%{opacity:1;}}
+@keyframes flicker{0%,100%{opacity:1;}48%{opacity:1;}50%{opacity:0.93;}52%{opacity:1;}93%{opacity:0.97;}}
+@keyframes orbit{to{transform:rotate(-360deg);}}
+@keyframes ringpulse{0%{r:2;opacity:0.9;}100%{r:9;opacity:0;}}
+.globe-rot{transform-box:fill-box;transform-origin:center;animation:spin 20s linear infinite;}
+.radar-rot{transform-origin:340px 356px;animation:spin 4s linear infinite;}
+.sat-rot{transform-origin:340px 356px;animation:orbit 6.5s linear infinite;}
+.termband{animation:term 3.4s ease-in-out infinite alternate;}
+.scandrift{animation:drift 0.55s steps(2) infinite;}
+.screenflick{animation:flicker 5s linear infinite;}
+.crew{animation:march 9s linear infinite;}
+.crew2{animation:march 11s linear infinite;}
+.crew3{animation:march 13.5s linear infinite;}
+.leg{transform-box:fill-box;transform-origin:top;animation:legs 0.38s step-end infinite;}
+.led{animation:blink 1.3s ease-in-out infinite;}
+.led2{animation:softblink 1.8s ease-in-out infinite;}
+.arcflow{stroke-dasharray:9 331;animation:dash 2.4s linear infinite;}
+.arcflow2{stroke-dasharray:9 331;animation:dash 2.9s linear infinite;}
+.sparkpulse{animation:barpulse 2s ease-in-out infinite;}
+.ping{animation:ringpulse 2s ease-out infinite;}
+</style>
+</defs>
+
+<rect x="0" y="0" width="680" height="824" fill="#16180f"/>
+<rect x="6" y="6" width="668" height="812" rx="14" fill="url(#bezel)"/>
+<rect x="6" y="6" width="668" height="812" rx="14" fill="none" stroke="#3f4232" stroke-width="2"/>
+<rect x="14" y="14" width="652" height="796" rx="10" fill="none" stroke="#14160e" stroke-width="3"/>
+<g fill="#4a4d3c">
+<circle cx="30" cy="30" r="6"/><circle cx="650" cy="30" r="6"/>
+<circle cx="30" cy="794" r="6"/><circle cx="650" cy="794" r="6"/>
+</g>
+<g fill="#14160e">
+<circle cx="30" cy="30" r="2.4"/><circle cx="650" cy="30" r="2.4"/>
+<circle cx="30" cy="794" r="2.4"/><circle cx="650" cy="794" r="2.4"/>
+</g>
+<g stroke="#1a1c12" stroke-width="1">
+<line x1="27.8" y1="27.8" x2="32.2" y2="32.2"/><line x1="647.8" y1="27.8" x2="652.2" y2="32.2"/>
+<line x1="27.8" y1="791.8" x2="32.2" y2="796.2"/><line x1="647.8" y1="791.8" x2="652.2" y2="796.2"/>
+</g>
+
+<rect x="22" y="22" width="636" height="780" rx="8" fill="url(#screenglow)"/>
+<g class="screenflick">
+<rect x="22" y="22" width="636" height="780" rx="8" fill="url(#grid)"/>
+
+<g>
+<rect x="30" y="30" width="620" height="58" rx="4" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="30" y="30" width="620" height="58" rx="4" fill="none" stroke="#41ff7e" stroke-width="0.5" stroke-opacity="0.25"/>
+<text x="44" y="55" class="hi" font-size="21" letter-spacing="2" opacity="0.25" stroke="#41ff7e" stroke-width="0.6">ADAM // COMMAND CENTER</text>
+<text x="44" y="55" class="hi" font-size="21" letter-spacing="2">ADAM // COMMAND CENTER</text>
+<text x="44" y="74" class="lbl" font-size="12" letter-spacing="3">RENTON · WA — MISSION CONTROL '76</text>
+<circle cx="600" cy="46" r="5" fill="#41ff7e" class="led"/>
+<circle cx="600" cy="46" r="8.5" fill="none" stroke="#41ff7e" stroke-opacity="0.3" stroke-width="2" class="led"/>
+<text x="592" y="50" class="brt" font-size="11" text-anchor="end">SYSTEM ONLINE</text>
+<text x="636" y="78" class="brt" font-size="16" text-anchor="end" letter-spacing="1">06:04:12</text>
+<text x="492" y="78" class="lbl" font-size="11">2026·06·20</text>
+</g>
+
+<g font-size="11">
+<g class="lbl"><text x="44" y="104">LOCAL</text><text x="138" y="104">LAX</text><text x="232" y="104">NYC</text><text x="338" y="104">LDN</text><text x="452" y="104">BKK</text><text x="560" y="104">TYO</text></g>
+<g class="brt" font-size="12"><text x="44" y="118">06:04</text><text x="130" y="118">06:04</text><text x="222" y="118">09:04</text><text x="328" y="118">14:04</text><text x="442" y="118">20:04</text><text x="550" y="118">22:04</text></g>
+</g>
+<line x1="30" y1="126" x2="650" y2="126" stroke="#1c8f46" stroke-width="1" stroke-opacity="0.5"/>
+
+<g>
+<rect x="222" y="134" width="236" height="244" rx="4" fill="#06100a" stroke="#1c8f46" stroke-width="1"/>
+<rect x="222" y="134" width="236" height="244" rx="4" fill="none" stroke="#41ff7e" stroke-width="0.5" stroke-opacity="0.18"/>
+<text x="232" y="150" class="lbl" font-size="11">GLOBAL TRACK SYS · ORBIT 4471</text>
+<g clip-path="url(#globeclip)">
+<circle cx="340" cy="356" r="118" fill="url(#globefill)"/>
+<g class="globe-rot">
+<g stroke="#2bd964" stroke-width="2.4" fill="none" stroke-opacity="0.14">
+<ellipse cx="340" cy="356" rx="118" ry="40"/>
+<ellipse cx="340" cy="356" rx="92" ry="118"/>
+<ellipse cx="340" cy="356" rx="62" ry="118"/>
+<ellipse cx="340" cy="356" rx="26" ry="118"/>
+</g>
+<g stroke="#41ff7e" stroke-width="1" fill="none" stroke-opacity="0.85">
+<ellipse cx="340" cy="356" rx="118" ry="40"/>
+<ellipse cx="340" cy="356" rx="92" ry="118"/>
+<ellipse cx="340" cy="356" rx="62" ry="118"/>
+<ellipse cx="340" cy="356" rx="26" ry="118"/>
+</g>
+</g>
+<g stroke="#2bd964" stroke-width="2.4" fill="none" stroke-opacity="0.12">
+<ellipse cx="340" cy="316" rx="111" ry="22"/>
+<ellipse cx="340" cy="356" rx="118" ry="40"/>
+<ellipse cx="340" cy="398" rx="109" ry="22"/>
+<ellipse cx="340" cy="432" rx="78" ry="14"/>
+</g>
+<g stroke="#41ff7e" stroke-width="1" fill="none" stroke-opacity="0.7">
+<ellipse cx="340" cy="316" rx="111" ry="22"/>
+<ellipse cx="340" cy="356" rx="118" ry="40"/>
+<ellipse cx="340" cy="398" rx="109" ry="22"/>
+<ellipse cx="340" cy="432" rx="78" ry="14"/>
+</g>
+<g fill="#7dffb0">
+<circle cx="300" cy="330" r="1.5"/><circle cx="312" cy="322" r="1.5"/><circle cx="324" cy="334" r="1.5"/><circle cx="336" cy="326" r="1.5"/>
+<circle cx="356" cy="340" r="1.5"/><circle cx="368" cy="332" r="1.5"/><circle cx="380" cy="344" r="1.5"/>
+<circle cx="296" cy="356" r="1.5"/><circle cx="308" cy="362" r="1.5"/><circle cx="372" cy="368" r="1.5"/><circle cx="388" cy="360" r="1.5"/>
+<circle cx="330" cy="382" r="1.5"/><circle cx="350" cy="388" r="1.5"/><circle cx="362" cy="380" r="1.5"/>
+</g>
+<g class="termband"><rect x="312" y="238" width="52" height="236" fill="url(#termgrad)"/></g>
+</g>
+<circle cx="340" cy="356" r="118" fill="none" stroke="#41ff7e" stroke-width="3" stroke-opacity="0.18"/>
+<circle cx="340" cy="356" r="118" fill="none" stroke="#9dffc4" stroke-width="1"/>
+
+<g fill="none" stroke-linecap="round">
+<path id="arcA" d="M312,388 Q330,300 410,310" stroke="#7dffb0" stroke-width="3.4" stroke-opacity="0.16"/>
+<use href="#arcA" stroke="#41ff7e" stroke-width="1.4"/>
+<use href="#arcA" stroke="#e6fff0" stroke-width="1.4" class="arcflow"/>
+<path id="arcB" d="M312,388 Q380,260 432,332" stroke="#7dffb0" stroke-width="3.4" stroke-opacity="0.16"/>
+<use href="#arcB" stroke="#41ff7e" stroke-width="1.4"/>
+<use href="#arcB" stroke="#e6fff0" stroke-width="1.4" class="arcflow2"/>
+<path id="arcC" d="M312,388 Q250,300 268,250" stroke="#7dffb0" stroke-width="3.4" stroke-opacity="0.16"/>
+<use href="#arcC" stroke="#41ff7e" stroke-width="1.4"/>
+<use href="#arcC" stroke="#e6fff0" stroke-width="1.4" class="arcflow"/>
+</g>
+<g>
+<circle cx="312" cy="388" r="3" fill="#ffd24a"/><circle cx="312" cy="388" r="6.5" fill="none" stroke="#ffd24a" stroke-opacity="0.4" stroke-width="1.5" class="led"/>
+<text x="290" y="404" class="amb" font-size="11" font-family="ui-monospace,monospace">RNT</text>
+<circle cx="410" cy="310" r="3" fill="#41ff7e" class="led"/><circle cx="410" cy="310" r="2" fill="none" stroke="#41ff7e" stroke-width="1.4" class="ping"/><text x="416" y="306" class="brt" font-size="11" font-family="ui-monospace,monospace">BKK</text>
+<circle cx="432" cy="332" r="3" fill="#41ff7e" class="led"/><circle cx="432" cy="332" r="2" fill="none" stroke="#41ff7e" stroke-width="1.4" class="ping"/><text x="438" y="344" class="brt" font-size="11" font-family="ui-monospace,monospace">TYO</text>
+<circle cx="268" cy="250" r="3" fill="#41ff7e" class="led"/><circle cx="268" cy="250" r="2" fill="none" stroke="#41ff7e" stroke-width="1.4" class="ping"/><text x="240" y="246" class="brt" font-size="11" font-family="ui-monospace,monospace">SEA</text>
+</g>
+
+<g clip-path="url(#globeclip)">
+<g class="radar-rot">
+<path d="M340,356 L340,238 A118,118 0 0,1 442,298 Z" fill="url(#radarwedge)"/>
+<line x1="340" y1="356" x2="340" y2="238" stroke="#d6ffe0" stroke-width="1.6"/>
+</g>
+<g class="sat-rot"><circle cx="340" cy="262" r="2.4" fill="#ffd24a"/><circle cx="340" cy="262" r="5" fill="none" stroke="#ffd24a" stroke-width="1" stroke-opacity="0.5" class="led2"/></g>
+</g>
+<g stroke="#1c8f46" stroke-width="0.7" fill="none" stroke-opacity="0.55">
+<circle cx="340" cy="356" r="94"/><circle cx="340" cy="356" r="78"/><circle cx="340" cy="356" r="40"/>
+<line x1="340" y1="238" x2="340" y2="474"/><line x1="222" y1="356" x2="458" y2="356"/>
+</g>
+<text x="232" y="372" class="lbl" font-size="11">AZ 047°</text>
+<text x="412" y="372" class="lbl" font-size="11" text-anchor="end">RNG 6.4K</text>
+</g>
+
+<g>
+<rect x="30" y="134" width="184" height="118" rx="4" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="30" y="134" width="184" height="16" rx="4" fill="#103016"/>
+<text x="38" y="146" class="brt" font-size="11">01 DAILY BRIEF</text>
+<circle cx="204" cy="142" r="4" fill="#41ff7e" class="led"/>
+<g font-size="12"><text x="40" y="172" class="lbl">UNREAD</text><text x="204" y="172" class="hi" text-anchor="end">201</text>
+<text x="40" y="192" class="lbl">FLAGGED</text><text x="204" y="192" class="amb" text-anchor="end">3</text>
+<text x="40" y="212" class="lbl">TASKS</text><text x="204" y="212" class="hi" text-anchor="end">0</text></g>
+<text x="40" y="238" class="lbl" font-size="11">MORNING DIGEST · SENT 06:00</text>
+</g>
+
+<g>
+<rect x="30" y="262" width="184" height="116" rx="4" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="30" y="262" width="184" height="16" rx="4" fill="#103016"/>
+<text x="38" y="274" class="brt" font-size="11">02 MARKETS</text>
+<circle cx="204" cy="270" r="4" fill="#ffd24a" class="led"/>
+<g font-size="12"><text x="40" y="298" class="lbl">NVDA</text><text x="120" y="298" class="brt" text-anchor="end">+2.4</text>
+<text x="134" y="298" class="lbl">VRT</text><text x="204" y="298" class="brt" text-anchor="end">+1.1</text>
+<text x="40" y="316" class="lbl">NBIS</text><text x="120" y="316" class="red" text-anchor="end">-3.2</text>
+<text x="134" y="316" class="lbl">AMD</text><text x="204" y="316" class="brt" text-anchor="end">+0.6</text></g>
+<g class="sparkpulse">
+<polyline points="40,358 56,350 72,354 88,342 104,348 120,334 136,340 152,328 168,332 184,322 200,330" fill="none" stroke="#7dffb0" stroke-width="3.2" stroke-opacity="0.18" stroke-linejoin="round"/>
+<polyline points="40,358 56,350 72,354 88,342 104,348 120,334 136,340 152,328 168,332 184,322 200,330" fill="none" stroke="#41ff7e" stroke-width="1.2" stroke-linejoin="round"/>
+</g>
+<circle cx="200" cy="330" r="2.2" fill="#9dffc4"/>
+</g>
+
+<g>
+<rect x="466" y="134" width="184" height="118" rx="4" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="466" y="134" width="184" height="16" rx="4" fill="#103016"/>
+<text x="474" y="146" class="brt" font-size="11">03 PROJECTS</text>
+<circle cx="640" cy="142" r="4" fill="#41ff7e" class="led"/>
+<text x="476" y="170" class="lbl" font-size="11">WESTERN STATE HOSPITAL</text>
+<text x="476" y="186" class="lbl" font-size="11">WALL SHOPS</text>
+<rect x="476" y="198" width="164" height="9" rx="2" fill="#06100a" stroke="#1c8f46" stroke-width="0.7"/>
+<rect x="477" y="199" width="101" height="7" rx="2" fill="#41ff7e" class="sparkpulse"/>
+<text x="476" y="226" class="hi" font-size="12">62%</text>
+<text x="640" y="226" class="amb" font-size="12" text-anchor="end">T-38d</text>
+</g>
+
+<g>
+<rect x="466" y="262" width="184" height="116" rx="4" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="466" y="262" width="184" height="16" rx="4" fill="#103016"/>
+<text x="474" y="274" class="brt" font-size="11">04 AGENT OPS</text>
+<circle cx="640" cy="270" r="4" fill="#41ff7e" class="led"/>
+<g font-size="12">
+<text x="476" y="298" class="lbl">hal-openclaw</text><circle cx="638" cy="294" r="4" fill="#41ff7e" class="led"/>
+<text x="476" y="320" class="lbl">mail-agent</text><circle cx="638" cy="316" r="4" fill="#41ff7e" class="led2"/>
+<text x="476" y="342" class="lbl">market-agent</text><circle cx="638" cy="338" r="4" fill="#ffd24a" class="led"/>
+</g>
+<text x="476" y="368" class="lbl" font-size="11">UPTIME 99.4% · 3 LIVE</text>
+</g>
+
+<g>
+<rect x="30" y="392" width="296" height="86" rx="4" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="30" y="392" width="296" height="16" rx="4" fill="#103016"/>
+<text x="38" y="404" class="brt" font-size="11">OSCILLOSCOPE · CH1 SYS LOAD</text>
+<circle cx="316" cy="400" r="4" fill="#41ff7e" class="led"/>
+<line x1="38" y1="442" x2="318" y2="442" stroke="#1c8f46" stroke-width="0.6" stroke-opacity="0.6"/>
+<path fill="none" stroke="#7dffb0" stroke-width="3.4" stroke-opacity="0.16" stroke-linecap="round"
+d="M38,442 L62,420 L80,460 L104,424 L128,456 L150,428 L172,448 L196,418 L220,452 L244,432 L268,446 L292,424 L318,442">
+<animate attributeName="d" dur="1.1s" repeatCount="indefinite"
+values="M38,442 L62,420 L80,460 L104,424 L128,456 L150,428 L172,448 L196,418 L220,452 L244,432 L268,446 L292,424 L318,442;M38,442 L62,452 L80,422 L104,458 L128,426 L150,454 L172,424 L196,450 L220,420 L244,456 L268,428 L292,452 L318,442;M38,442 L62,420 L80,460 L104,424 L128,456 L150,428 L172,448 L196,418 L220,452 L244,432 L268,446 L292,424 L318,442"/>
+</path>
+<path fill="none" stroke="#41ff7e" stroke-width="1.2" stroke-linecap="round"
+d="M38,442 L62,420 L80,460 L104,424 L128,456 L150,428 L172,448 L196,418 L220,452 L244,432 L268,446 L292,424 L318,442">
+<animate attributeName="d" dur="1.1s" repeatCount="indefinite"
+values="M38,442 L62,420 L80,460 L104,424 L128,456 L150,428 L172,448 L196,418 L220,452 L244,432 L268,446 L292,424 L318,442;M38,442 L62,452 L80,422 L104,458 L128,426 L150,454 L172,424 L196,450 L220,420 L244,456 L268,428 L292,452 L318,442;M38,442 L62,420 L80,460 L104,424 L128,456 L150,428 L172,448 L196,418 L220,452 L244,432 L268,446 L292,424 L318,442"/>
+</path>
+<circle cx="38" cy="442" r="2" fill="#e6fff0">
+<animate attributeName="cx" dur="2.2s" repeatCount="indefinite" values="38;318;38"/>
+<animate attributeName="cy" dur="1.1s" repeatCount="indefinite" values="442;420;460;424;456;428;448;418;452;432;446;424;442"/>
+</circle>
+</g>
+
+<g>
+<rect x="354" y="392" width="296" height="86" rx="4" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="354" y="392" width="296" height="16" rx="4" fill="#103016"/>
+<text x="362" y="404" class="brt" font-size="11">05 LIFE ADMIN</text>
+<circle cx="640" cy="400" r="4" fill="#ffd24a" class="led"/>
+<g font-size="12">
+<text x="364" y="426" class="lbl">TESLA LEMON-LAW</text><text x="640" y="426" class="amb" text-anchor="end">OPEN</text>
+<text x="364" y="442" class="lbl">SKIN ROUTINE</text><text x="640" y="442" class="brt" text-anchor="end">DONE</text>
+<text x="364" y="458" class="lbl">MOM-POA</text><text x="640" y="458" class="amb" text-anchor="end">WAIT</text>
+<text x="364" y="474" class="lbl">DOG WALK · HOME BILLS</text><text x="640" y="474" class="brt" text-anchor="end">2/3</text>
+</g>
+</g>
+
+<g>
+<rect x="30" y="492" width="620" height="48" rx="4" fill="#06100a" stroke="#1c8f46" stroke-width="1"/>
+<text x="40" y="508" class="lbl" font-size="11">CREW STATUS · SHIFT A · ALL HANDS NOMINAL</text>
+<text x="640" y="508" class="brt" font-size="11" text-anchor="end">07 ON STATION</text>
+<g clip-path="url(#crewclip)">
+<g class="crew"><g transform="translate(0,0)">
+<circle cx="0" cy="518" r="2.2" fill="#41ff7e"/><line x1="0" y1="520" x2="0" y2="528" stroke="#41ff7e" stroke-width="1.5"/>
+<line x1="0" y1="523" x2="-4" y2="525" stroke="#41ff7e" stroke-width="1.4"/><line x1="0" y1="523" x2="4" y2="525" stroke="#41ff7e" stroke-width="1.4"/>
+<line x1="0" y1="528" x2="-3" y2="535" stroke="#41ff7e" stroke-width="1.5" class="leg"/><line x1="0" y1="528" x2="3" y2="535" stroke="#41ff7e" stroke-width="1.5"/>
+</g></g>
+<g class="crew2"><g transform="translate(44,0)">
+<circle cx="0" cy="518" r="2.2" fill="#7dffb0"/><line x1="0" y1="520" x2="0" y2="528" stroke="#7dffb0" stroke-width="1.5"/>
+<line x1="0" y1="523" x2="-4" y2="525" stroke="#7dffb0" stroke-width="1.4"/><line x1="0" y1="523" x2="4" y2="525" stroke="#7dffb0" stroke-width="1.4"/>
+<line x1="0" y1="528" x2="-3" y2="535" stroke="#7dffb0" stroke-width="1.5" class="leg"/><line x1="0" y1="528" x2="3" y2="535" stroke="#7dffb0" stroke-width="1.5"/>
+</g></g>
+<g class="crew3"><g transform="translate(96,0)">
+<circle cx="0" cy="518" r="2.2" fill="#41ff7e"/><line x1="0" y1="520" x2="0" y2="528" stroke="#41ff7e" stroke-width="1.5"/>
+<line x1="0" y1="523" x2="-4" y2="525" stroke="#41ff7e" stroke-width="1.4"/><line x1="0" y1="523" x2="4" y2="525" stroke="#41ff7e" stroke-width="1.4"/>
+<line x1="0" y1="528" x2="-3" y2="535" stroke="#41ff7e" stroke-width="1.5" class="leg"/><line x1="0" y1="528" x2="3" y2="535" stroke="#41ff7e" stroke-width="1.5"/>
+</g></g>
+<g class="crew" style="animation-delay:-2.6s"><g transform="translate(150,0)">
+<circle cx="0" cy="518" r="2.2" fill="#7dffb0"/><line x1="0" y1="520" x2="0" y2="528" stroke="#7dffb0" stroke-width="1.5"/>
+<line x1="0" y1="523" x2="-4" y2="525" stroke="#7dffb0" stroke-width="1.4"/><line x1="0" y1="523" x2="4" y2="525" stroke="#7dffb0" stroke-width="1.4"/>
+<line x1="0" y1="528" x2="-3" y2="535" stroke="#7dffb0" stroke-width="1.5" class="leg"/><line x1="0" y1="528" x2="3" y2="535" stroke="#7dffb0" stroke-width="1.5"/>
+</g></g>
+<g class="crew2" style="animation-delay:-4.8s"><g transform="translate(212,0)">
+<circle cx="0" cy="518" r="2.2" fill="#41ff7e"/><line x1="0" y1="520" x2="0" y2="528" stroke="#41ff7e" stroke-width="1.5"/>
+<line x1="0" y1="523" x2="-4" y2="525" stroke="#41ff7e" stroke-width="1.4"/><line x1="0" y1="523" x2="4" y2="525" stroke="#41ff7e" stroke-width="1.4"/>
+<line x1="0" y1="528" x2="-3" y2="535" stroke="#41ff7e" stroke-width="1.5" class="leg"/><line x1="0" y1="528" x2="3" y2="535" stroke="#41ff7e" stroke-width="1.5"/>
+</g></g>
+<g class="crew3" style="animation-delay:-7s"><g transform="translate(274,0)">
+<circle cx="0" cy="518" r="2.2" fill="#7dffb0"/><line x1="0" y1="520" x2="0" y2="528" stroke="#7dffb0" stroke-width="1.5"/>
+<line x1="0" y1="523" x2="-4" y2="525" stroke="#7dffb0" stroke-width="1.4"/><line x1="0" y1="523" x2="4" y2="525" stroke="#7dffb0" stroke-width="1.4"/>
+<line x1="0" y1="528" x2="-3" y2="535" stroke="#7dffb0" stroke-width="1.5" class="leg"/><line x1="0" y1="528" x2="3" y2="535" stroke="#7dffb0" stroke-width="1.5"/>
+</g></g>
+<g class="crew" style="animation-delay:-5.5s"><g transform="translate(330,0)">
+<circle cx="0" cy="518" r="2.2" fill="#41ff7e"/><line x1="0" y1="520" x2="0" y2="528" stroke="#41ff7e" stroke-width="1.5"/>
+<line x1="0" y1="523" x2="-4" y2="525" stroke="#41ff7e" stroke-width="1.4"/><line x1="0" y1="523" x2="4" y2="525" stroke="#41ff7e" stroke-width="1.4"/>
+<line x1="0" y1="528" x2="-3" y2="535" stroke="#41ff7e" stroke-width="1.5" class="leg"/><line x1="0" y1="528" x2="3" y2="535" stroke="#41ff7e" stroke-width="1.5"/>
+</g></g>
+</g>
+</g>
+
+<g>
+<rect x="30" y="554" width="620" height="224" rx="4" fill="#06100a" stroke="#1c8f46" stroke-width="1"/>
+<rect x="30" y="554" width="620" height="224" rx="4" fill="none" stroke="#41ff7e" stroke-width="0.5" stroke-opacity="0.14"/>
+<text x="40" y="572" class="lbl" font-size="11">TELEMETRY LOG</text>
+<text x="640" y="572" class="brt" font-size="11" text-anchor="end">REC ●</text>
+<g font-size="11" class="brt">
+<text x="40" y="592">&gt; 06:00:01 DIGEST DISPATCHED · 201 UNREAD INDEXED</text>
+<text x="40" y="610">&gt; 06:01:44 ARC LOCK BKK/TYO/SEA · GREAT-CIRCLE OK</text>
+<text x="40" y="628">&gt; 06:02:10 MARKET FEED SYNC · NVDA +2.4 LEADING</text>
+<text x="40" y="646">&gt; 06:03:02 PROJECT WALL SHOPS 62% · ETA T-38d</text>
+<text x="40" y="664">&gt; 06:03:55 AGENT MARKET-AGENT THROTTLE · AMBER</text>
+<text x="40" y="682" class="lbl">&gt; 06:04:12 RADAR SWEEP AZ 047° · NOMINAL<tspan class="hi" dx="2">_<animate attributeName="opacity" dur="1s" values="1;1;0;0" repeatCount="indefinite"/></tspan></text>
+</g>
+<rect x="40" y="694" width="600" height="9" rx="2" fill="#0d1b0c" stroke="#1c8f46" stroke-width="0.6"/>
+<rect x="41" y="695" width="372" height="7" rx="2" fill="#41ff7e" class="sparkpulse"/>
+<text x="40" y="724" class="lbl" font-size="11">BUFFER 62% · LINK 9600 BAUD · ENCRYPT ON</text>
+<g font-size="11" class="lbl">
+<text x="40" y="748">PWR 28.4V</text><text x="150" y="748">TEMP 41°C</text><text x="270" y="748">CPU 37%</text><text x="380" y="748">MEM 1.2G</text><text x="500" y="748">NET 9.6K</text>
+</g>
+<rect x="40" y="756" width="600" height="6" rx="2" fill="#0d1b0c"/>
+<rect x="40" y="756" width="220" height="6" rx="2" fill="#2bd964" opacity="0.7">
+<animate attributeName="width" dur="3.6s" values="180;320;240;300;180" repeatCount="indefinite"/>
+</rect>
+</g>
+</g>
+
+<rect x="22" y="22" width="636" height="780" rx="8" fill="url(#vig)" pointer-events="none"/>
+<g class="scandrift"><rect x="22" y="22" width="636" height="780" rx="8" fill="url(#scan)" pointer-events="none"/></g>
+</svg>

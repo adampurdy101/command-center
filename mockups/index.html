@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COMMAND CENTER — visual directions</title>
+<style>
+:root{--g:#41ff7e;--gd:#2bd964;--gf:#1c8f46;--bg:#05080a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--g);
+ font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:20px;letter-spacing:2px;color:#7dffb0;margin:0 0 4px}
+.sub{color:var(--gd);font-size:13px;margin:0 0 20px}
+nav{position:sticky;top:0;background:rgba(5,8,10,.92);backdrop-filter:blur(4px);
+ padding:10px 0;border-bottom:1px solid var(--gf);margin-bottom:24px;
+ display:flex;flex-wrap:wrap;gap:8px 16px;z-index:9}
+nav a{color:var(--gd);text-decoration:none;font-size:12px;letter-spacing:1px}
+nav a:hover{color:#7dffb0;text-shadow:0 0 6px var(--g)}
+.card{border:1px solid var(--gf);border-radius:8px;background:#0a1409;
+ padding:16px;margin-bottom:28px}
+.head{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}
+.num{font-size:24px;color:var(--gf)}
+h2{font-size:16px;letter-spacing:1px;color:#7dffb0;margin:0;text-transform:uppercase}
+.tag{font-size:12px;color:var(--gd);margin:4px 0 0}
+.hl{margin:0 0 14px;padding-left:18px;color:var(--gd);font-size:12px}
+.hl li{margin:2px 0}
+.screen{border:1px solid var(--gf);border-radius:6px;overflow:hidden;background:#06100a}
+footer{color:var(--gf);font-size:12px;text-align:center;margin-top:30px;letter-spacing:1px}
+</style></head>
+<body><div class="wrap">
+<h1>ADAM // COMMAND CENTER</h1>
+<p class="sub">FOUR VISUAL DIRECTIONS · pick one, mix elements, or tell me what to change · nothing here is functional yet</p>
+<nav><a href="#mission">1 · MISSION CONTROL &#x27;76</a><a href="#amber">2 · AMBER MAINFRAME</a><a href="#tactical">3 · TACTICAL TRACK GRID</a><a href="#vector">4 · VECTOR HORIZON</a></nav>
+
+  <section id="mission" class="card">
+    <div class="head"><span class="num">01</span>
+      <div><h2>MISSION CONTROL &#x27;76</h2>
+      <p class="tag">A 1970s NASA/NORAD green-phosphor command console — spinning wireframe globe, sweeping radar, great-circle flight arcs, multi-city clocks, live station panels, and a marching crew of little green guys.</p></div></div>
+    <ul class="hl"><li>Layered phosphor glow: every glyph line and arc is double/triple-stroked (wide soft halo + bright core) for true CRT bloom without filters</li><li>Rotating wireframe globe with a terminator sweep band, drifting city blips, and three animated great-circle arcs flowing to BKK/TYO/SEA</li><li>Continuous 4s radar sweep wedge with fading trail, plus an independent satellite blip tracking its own orbit ring</li><li>Marching crew of little green guys with step-cycling legs, staggered speeds and delays, clipped to a status rail</li><li>Dense live telemetry: SMIL oscilloscope + dual scope, animated digit ticks, blinking LEDs, pulsing progress bars, scrolling log cursor</li><li>Authentic CRT finish — brushed bezel with bolt heads, screen vignette, scanline pattern with sub-pixel drift, faint phosphor flicker</li></ul>
+    <div class="screen"><object type="image/svg+xml" data="mission.svg"
+       style="width:100%;aspect-ratio:680/824;display:block" aria-label="MISSION CONTROL &#x27;76 mockup"></object></div>
+  </section>
+  <section id="amber" class="card">
+    <div class="head"><span class="num">02</span>
+      <div><h2>AMBER MAINFRAME</h2>
+      <p class="tag">A brown-black 1980s mainframe CRT in amber phosphor — spinning tape reels, a wireframe globe, nixie counters and a marching-crew ticker, all under live scanlines.</p></div></div>
+    <ul class="hl"><li>Layered dark-amber underlayers behind every bright glyph for convincing phosphor bloom without filters</li><li>Twin tape reels spinning in opposite directions (FWD/REV) to read as one mechanism</li><li>Wireframe globe with counter-rotating meridian sweep and pulsing tracking blips</li><li>Hero scan beam sweeping a faint telemetry grid, plus scanline drift and vignette over the whole CRT</li><li>Ghosted nixie backplates (888/88) behind live unread-mail and feed counters</li></ul>
+    <div class="screen"><object type="image/svg+xml" data="amber.svg"
+       style="width:100%;aspect-ratio:680/772;display:block" aria-label="AMBER MAINFRAME mockup"></object></div>
+  </section>
+  <section id="tactical" class="card">
+    <div class="head"><span class="num">03</span>
+      <div><h2>TACTICAL TRACK GRID</h2>
+      <p class="tag">A NORAD-grade green-phosphor command deck — orbital sweep, great-circle track, twin spinning globes, radar router and a marching field crew, all wrapped in CRT bloom.</p></div></div>
+    <ul class="hl"><li>Layered-stroke phosphor glow on every label and graticule for true CRT bloom</li><li>Animated radar sweep, great-circle Bangkok→Seattle route blip, and three orbital satellites on curved paths</li><li>Twin spinning wireframe mini-globes with terminator scan bands</li><li>Marching field-crew sprites with two-frame leg cycle plus dual scrolling status tickers</li><li>CRT finish: drifting scanlines, vignette, blinking acquisition blips and pulsing telemetry bars</li></ul>
+    <div class="screen"><object type="image/svg+xml" data="tactical.svg"
+       style="width:100%;aspect-ratio:680/820;display:block" aria-label="TACTICAL TRACK GRID mockup"></object></div>
+  </section>
+  <section id="vector" class="card">
+    <div class="head"><span class="num">04</span>
+      <div><h2>VECTOR HORIZON</h2>
+      <p class="tag">A green-phosphor CRT where a wireframe vector sun rises over a rushing perspective grid, a dot globe spins with live travel blips, and the whole crew marches the horizon.</p></div></div>
+    <ul class="hl"><li>Layered-stroke phosphor glow: every hero label and the clock now carry a dark drop-edge plus a bright pulsing top layer for a true CRT bloom without filters</li><li>Rebuilt the perspective grid to stay fully inside the hero clip (no negative coords, no overflow) and added a faster downward grid-run plus brighter accent rails for the rushing-horizon feel</li><li>Counter-rotating globe: dot constellation spins one way while the meridian rings spin the other, with blinking white waypoint dots and a glowing rim halo</li><li>Marching-sprite crew constrained to a clipped ticker lane, the status line now scrolls as a seamless looping marquee, and the radar adds a second blip</li><li>Fixed validity issues from the draft: removed dead nodes (zero-radius circle, empty clip group), gave every polyline/connector path fill=&quot;none&quot;, pulled the scanline rect in-bounds, and kept all text &gt;= 11px</li></ul>
+    <div class="screen"><object type="image/svg+xml" data="vector.svg"
+       style="width:100%;aspect-ratio:680/820;display:block" aria-label="VECTOR HORIZON mockup"></object></div>
+  </section>
+<footer>— animated mockups · 4 directions · 2026·06·20 —</footer>
+</div></body></html>

@@ -1,0 +1,428 @@
+<svg width="100%" viewBox="0 0 680 820" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>ADAM // COMMAND CENTER — VECTOR HORIZON</title>
+<desc>A retro-futuristic green-phosphor CRT dashboard. A glowing wireframe vector sun rises over a rushing perspective grid horizon while a rotating dot globe floats above with travel blips. Cyan and magenta status bars pulse, a radar sweeps, and a crew of pixel figures marches across the bottom ticker.</desc>
+<style>
+.scan{animation:scan 6s linear infinite}
+@keyframes scan{from{transform:translateY(0)}to{transform:translateY(4px)}}
+.gridrun{animation:grun 1.5s linear infinite}
+@keyframes grun{from{transform:translateY(0)}to{transform:translateY(27px)}}
+.blink{animation:blk 1.2s steps(1) infinite}
+@keyframes blk{0%,49%{opacity:1}50%,100%{opacity:.15}}
+.blink2{animation:blk 1.2s steps(1) infinite;animation-delay:.6s}
+.cur{animation:cur 1s steps(1) infinite}
+@keyframes cur{0%,49%{opacity:1}50%,100%{opacity:0}}
+.spin{animation:spin 16s linear infinite;transform-origin:340px 250px}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.spinr{animation:spinr 22s linear infinite;transform-origin:340px 250px}
+@keyframes spinr{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
+.sweep{animation:swp 3.4s linear infinite;transform-origin:612px 783px}
+@keyframes swp{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.walk{animation:walk 11s linear infinite}
+@keyframes walk{from{transform:translateX(0)}to{transform:translateX(600px)}}
+.walkb{animation:walkb 9s linear infinite}
+@keyframes walkb{from{transform:translateX(0)}to{transform:translateX(520px)}}
+.legA{animation:lga .38s steps(1) infinite}
+@keyframes lga{0%,49%{opacity:1}50%,100%{opacity:0}}
+.legB{animation:lgb .38s steps(1) infinite}
+@keyframes lgb{0%,49%{opacity:0}50%,100%{opacity:1}}
+.pulse{animation:pls 2.4s ease-in-out infinite}
+@keyframes pls{0%,100%{opacity:.3}50%{opacity:.95}}
+.barpush{animation:bp 3s ease-in-out infinite}
+@keyframes bp{0%,100%{transform:scaleX(.72)}50%{transform:scaleX(1)}}
+.barpush2{animation:bp 3.6s ease-in-out infinite;animation-delay:.5s}
+.rise{animation:rise 4s ease-in-out infinite}
+@keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:1}85%{opacity:.6}100%{transform:translateY(-58px);opacity:0}}
+.rise2{animation:rise 4s ease-in-out infinite;animation-delay:1.6s}
+.rise3{animation:rise 4s ease-in-out infinite;animation-delay:2.9s}
+.flick{animation:flk 5s ease-in-out infinite}
+@keyframes flk{0%,100%{opacity:.9}48%{opacity:.9}50%{opacity:.5}52%{opacity:.9}}
+.glow{animation:glw 3.2s ease-in-out infinite}
+@keyframes glw{0%,100%{opacity:.85}50%{opacity:1}}
+.tick{animation:tick 18s linear infinite}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-470px)}}
+</style>
+<defs>
+<radialGradient id="vig" cx="50%" cy="46%" r="72%">
+<stop offset="54%" stop-color="#000000" stop-opacity="0"/>
+<stop offset="100%" stop-color="#000000" stop-opacity="0.9"/>
+</radialGradient>
+<linearGradient id="sunfade" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#ffd24a"/>
+<stop offset="55%" stop-color="#41ff7e"/>
+<stop offset="100%" stop-color="#0d1b0c"/>
+</linearGradient>
+<linearGradient id="skyfade" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#06100a"/>
+<stop offset="62%" stop-color="#0a1f14"/>
+<stop offset="100%" stop-color="#0e3019"/>
+</linearGradient>
+<linearGradient id="sweepg" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0%" stop-color="#5fffe0" stop-opacity="0"/>
+<stop offset="80%" stop-color="#5fffe0" stop-opacity="0.06"/>
+<stop offset="100%" stop-color="#5fffe0" stop-opacity="0.55"/>
+</linearGradient>
+<linearGradient id="sunhalo" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#ffd24a" stop-opacity="0.35"/>
+<stop offset="100%" stop-color="#41ff7e" stop-opacity="0"/>
+</linearGradient>
+<pattern id="scanp" width="4" height="4" patternUnits="userSpaceOnUse">
+<rect width="680" height="2" fill="#000000" opacity="0.22"/>
+</pattern>
+<clipPath id="globeclip"><circle cx="340" cy="250" r="62"/></clipPath>
+<clipPath id="heroclip"><rect x="20" y="96" width="640" height="372" rx="6"/></clipPath>
+<clipPath id="tickclip"><rect x="120" y="768" width="430" height="30"/></clipPath>
+</defs>
+
+<rect x="0" y="0" width="680" height="820" rx="16" fill="#1a1c14"/>
+<rect x="5" y="5" width="670" height="810" rx="14" fill="#3a3d2e"/>
+<rect x="8" y="8" width="664" height="804" rx="13" fill="#2b2e22"/>
+<rect x="14" y="14" width="652" height="792" rx="10" fill="#06100a"/>
+<rect x="14" y="14" width="652" height="792" rx="10" fill="none" stroke="#1a1c14" stroke-width="2"/>
+<g fill="#4a4d3c">
+<circle cx="30" cy="30" r="6"/><circle cx="650" cy="30" r="6"/>
+<circle cx="30" cy="790" r="6"/><circle cx="650" cy="790" r="6"/>
+</g>
+<g fill="#1a1c14">
+<circle cx="30" cy="30" r="2.4"/><circle cx="650" cy="30" r="2.4"/>
+<circle cx="30" cy="790" r="2.4"/><circle cx="650" cy="790" r="2.4"/>
+</g>
+
+<rect x="22" y="22" width="636" height="62" rx="6" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="22" y="22" width="636" height="62" rx="6" fill="none" stroke="#41ff7e" stroke-width="0.5" opacity="0.25"/>
+<g>
+<text x="41" y="51" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="22" font-weight="700" fill="#0d3b1c">ADAM // COMMAND CENTER</text>
+<text x="40" y="50" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="22" font-weight="700" fill="#1c8f46">ADAM // COMMAND CENTER</text>
+<text x="39" y="49" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="22" font-weight="700" fill="#41ff7e" class="glow">ADAM // COMMAND CENTER</text>
+<text x="40" y="72" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" fill="#2bd964">RENTON · WA · SECTOR 7</text>
+</g>
+<g font-family="ui-monospace,Menlo,Consolas,monospace">
+<text x="486" y="44" font-size="11" fill="#2bd964">RNT 06:04 · BKK 20:04 · UTC 13:04</text>
+<text x="641" y="63" font-size="20" font-weight="700" fill="#1c8f46" text-anchor="end">06:04:12</text>
+<text x="640" y="62" font-size="20" font-weight="700" fill="#5fffe0" text-anchor="end" class="glow">06:04:12</text>
+<text x="640" y="78" font-size="11" fill="#2bd964" text-anchor="end">2026·06·20</text>
+</g>
+<g>
+<circle cx="470" cy="40" r="9" fill="#41ff7e" opacity="0.2" class="blink"/>
+<circle cx="470" cy="40" r="5" fill="#41ff7e" class="blink"/>
+<circle cx="470" cy="40" r="2" fill="#d6ffe0"/>
+</g>
+<text x="40" y="98" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#1c8f46">SYSTEM ONLINE<tspan class="cur" fill="#41ff7e"> █</tspan></text>
+
+<g clip-path="url(#heroclip)">
+<rect x="20" y="96" width="640" height="372" fill="url(#skyfade)"/>
+
+<g stroke="#1c8f46" stroke-width="0.5" opacity="0.45">
+<line x1="20" y1="120" x2="660" y2="120"/><line x1="20" y1="150" x2="660" y2="150"/>
+<line x1="80" y1="96" x2="80" y2="300"/><line x1="600" y1="96" x2="600" y2="300"/>
+</g>
+<g fill="#2bd964" opacity="0.5">
+<rect x="20" y="118" width="8" height="0.5"/><rect x="652" y="118" width="8" height="0.5"/>
+</g>
+<text x="34" y="116" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#2bd964">VECTOR HORIZON · ORBITAL TRACK SYS</text>
+<text x="646" y="116" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#5fffe0" text-anchor="end" class="glow">SCAN ▷ ACTIVE</text>
+
+<ellipse cx="340" cy="300" rx="140" ry="70" fill="url(#sunhalo)" opacity="0.6" class="glow"/>
+<g opacity="0.95">
+<g stroke="#41ff7e" fill="none" stroke-linecap="round">
+<path d="M280 300 a60 60 0 0 1 120 0" fill="none" stroke-width="7" stroke-opacity="0.1"/>
+<path d="M280 300 a60 60 0 0 1 120 0" fill="none" stroke-width="3" stroke-opacity="0.35"/>
+<path d="M280 300 a60 60 0 0 1 120 0" fill="none" stroke-width="1.2" stroke="#ffd24a"/>
+</g>
+<g stroke="#ffd24a" stroke-width="3" opacity="0.9">
+<line x1="288" y1="284" x2="392" y2="284"/>
+<line x1="296" y1="270" x2="384" y2="270"/>
+<line x1="306" y1="258" x2="374" y2="258"/>
+<line x1="320" y1="248" x2="360" y2="248"/>
+</g>
+<g stroke="#ffe27a" stroke-width="1" opacity="0.5">
+<line x1="288" y1="284" x2="392" y2="284"/>
+<line x1="306" y1="258" x2="374" y2="258"/>
+</g>
+<g stroke="#41ff7e" stroke-width="2" opacity="0.6">
+<line x1="284" y1="292" x2="396" y2="292"/>
+</g>
+</g>
+
+<rect x="20" y="300" width="640" height="168" fill="#06100a" opacity="0.2"/>
+<line x1="20" y1="300" x2="660" y2="300" stroke="#5fffe0" stroke-width="0.5" opacity="0.7"/>
+<line x1="20" y1="301" x2="660" y2="301" stroke="#41ff7e" stroke-width="1.4" opacity="0.18"/>
+
+<g clip-path="url(#heroclip)">
+<g class="gridrun">
+<g stroke="#2bd964" stroke-width="0.6" opacity="0.55" fill="none">
+<line x1="20" y1="300" x2="660" y2="300"/>
+<line x1="20" y1="314" x2="660" y2="314"/>
+<line x1="20" y1="330" x2="660" y2="330"/>
+<line x1="20" y1="349" x2="660" y2="349"/>
+<line x1="20" y1="372" x2="660" y2="372"/>
+<line x1="20" y1="399" x2="660" y2="399"/>
+<line x1="20" y1="431" x2="660" y2="431"/>
+<line x1="20" y1="469" x2="660" y2="469"/>
+<line x1="20" y1="514" x2="660" y2="514"/>
+</g>
+<g stroke="#41ff7e" stroke-width="0.7" opacity="0.18" fill="none">
+<line x1="20" y1="300" x2="660" y2="300"/>
+<line x1="20" y1="349" x2="660" y2="349"/>
+<line x1="20" y1="431" x2="660" y2="431"/>
+</g>
+</g>
+<g stroke="#41ff7e" stroke-width="0.6" opacity="0.5" fill="none">
+<line x1="340" y1="300" x2="340" y2="468"/>
+<line x1="340" y1="300" x2="288" y2="468"/><line x1="340" y1="300" x2="392" y2="468"/>
+<line x1="340" y1="300" x2="232" y2="468"/><line x1="340" y1="300" x2="448" y2="468"/>
+<line x1="340" y1="300" x2="168" y2="468"/><line x1="340" y1="300" x2="512" y2="468"/>
+<line x1="340" y1="300" x2="92" y2="468"/><line x1="340" y1="300" x2="588" y2="468"/>
+<line x1="340" y1="300" x2="20" y2="468"/><line x1="340" y1="300" x2="660" y2="468"/>
+<line x1="340" y1="300" x2="20" y2="420"/><line x1="340" y1="300" x2="660" y2="420"/>
+</g>
+<g stroke="#5fffe0" stroke-width="0.5" opacity="0.22" fill="none">
+<line x1="340" y1="300" x2="130" y2="468"/><line x1="340" y1="300" x2="550" y2="468"/>
+</g>
+</g>
+
+<g>
+<line x1="120" y1="298" x2="120" y2="280" stroke="#5fffe0" stroke-width="0.6" opacity="0.5"/>
+<circle cx="120" cy="278" r="3" fill="#5fffe0" opacity="0.2"/>
+<circle cx="120" cy="278" r="1.4" fill="#5fffe0" class="blink"/>
+<line x1="470" y1="298" x2="470" y2="274" stroke="#ff5fd2" stroke-width="0.6" opacity="0.5"/>
+<circle cx="470" cy="272" r="3" fill="#ff5fd2" opacity="0.2"/>
+<circle cx="470" cy="272" r="1.4" fill="#ff5fd2" class="blink2"/>
+<line x1="556" y1="298" x2="556" y2="288" stroke="#ffd24a" stroke-width="0.6" opacity="0.5"/>
+<circle cx="556" cy="286" r="1.3" fill="#ffd24a" class="blink"/>
+<line x1="210" y1="298" x2="210" y2="290" stroke="#7dffb0" stroke-width="0.6" opacity="0.5"/>
+<circle cx="210" cy="288" r="1.2" fill="#7dffb0" class="blink2"/>
+</g>
+
+<g>
+<g class="walk">
+<g transform="translate(40,294)" stroke="#7dffb0" stroke-width="1.2" stroke-linecap="round" fill="none">
+<circle cx="0" cy="-7" r="1.3" fill="#7dffb0" stroke="none"/>
+<line x1="0" y1="-6" x2="0" y2="-2"/>
+<g class="legA"><line x1="0" y1="-2" x2="-2" y2="2"/><line x1="0" y1="-2" x2="2" y2="2"/></g>
+<g class="legB"><line x1="0" y1="-2" x2="-1" y2="2"/><line x1="0" y1="-2" x2="1" y2="2"/></g>
+</g>
+</g>
+<g class="walk" style="animation-delay:-3.5s">
+<g transform="translate(40,294)" stroke="#41ff7e" stroke-width="1.2" stroke-linecap="round" fill="none">
+<circle cx="0" cy="-7" r="1.3" fill="#41ff7e" stroke="none"/>
+<line x1="0" y1="-6" x2="0" y2="-2"/>
+<g class="legB"><line x1="0" y1="-2" x2="-2" y2="2"/><line x1="0" y1="-2" x2="2" y2="2"/></g>
+<g class="legA"><line x1="0" y1="-2" x2="-1" y2="2"/><line x1="0" y1="-2" x2="1" y2="2"/></g>
+</g>
+</g>
+<g class="walk" style="animation-delay:-7s">
+<g transform="translate(40,294)" stroke="#5fffe0" stroke-width="1.2" stroke-linecap="round" fill="none">
+<circle cx="0" cy="-7" r="1.3" fill="#5fffe0" stroke="none"/>
+<line x1="0" y1="-6" x2="0" y2="-2"/>
+<g class="legA"><line x1="0" y1="-2" x2="-2" y2="2"/><line x1="0" y1="-2" x2="2" y2="2"/></g>
+<g class="legB"><line x1="0" y1="-2" x2="-1" y2="2"/><line x1="0" y1="-2" x2="1" y2="2"/></g>
+</g>
+</g>
+</g>
+
+<g>
+<g class="rise"><circle cx="332" cy="248" r="2" fill="#5fffe0" opacity="0.2"/><circle cx="332" cy="248" r="1" fill="#d6ffe0"/></g>
+<g class="rise2"><circle cx="350" cy="244" r="2" fill="#ff5fd2" opacity="0.2"/><circle cx="350" cy="244" r="1" fill="#ff5fd2"/></g>
+<g class="rise3"><circle cx="340" cy="250" r="2" fill="#ffd24a" opacity="0.2"/><circle cx="340" cy="250" r="1" fill="#ffd24a"/></g>
+</g>
+
+<g>
+<circle cx="340" cy="250" r="66" fill="none" stroke="#41ff7e" stroke-width="6" opacity="0.06" class="glow"/>
+<circle cx="340" cy="250" r="62" fill="#06100a" opacity="0.55"/>
+<circle cx="340" cy="250" r="62" fill="none" stroke="#5fffe0" stroke-width="3" opacity="0.1"/>
+<circle cx="340" cy="250" r="62" fill="none" stroke="#41ff7e" stroke-width="1" opacity="0.9"/>
+<g clip-path="url(#globeclip)">
+<g stroke="#2bd964" stroke-width="0.6" fill="none" opacity="0.7">
+<ellipse cx="340" cy="250" rx="62" ry="20"/>
+<ellipse cx="340" cy="250" rx="62" ry="42"/>
+<line x1="278" y1="250" x2="402" y2="250"/>
+<ellipse cx="340" cy="226" rx="57" ry="14" opacity="0.6"/>
+<ellipse cx="340" cy="274" rx="57" ry="14" opacity="0.6"/>
+</g>
+<g class="spinr">
+<ellipse cx="340" cy="250" rx="20" ry="62" fill="none" stroke="#5fffe0" stroke-width="0.6" opacity="0.4"/>
+<ellipse cx="340" cy="250" rx="44" ry="62" fill="none" stroke="#5fffe0" stroke-width="0.5" opacity="0.28"/>
+</g>
+<g class="spin">
+<g fill="#41ff7e">
+<circle cx="340" cy="190" r="1.3"/><circle cx="318" cy="196" r="1.3"/><circle cx="362" cy="196" r="1.3"/>
+<circle cx="300" cy="212" r="1.3"/><circle cx="380" cy="212" r="1.3"/><circle cx="290" cy="234" r="1.3"/>
+<circle cx="390" cy="234" r="1.3"/><circle cx="286" cy="258" r="1.3"/><circle cx="394" cy="258" r="1.3"/>
+<circle cx="292" cy="282" r="1.3"/><circle cx="388" cy="282" r="1.3"/><circle cx="306" cy="300" r="1.3"/>
+<circle cx="374" cy="300" r="1.3"/><circle cx="328" cy="310" r="1.3"/><circle cx="352" cy="310" r="1.3"/>
+<circle cx="340" cy="250" r="1.3"/><circle cx="322" cy="238" r="1.3"/><circle cx="358" cy="262" r="1.3"/>
+<circle cx="330" cy="270" r="1.3"/><circle cx="350" cy="230" r="1.3"/>
+</g>
+<g fill="#7dffb0">
+<circle cx="316" cy="224" r="1.4"/><circle cx="364" cy="276" r="1.4"/><circle cx="344" cy="206" r="1.4"/>
+<circle cx="308" cy="266" r="1.4"/><circle cx="372" cy="244" r="1.4"/>
+</g>
+<g fill="#d6ffe0"><circle cx="334" cy="218" r="1.6" class="blink"/><circle cx="356" cy="288" r="1.6" class="blink2"/></g>
+</g>
+<rect x="300" y="188" width="14" height="124" fill="#5fffe0" opacity="0.1" class="pulse"/>
+</g>
+<line x1="290" y1="250" x2="278" y2="250" stroke="#5fffe0" stroke-width="0.6"/>
+<line x1="402" y1="250" x2="390" y2="250" stroke="#5fffe0" stroke-width="0.6"/>
+<text x="341" y="333" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#0d3b1c" text-anchor="middle">GLOBE · 7 BLIPS TRACKED</text>
+<text x="340" y="332" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11" fill="#5fffe0" text-anchor="middle">GLOBE · 7 BLIPS TRACKED</text>
+</g>
+
+<g font-family="ui-monospace,Menlo,Consolas,monospace">
+<line x1="340" y1="244" x2="430" y2="180" stroke="#ff5fd2" stroke-width="0.6" stroke-dasharray="3 3" opacity="0.7" class="flick" fill="none"/>
+<circle cx="430" cy="180" r="2.4" fill="#ff5fd2" opacity="0.25"/>
+<circle cx="430" cy="180" r="1.2" fill="#ff5fd2"/>
+<text x="436" y="178" font-size="11" fill="#ff5fd2">BKK ✈ 7,612mi</text>
+<text x="436" y="190" font-size="11" fill="#2bd964">ETA 14H · GATE A4</text>
+</g>
+
+<g font-family="ui-monospace,Menlo,Consolas,monospace">
+<circle cx="250" cy="180" r="2" fill="#5fffe0" opacity="0.25"/><circle cx="250" cy="180" r="1" fill="#5fffe0" class="blink"/>
+<text x="244" y="178" font-size="11" fill="#5fffe0" text-anchor="end">LON</text>
+<circle cx="246" cy="220" r="2" fill="#5fffe0" opacity="0.25"/><circle cx="246" cy="220" r="1" fill="#5fffe0" class="blink2"/>
+<text x="240" y="218" font-size="11" fill="#5fffe0" text-anchor="end">SEA</text>
+</g>
+</g>
+
+<rect x="20" y="96" width="640" height="372" rx="6" fill="none" stroke="#1c8f46" stroke-width="1"/>
+<rect x="20" y="96" width="640" height="372" rx="6" fill="none" stroke="#41ff7e" stroke-width="0.5" opacity="0.2"/>
+
+<g font-family="ui-monospace,Menlo,Consolas,monospace">
+<rect x="22" y="482" width="206" height="172" rx="6" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="22" y="482" width="206" height="20" rx="6" fill="#11260f"/>
+<text x="32" y="496" font-size="11" fill="#41ff7e">01 DAILY BRIEF</text>
+<circle cx="216" cy="492" r="3.5" fill="#41ff7e" opacity="0.25"/><circle cx="216" cy="492" r="2" fill="#41ff7e" class="blink"/>
+<text x="32" y="520" font-size="12" fill="#7dffb0">201 <tspan fill="#2bd964">UNREAD</tspan></text>
+<text x="32" y="538" font-size="12" fill="#ffd24a">3 <tspan fill="#2bd964">FLAGGED</tspan></text>
+<text x="32" y="556" font-size="12" fill="#2bd964">0 TASKS DUE</text>
+<rect x="32" y="576" width="186" height="10" fill="#06100a" stroke="#1c8f46" stroke-width="0.6"/>
+<rect x="33" y="577" width="184" height="8" fill="#11260f"/>
+<g class="barpush" style="transform-origin:33px 581px">
+<rect x="33" y="577" width="150" height="8" fill="#41ff7e" opacity="0.3"/>
+<rect x="33" y="577" width="150" height="8" fill="#41ff7e" opacity="0.7"/>
+</g>
+<text x="32" y="604" font-size="11" fill="#2bd964">INBOX LOAD 74%</text>
+<polyline points="32,640 48,632 64,636 80,624 96,630 112,620 128,628 144,616 160,622 176,612 192,620 208,610" fill="none" stroke="#5fffe0" stroke-width="3.5" opacity="0.16"/>
+<polyline points="32,640 48,632 64,636 80,624 96,630 112,620 128,628 144,616 160,622 176,612 192,620 208,610" fill="none" stroke="#5fffe0" stroke-width="1.4" opacity="0.9"/>
+<circle cx="208" cy="610" r="2" fill="#d6ffe0" class="blink"/>
+</g>
+
+<g font-family="ui-monospace,Menlo,Consolas,monospace">
+<rect x="237" y="482" width="206" height="172" rx="6" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="237" y="482" width="206" height="20" rx="6" fill="#11260f"/>
+<text x="247" y="496" font-size="11" fill="#41ff7e">02 MARKETS</text>
+<circle cx="431" cy="492" r="3.5" fill="#5fffe0" opacity="0.25"/><circle cx="431" cy="492" r="2" fill="#5fffe0" class="blink"/>
+<text x="247" y="520" font-size="12" fill="#41ff7e">NVDA <tspan fill="#7dffb0">+2.4</tspan></text>
+<text x="350" y="520" font-size="12" fill="#41ff7e">VRT <tspan fill="#7dffb0">+1.1</tspan></text>
+<text x="247" y="538" font-size="12" fill="#ff6b5a">NBIS <tspan>-3.2</tspan></text>
+<text x="350" y="538" font-size="12" fill="#41ff7e">AMD <tspan fill="#7dffb0">+0.6</tspan></text>
+<line x1="247" y1="548" x2="433" y2="548" stroke="#1c8f46" stroke-width="0.6"/>
+<polyline points="247,600 262,592 277,604 292,584 307,596 322,572 337,586 352,566 367,580 382,560 397,574 412,556 427,568" fill="none" stroke="#41ff7e" stroke-width="4" opacity="0.18" stroke-linejoin="round"/>
+<polyline points="247,600 262,592 277,604 292,584 307,596 322,572 337,586 352,566 367,580 382,560 397,574 412,556 427,568" fill="none" stroke="#41ff7e" stroke-width="1.4" stroke-linejoin="round"/>
+<circle cx="427" cy="568" r="2.5" fill="#d6ffe0" class="blink"/>
+<text x="247" y="630" font-size="11" fill="#2bd964">IDX +1.6% · VOL 2.4B</text>
+<text x="247" y="646" font-size="11" fill="#ffd24a">MKT OPEN · 06:30 ET</text>
+</g>
+
+<g font-family="ui-monospace,Menlo,Consolas,monospace">
+<rect x="452" y="482" width="206" height="172" rx="6" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="452" y="482" width="206" height="20" rx="6" fill="#11260f"/>
+<text x="462" y="496" font-size="11" fill="#41ff7e">03 PROJECTS</text>
+<circle cx="646" cy="492" r="3.5" fill="#ffd24a" opacity="0.25"/><circle cx="646" cy="492" r="2" fill="#ffd24a" class="blink"/>
+<text x="462" y="520" font-size="12" fill="#7dffb0">WESTERN STATE HOSP</text>
+<text x="462" y="538" font-size="12" fill="#2bd964">WALL SHOPS · REV C</text>
+<rect x="462" y="552" width="186" height="12" fill="#06100a" stroke="#1c8f46" stroke-width="0.6"/>
+<rect x="463" y="553" width="115" height="10" fill="#41ff7e" opacity="0.3"/>
+<g class="barpush2" style="transform-origin:463px 558px">
+<rect x="463" y="553" width="115" height="10" fill="#41ff7e" opacity="0.8"/>
+</g>
+<text x="585" y="562" font-size="11" fill="#7dffb0">62%</text>
+<text x="462" y="582" font-size="12" fill="#ffd24a">T-38d <tspan fill="#2bd964">TO DEADLINE</tspan></text>
+<g stroke="#1c8f46" stroke-width="0.6" fill="none">
+<rect x="462" y="596" width="186" height="46"/>
+<line x1="462" y1="619" x2="648" y2="619"/>
+<line x1="524" y1="596" x2="524" y2="642"/><line x1="586" y1="596" x2="586" y2="642"/>
+</g>
+<g fill="#41ff7e" opacity="0.85">
+<rect x="466" y="600" width="10" height="10"/><rect x="528" y="600" width="10" height="10"/>
+<rect x="466" y="623" width="10" height="10"/>
+</g>
+<rect x="590" y="623" width="10" height="10" fill="#ffd24a" opacity="0.85" class="blink"/>
+<text x="482" y="608" font-size="11" fill="#2bd964">RVT</text><text x="544" y="608" font-size="11" fill="#2bd964">DOC</text><text x="606" y="608" font-size="11" fill="#2bd964">QC</text>
+<text x="482" y="631" font-size="11" fill="#2bd964">MEP</text><text x="544" y="631" font-size="11" fill="#2bd964">RFI</text><text x="606" y="631" font-size="11" fill="#2bd964">SUB</text>
+</g>
+
+<g font-family="ui-monospace,Menlo,Consolas,monospace">
+<rect x="22" y="664" width="316" height="92" rx="6" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="22" y="664" width="316" height="20" rx="6" fill="#11260f"/>
+<text x="32" y="678" font-size="11" fill="#41ff7e">04 AGENT OPS</text>
+<circle cx="326" cy="674" r="3.5" fill="#41ff7e" opacity="0.25"/><circle cx="326" cy="674" r="2" fill="#41ff7e" class="blink"/>
+<g>
+<circle cx="40" cy="702" r="3" fill="#41ff7e" opacity="0.25"/><circle cx="40" cy="702" r="1.6" fill="#41ff7e" class="blink"/>
+<text x="52" y="706" font-size="12" fill="#7dffb0">hal-openclaw</text><text x="328" y="706" font-size="11" fill="#2bd964" text-anchor="end">RUN</text>
+<circle cx="40" cy="722" r="3" fill="#5fffe0" opacity="0.25"/><circle cx="40" cy="722" r="1.6" fill="#5fffe0" class="blink2"/>
+<text x="52" y="726" font-size="12" fill="#7dffb0">mail-agent</text><text x="328" y="726" font-size="11" fill="#2bd964" text-anchor="end">SYNC</text>
+<circle cx="40" cy="742" r="3" fill="#ffd24a" opacity="0.25"/><circle cx="40" cy="742" r="1.6" fill="#ffd24a" class="blink"/>
+<text x="52" y="746" font-size="12" fill="#7dffb0">market-agent</text><text x="328" y="746" font-size="11" fill="#ffd24a" text-anchor="end">WAIT</text>
+</g>
+</g>
+
+<g font-family="ui-monospace,Menlo,Consolas,monospace">
+<rect x="347" y="664" width="311" height="92" rx="6" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="347" y="664" width="311" height="20" rx="6" fill="#11260f"/>
+<text x="357" y="678" font-size="11" fill="#41ff7e">05 LIFE ADMIN</text>
+<circle cx="646" cy="674" r="3.5" fill="#ff6b5a" opacity="0.25"/><circle cx="646" cy="674" r="2" fill="#ff6b5a" class="blink"/>
+<g font-size="11">
+<text x="357" y="702" fill="#ff6b5a">▸ TESLA LEMON-LAW</text><text x="650" y="702" fill="#ff6b5a" text-anchor="end">DUE</text>
+<text x="357" y="718" fill="#7dffb0">▸ SKIN ROUTINE</text><text x="650" y="718" fill="#41ff7e" text-anchor="end">✓</text>
+<text x="357" y="734" fill="#ffd24a">▸ MOM · POA FILE</text><text x="650" y="734" fill="#ffd24a" text-anchor="end">PEND</text>
+<text x="510" y="702" fill="#2bd964">▸ DOG WALK</text>
+<text x="510" y="718" fill="#2bd964">▸ HOME BILLS</text>
+<text x="510" y="734" fill="#2bd964">▸ SKIN RX REFILL</text>
+</g>
+</g>
+
+<rect x="22" y="766" width="636" height="34" rx="6" fill="#0d1b0c" stroke="#1c8f46" stroke-width="1"/>
+<rect x="22" y="766" width="636" height="34" rx="6" fill="none" stroke="#41ff7e" stroke-width="0.5" opacity="0.2"/>
+<g>
+<circle cx="612" cy="783" r="14" fill="#06100a" opacity="0.6"/>
+<g stroke="#1c8f46" stroke-width="0.5" fill="none">
+<circle cx="612" cy="783" r="13"/><circle cx="612" cy="783" r="8"/>
+<line x1="599" y1="783" x2="625" y2="783"/><line x1="612" y1="770" x2="612" y2="796"/>
+</g>
+<g class="sweep">
+<path d="M612 783 L612 770 A13 13 0 0 1 624 778 Z" fill="url(#sweepg)"/>
+<line x1="612" y1="783" x2="612" y2="770" stroke="#5fffe0" stroke-width="0.8" fill="none"/>
+</g>
+<circle cx="618" cy="778" r="1" fill="#ff5fd2" class="blink"/>
+<circle cx="606" cy="788" r="1" fill="#41ff7e" class="blink2"/>
+</g>
+<g font-family="ui-monospace,Menlo,Consolas,monospace">
+<text x="34" y="787" font-size="11" fill="#2bd964">▸ STATUS</text>
+<g clip-path="url(#tickclip)">
+<g class="tick">
+<text x="124" y="787" font-size="11" fill="#41ff7e">ALL SYSTEMS NOMINAL · 7 AGENTS · GRID LOCKED · SUN +12° · BKK TRACK HOT · </text>
+<text x="594" y="787" font-size="11" fill="#41ff7e">ALL SYSTEMS NOMINAL · 7 AGENTS · GRID LOCKED · SUN +12° · BKK TRACK HOT · </text>
+</g>
+</g>
+</g>
+<g clip-path="url(#tickclip)">
+<g class="walkb" style="animation-delay:-1.5s">
+<g transform="translate(130,793)" stroke="#7dffb0" stroke-width="1.2" stroke-linecap="round" fill="none">
+<circle cx="0" cy="-7" r="1.3" fill="#7dffb0" stroke="none"/><line x1="0" y1="-6" x2="0" y2="-2"/>
+<g class="legA"><line x1="0" y1="-2" x2="-2" y2="1"/><line x1="0" y1="-2" x2="2" y2="1"/></g>
+<g class="legB"><line x1="0" y1="-2" x2="-1" y2="1"/><line x1="0" y1="-2" x2="1" y2="1"/></g>
+</g>
+</g>
+<g class="walkb" style="animation-delay:-5.5s">
+<g transform="translate(130,793)" stroke="#5fffe0" stroke-width="1.2" stroke-linecap="round" fill="none">
+<circle cx="0" cy="-7" r="1.3" fill="#5fffe0" stroke="none"/><line x1="0" y1="-6" x2="0" y2="-2"/>
+<g class="legB"><line x1="0" y1="-2" x2="-2" y2="1"/><line x1="0" y1="-2" x2="2" y2="1"/></g>
+<g class="legA"><line x1="0" y1="-2" x2="-1" y2="1"/><line x1="0" y1="-2" x2="1" y2="1"/></g>
+</g>
+</g>
+</g>
+
+<g class="scan"><rect x="14" y="10" width="652" height="800" fill="url(#scanp)"/></g>
+<rect x="14" y="14" width="652" height="792" rx="10" fill="url(#vig)" pointer-events="none"/>
+<rect x="14" y="14" width="652" height="792" rx="10" fill="none" stroke="#3a3d2e" stroke-width="1" opacity="0.4"/>
+</svg>
