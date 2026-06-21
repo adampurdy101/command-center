@@ -239,7 +239,8 @@ body{
     <div class="bottom">
       <section class="panel">
         <div class="tb"><span class="led on" id="micLed"></span><span class="n">Voice Scope · HAL</span><span class="sp"></span>
-          <button class="btn" id="voiceCfgBtn" style="padding:2px 8px">⚙ VOICE</button>
+          <button class="btn" id="stopBtn" style="padding:2px 8px;color:var(--red);border-color:var(--red)" title="stop talking">■ STOP</button>
+          <button class="btn" id="voiceCfgBtn" style="padding:2px 7px;margin-left:6px" title="voice settings">⚙</button>
           <button class="btn" id="talkBtn" style="margin-left:6px">WAKE HAL ▸</button></div>
         <div class="bd" style="padding:4px"><div class="scope-bd"><canvas id="voice"></canvas><div id="heard"></div></div></div>
       </section>
@@ -552,7 +553,25 @@ tick();setInterval(tick,1000);
     "What shall I take care of for you?",
     "Where would you like to begin?"
   ];
-  const ls={v:-1}, lt={v:-1};
+  const TIMES=[
+    "It is currently TM.",
+    "The time is TM.",
+    "Right now, it is TM.",
+    "My chronometer reads TM.",
+    "It is now TM.",
+    "The current time is TM.",
+    "By my clock, it is TM.",
+    "TM, precisely."
+  ];
+  const OPENERS=[
+    "Welcome home. Here is your brief.",
+    "Good to have you back. Your brief:",
+    "Of course. Here is where things stand.",
+    "Right away. Your current status:",
+    "Certainly. Here is your brief.",
+    "Happy to oblige. Today's brief:"
+  ];
+  const ls={v:-1}, lt={v:-1}, ltm={v:-1}, lop={v:-1};
   function pick(a,last){let i;do{i=(Math.random()*a.length)|0;}while(i===last.v&&a.length>1);last.v=i;return a[i];}
   let voice=null;
   function loadVoice(){const vs=(window.speechSynthesis&&speechSynthesis.getVoices())||[];
@@ -570,7 +589,7 @@ tick();setInterval(tick,1000);
       b._to=setTimeout(()=>b.classList.remove('show'),Math.max(5500,t.length*95));}
     const f=document.getElementById('flash');if(f){f.classList.remove('go');void f.offsetWidth;f.classList.add('go');}}
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  let rec=null,listening=false,speaking=false,pending=false,cd=0;
+  let rec=null,listening=false,speaking=false,pending=false,cd=0,pendTimer=null;
   function startRec(){if(rec&&listening&&!speaking){try{rec.start();}catch(e){}}}
   function stopRec(){if(rec){try{rec.stop();}catch(e){}}}
   const HAL_VOICE_URL='https://fzsfizqkolkxkorgvtcl.supabase.co/functions/v1/hal-voice';
@@ -586,7 +605,7 @@ tick();setInterval(tick,1000);
   let voiceCfg=Object.assign({},VOICE_DEFAULTS);
   try{const s=JSON.parse(localStorage.getItem('cc_hal_voice')||'null');if(s)voiceCfg=Object.assign({},VOICE_DEFAULTS,s);}catch(e){}
   function saveVoiceCfg(){try{localStorage.setItem('cc_hal_voice',JSON.stringify(voiceCfg));}catch(e){}}
-  let kokoroTTS=null,kokoroReady=false,kokoroLoading=false,kokoroCtx=null;
+  let kokoroTTS=null,kokoroReady=false,kokoroLoading=false,kokoroCtx=null,kokoroSrc=null;
   function halImpulse(ctx,dur=1.7,decay=2.6){const rate=ctx.sampleRate,len=Math.floor(rate*dur),b=ctx.createBuffer(2,len,rate);
     for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}return b;}
   async function loadKokoro(onProgress){
@@ -619,12 +638,23 @@ tick();setInterval(tick,1000);
     src.connect(lp); lp.connect(dry).connect(ctx.destination); lp.connect(conv).connect(wet).connect(ctx.destination);
     if(levelIv)clearInterval(levelIv);
     levelIv=setInterval(()=>{window.HAL.level=0.5+0.5*Math.random();},110);
-    src.onended=()=>{ if(levelIv){clearInterval(levelIv);levelIv=null;} try{ctx.close();}catch(_){} endSpeak(); };
+    kokoroSrc=src;
+    src.onended=()=>{ kokoroSrc=null; if(levelIv){clearInterval(levelIv);levelIv=null;} try{ctx.close();}catch(_){} endSpeak(); };
     src.start();
     return true;
   }
+  function stopSpeaking(){
+    if(pendTimer){clearTimeout(pendTimer);pendTimer=null;} pending=false;
+    if(kokoroSrc){try{kokoroSrc.onended=null;kokoroSrc.stop();}catch(e){}kokoroSrc=null;}
+    if(kokoroCtx){try{kokoroCtx.close();}catch(e){}kokoroCtx=null;}
+    try{window.speechSynthesis&&speechSynthesis.cancel();}catch(e){}
+    if(halAudio){try{halAudio.pause();}catch(e){}}
+    if(levelIv){clearInterval(levelIv);levelIv=null;}
+    if(speaking){ endSpeak(); } else { window.HAL.speaking=false; window.HAL.level=0; }
+  }
+  window.halStop=stopSpeaking;
   function endSpeak(){ if(!speaking)return; if(levelIv){clearInterval(levelIv);levelIv=null;}
-    speaking=false; window.HAL.speaking=false; window.HAL.level=0; cd=Date.now()+2000; setTimeout(startRec,400); }
+    speaking=false; window.HAL.speaking=false; window.HAL.level=0; cd=Date.now()+1200; }
   function browserSpeak(text){
     if(!window.speechSynthesis){endSpeak();return;}
     try{speechSynthesis.cancel();}catch(e){}
@@ -655,7 +685,7 @@ tick();setInterval(tick,1000);
   async function say(text){
     if(speaking)return;
     banner(text);
-    speaking=true; window.HAL.speaking=true; window.HAL.level=1; stopRec();
+    speaking=true; window.HAL.speaking=true; window.HAL.level=1;
     try{speechSynthesis&&speechSynthesis.cancel();}catch(e){}
     let ok=false;
     if(kokoroReady){ try{ ok=await kokoroSpeak(text); }catch(e){ ok=false; } }
@@ -675,14 +705,14 @@ tick();setInterval(tick,1000);
     const tasks=panelVal('daily brief','TASKS')||'0';
     const tn=parseInt(tasks,10);
     const tphrase=(tn===0||isNaN(tn))?'no open tasks':(tasks+' open task'+(tn===1?'':'s'));
-    return "Welcome home, Adam. Here is your brief. You have "+unread+" unread messages, "+flagged+" flagged, and "+tphrase+
+    return pick(OPENERS,lop)+" You have "+unread+" unread messages, "+flagged+" flagged, and "+tphrase+
       ". Your morning digest is ready. As for my own activities, the market agent is running, the mail agent is standing by, "+
       "and all systems remain fully operational. "+pick(TASKS,lt);
   }
   function greet(){ say(buildBrief()); }
   function tellTime(){const d=new Date();
     const tm=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
-    say("The time is currently "+tm+", Adam.");}
+    say(pick(TIMES,ltm).replace('TM',tm));}
   window.halGreet=greet; window.halTime=tellTime;
   window.halStart=function(){
     try{const warm=new SpeechSynthesisUtterance(' ');warm.volume=0;speechSynthesis.speak(warm);}catch(e){}
@@ -694,19 +724,25 @@ tick();setInterval(tick,1000);
       const heard=document.getElementById('heard');
       if(heard&&t.trim()){heard.textContent='heard:  “'+t.trim()+'”';heard.style.opacity='1';
         clearTimeout(heard._to);heard._to=setTimeout(()=>{heard.style.opacity='0';},2800);}
-      if(speaking||pending)return;
       const tl=t.toLowerCase();
+      // STOP hot-words — work even while Hal is talking, to interrupt him
+      if(tl.includes('stop')||tl.includes('pause')||tl.includes('shut up')||tl.includes('shutup')
+        ||tl.includes('quiet')||tl.includes('enough')||tl.includes('silence')||tl.includes('shush')){
+        if(speaking||pending) stopSpeaking();
+        return;
+      }
+      if(speaking||pending)return;
       if(tl.includes('time')){ if(Date.now()>cd){cd=Date.now()+5000;tellTime();} return; }
       const wantBrief=tl.includes('daddy')||(tl.includes('wake')&&(tl.includes('hal')||tl.includes('how')||tl.includes('pal')))
         ||tl.includes('brief')||tl.includes('report')||tl.includes('what are we doing');
       if(wantBrief&&Date.now()>cd){cd=Date.now()+9000;pending=true;
-        setTimeout(()=>{pending=false;if(!speaking)greet();},1200);}
+        pendTimer=setTimeout(()=>{pendTimer=null;pending=false;if(!speaking)greet();},1200);}
     };
     rec.onerror=ev=>{ const e=ev&&ev.error;
       if(e==='not-allowed'||e==='service-not-allowed'){ listening=false;
         const b=document.getElementById('talkBtn'); if(b)b.textContent='VOICE SERVICE BLOCKED · USE CHROME';
         const l=document.getElementById('micLed'); if(l)l.className='led red'; } };
-    rec.onend=()=>{ if(listening&&!speaking){ setTimeout(()=>{try{rec.start();}catch(e){}},250); } };
+    rec.onend=()=>{ if(listening){ setTimeout(()=>{try{rec.start();}catch(e){}},250); } };
     try{rec.start();listening=true;return true;}catch(e){listening=false;return false;}
   };
 
@@ -720,6 +756,7 @@ tick();setInterval(tick,1000);
       $('vcReverb').value=voiceCfg.reverb; $('vcWarmth').value=voiceCfg.warmth; labels();
       if(kokoroReady){$('vcStatus').textContent='✅ on-device voice ready';$('vcBar').style.width='100%';} }
     openBtn.addEventListener('click',()=>{ reflect(); cfg.classList.toggle('hidden'); });
+    const sb=$('stopBtn'); if(sb)sb.addEventListener('click',()=>stopSpeaking());
     $('vcDone').addEventListener('click',()=>cfg.classList.add('hidden'));
     cfg.addEventListener('click',e=>{ if(e.target===cfg)cfg.classList.add('hidden'); });
     $('vcVoice').addEventListener('change',()=>{voiceCfg.voice=$('vcVoice').value;saveVoiceCfg();});
