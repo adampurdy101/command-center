@@ -346,15 +346,26 @@ tick();setInterval(tick,1000);
   const N=60;let live=false;let analyser=null;let phase=0;let vals=new Array(N).fill(0);
   window.addEventListener('resize',()=>{ctx=fit(cv);});
   let micTried=false;
-  document.getElementById('talkBtn').addEventListener('click',()=>{
-    const btn=document.getElementById('talkBtn');
+  document.getElementById('talkBtn').addEventListener('click',async()=>{
+    const btn=document.getElementById('talkBtn');const led=document.getElementById('micLed');
     if(window.halUnlock) window.halUnlock();   // unlock audio silently — Hal does NOT speak on tap
-    if(!micTried){
-      micTried=true;
-      const ok=window.halStart&&window.halStart();  // start listening (prompts for the mic)
-      if(ok){document.getElementById('micLed').className='led amb';btn.textContent='LISTENING ● SAY “DADDY’S HOME”';}
-      else{document.getElementById('micLed').className='led';btn.textContent='VOICE N/A ON THIS BROWSER';}
+    if(micTried) return;
+    micTried=true; btn.textContent='REQUESTING MIC…';
+    let stream=null;
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({audio:true});   // explicit, clean permission prompt
+    }catch(err){
+      micTried=false;                          // allow a retry after the setting is changed
+      if(led)led.className='led red';
+      const n=(err&&err.name)||'error';
+      btn.textContent=(n==='NotAllowedError'||n==='SecurityError')?'MIC BLOCKED · ALLOW IN BROWSER'
+        :(n==='NotFoundError')?'NO MIC FOUND':('MIC ERROR · '+n);
+      return;
     }
+    try{stream.getTracks().forEach(t=>t.stop());}catch(e){}   // release; recognition re-acquires the mic
+    if(led)led.className='led amb';
+    const started=window.halStart&&window.halStart();
+    btn.textContent=started?'LISTENING ● SAY “DADDY’S HOME”':'VOICE N/A · OPEN IN CHROME';
   });
   function draw(){
     const w=cv.width/DPR,h=cv.height/DPR;ctx.save();ctx.scale(DPR,DPR);ctx.clearRect(0,0,w,h);
@@ -597,8 +608,9 @@ tick();setInterval(tick,1000);
       if(wantBrief&&Date.now()>cd){cd=Date.now()+9000;pending=true;
         setTimeout(()=>{pending=false;if(!speaking)greet();},1200);}
     };
-    rec.onerror=ev=>{ if(ev&&(ev.error==='not-allowed'||ev.error==='service-not-allowed')){
-        listening=false; const b=document.getElementById('talkBtn'); if(b)b.textContent='MIC DENIED · ALLOW IT';
+    rec.onerror=ev=>{ const e=ev&&ev.error;
+      if(e==='not-allowed'||e==='service-not-allowed'){ listening=false;
+        const b=document.getElementById('talkBtn'); if(b)b.textContent='VOICE SERVICE BLOCKED · USE CHROME';
         const l=document.getElementById('micLed'); if(l)l.className='led red'; } };
     rec.onend=()=>{ if(listening&&!speaking){ setTimeout(()=>{try{rec.start();}catch(e){}},250); } };
     try{rec.start();listening=true;return true;}catch(e){listening=false;return false;}
