@@ -511,22 +511,43 @@ tick();setInterval(tick,1000);
   let rec=null,listening=false,speaking=false,pending=false,cd=0;
   function startRec(){if(rec&&listening&&!speaking){try{rec.start();}catch(e){}}}
   function stopRec(){if(rec){try{rec.stop();}catch(e){}}}
-  function say(text){
-    if(speaking)return;
-    banner(text);
-    if(!window.speechSynthesis){return;}
-    speaking=true; window.HAL.speaking=true; window.HAL.level=1;
-    stopRec();
+  const HAL_VOICE_URL='https://fzsfizqkolkxkorgvtcl.supabase.co/functions/v1/hal-voice';
+  let levelIv=null;
+  function endSpeak(){ if(!speaking)return; if(levelIv){clearInterval(levelIv);levelIv=null;}
+    speaking=false; window.HAL.speaking=false; window.HAL.level=0; cd=Date.now()+2000; setTimeout(startRec,400); }
+  function browserSpeak(text){
+    if(!window.speechSynthesis){endSpeak();return;}
     try{speechSynthesis.cancel();}catch(e){}
     const u=new SpeechSynthesisUtterance(text);
     if(voice)u.voice=voice; u.rate=0.82; u.pitch=0.9; u.volume=1;
     u.onboundary=()=>{window.HAL.level=1;};
-    let finished=false;
-    const done=()=>{if(finished)return;finished=true;clearTimeout(safety);
-      speaking=false;window.HAL.speaking=false;window.HAL.level=0;cd=Date.now()+2000;setTimeout(startRec,400);};
-    const safety=setTimeout(done,Math.max(6500,text.length*135));
-    u.onend=done; u.onerror=done;
-    try{speechSynthesis.speak(u);}catch(e){done();}
+    u.onend=endSpeak; u.onerror=endSpeak;
+    try{speechSynthesis.speak(u);}catch(e){endSpeak();}
+  }
+  async function elevenSpeak(text){
+    let r;
+    try{ r=await fetch(HAL_VOICE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})}); }
+    catch(e){ return false; }
+    if(!r.ok) return false;
+    if((r.headers.get('content-type')||'').indexOf('audio')<0) return false;
+    const blob=await r.blob();
+    if(!blob||blob.size<400) return false;
+    const url=URL.createObjectURL(blob);const a=new Audio(url);
+    a.onended=()=>{URL.revokeObjectURL(url);endSpeak();};
+    a.onerror=()=>{URL.revokeObjectURL(url);endSpeak();};
+    levelIv=setInterval(()=>{ if(a.paused||a.ended){if(levelIv){clearInterval(levelIv);levelIv=null;}}
+      else {window.HAL.level=0.55+0.45*Math.random();} },110);
+    try{ await a.play(); }catch(e){ if(levelIv){clearInterval(levelIv);levelIv=null;} URL.revokeObjectURL(url); return false; }
+    return true;
+  }
+  async function say(text){
+    if(speaking)return;
+    banner(text);
+    speaking=true; window.HAL.speaking=true; window.HAL.level=1; stopRec();
+    try{speechSynthesis&&speechSynthesis.cancel();}catch(e){}
+    let ok=false; try{ ok=await elevenSpeak(text); }catch(e){ ok=false; }
+    if(!ok) browserSpeak(text);
+    setTimeout(()=>{ if(speaking) endSpeak(); }, Math.max(14000, text.length*230));
   }
   function greet(){ say(pick(STATUS,ls)+" "+pick(TASKS,lt)); }
   function tellTime(){const d=new Date();
