@@ -1,0 +1,44 @@
+name: Morning Brief
+
+# Runs the email digest into Supabase.
+#  - on a schedule (~6 AM Pacific), and
+#  - on demand via the "Run workflow" button (for testing).
+#
+# Note: GitHub cron is in UTC. 13:00 UTC = 6 AM PDT (summer) / 5 AM PST (winter).
+# GitHub cron can fire a few minutes late, and pauses after ~60 days of repo
+# inactivity — fine for personal use.
+
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch: {}
+
+# don't pile up overlapping runs
+concurrency:
+  group: morning-brief
+  cancel-in-progress: false
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run morning brief
+        env:
+          # --- secrets (set in repo Settings → Secrets and variables → Actions) ---
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # --- non-secret config (safe to keep in the repo) ---
+          SUPABASE_URL: "https://fzsfizqkolkxkorgvtcl.supabase.co"
+          CC_USER_ID: "30cbcbfa-7261-47de-8c91-3d97557fc5f9"
+          # IMAP_HOST defaults to imap.gmail.com; for iCloud set it to imap.mail.me.com
+          IMAP_HOST: ${{ vars.IMAP_HOST || 'imap.gmail.com' }}
+        run: python jobs/morning_brief.py
