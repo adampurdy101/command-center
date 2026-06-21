@@ -35,7 +35,7 @@ js/app.js           clock, panel builder, command console
 
 ## Status
 - [x] Milestone 1 — retro shell, login, 5 panels, command console, live on Pages
-- [ ] Milestone 2 — Supabase tables + RLS
+- [x] Milestone 2 — Supabase tables + RLS (8 tables, owner-only policies)
 - [ ] Milestone 3 — morning email digest via GitHub Actions (the proof integration)
 - [ ] Milestone 4 — editable placeholder data + agent registry
 - [ ] Milestone 5 — confirm 6 AM schedule fires
