@@ -344,32 +344,22 @@ tick();setInterval(tick,1000);
   const N=60;let live=false;let analyser=null;let phase=0;let vals=new Array(N).fill(0);
   window.addEventListener('resize',()=>{ctx=fit(cv);});
   let micTried=false;
-  document.getElementById('talkBtn').addEventListener('click',async()=>{
+  document.getElementById('talkBtn').addEventListener('click',()=>{
     const btn=document.getElementById('talkBtn');
     if(!micTried){
       micTried=true;
-      try{
-        const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-        const ac=new (window.AudioContext||window.webkitAudioContext)();
-        const src=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();
-        analyser.fftSize=256;analyser.smoothingTimeConstant=0.88;src.connect(analyser);
-        live=true;document.getElementById('micLed').className='led amb';
-        const ok=window.halStart&&window.halStart();
-        btn.textContent=ok?'LISTENING ● “DADDY’S HOME”':'AWAKE ● TAP = HAL';
-      }catch(e){
-        document.getElementById('micLed').className='led';
-        btn.textContent='MIC OFF · TAP = WAKE HAL';
-      }
+      // speech recognition owns the mic (no separate getUserMedia to conflict with it)
+      const ok=window.halStart&&window.halStart();
+      if(ok){document.getElementById('micLed').className='led amb';btn.textContent='LISTENING ● “DADDY’S HOME”';}
+      else{document.getElementById('micLed').className='led';btn.textContent='AWAKE ● TAP = HAL';}
     }
-    // always wake Hal on tap, so he speaks with or without the mic (and this gesture unlocks audio)
+    // always wake Hal on tap, so he speaks regardless of the mic (and this gesture unlocks audio)
     if(window.halGreet) window.halGreet();
   });
   function draw(){
     const w=cv.width/DPR,h=cv.height/DPR;ctx.save();ctx.scale(DPR,DPR);ctx.clearRect(0,0,w,h);
     const mid=(N-1)/2,bw=w/N;phase+=0.05;
     const HAL=window.HAL||{speaking:false,level:0};
-    let freq=null;
-    if(live&&analyser){freq=new Uint8Array(analyser.frequencyBinCount);analyser.getByteFrequencyData(freq);}
     if(HAL.speaking)HAL.level=Math.max(0.5,HAL.level-0.05);
     ctx.strokeStyle='rgba(65,255,126,.13)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
@@ -380,9 +370,6 @@ tick();setInterval(tick,1000);
       if(HAL.speaking){
         const wob=0.5+0.5*Math.sin(phase*9+i*0.7)*Math.sin(phase*3.7+i*0.3);
         t=(0.16+0.60*dc)*HAL.level*(0.55+0.45*Math.abs(wob));
-      }else if(freq){
-        const bin=Math.floor((1-dc)*0.55*(freq.length-1))+1;
-        t=(freq[bin]||0)/255*(0.26+0.5*dc);
       }else{
         t=(0.04+0.05*dc)*(0.6+0.4*Math.abs(Math.sin(phase+i*0.4)));
       }
@@ -394,7 +381,7 @@ tick();setInterval(tick,1000);
       ctx.fillRect(x,y,Math.max(1,bw-2),bh);
     }
     ctx.shadowBlur=0;
-    if(!live&&!HAL.speaking){ctx.fillStyle='rgba(125,255,176,.5)';ctx.font='10px ui-monospace,monospace';
+    if(!HAL.speaking){ctx.fillStyle='rgba(125,255,176,.5)';ctx.font='10px ui-monospace,monospace';
       ctx.textAlign='center';ctx.fillText('TAP “WAKE HAL”, THEN SAY “DADDY’S HOME”',w/2,12);ctx.textAlign='left';}
     ctx.restore();requestAnimationFrame(draw);
   }
