@@ -106,9 +106,14 @@ function route(cmd, push) {
 // ---------- boot ----------
 setHeader();
 initAuth();
-// only build the dashboard once auth says we're in
+
+// only build the dashboard once auth says we're in — and never more than once
+let hubStarted = false;
 document.addEventListener("hub:ready", () => {
+  if (hubStarted) return;
+  hubStarted = true;
   startClock();
   buildPanels();
   startConsole();
 });
+document.addEventListener("hub:left", () => { hubStarted = false; });

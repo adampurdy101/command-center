@@ -16,16 +16,26 @@ function setMsg(text, kind = "") {
   m.className = "msg " + kind;
 }
 
+// Supabase fires several auth events (INITIAL_SESSION, SIGNED_IN,
+// TOKEN_REFRESHED…). We only want to react when the view actually changes,
+// so we never build the dashboard twice. `shown` tracks the current view.
+let shown = null; // 'hub' | 'login'
+
 function showHub(session) {
+  if (shown === "hub") return;          // already in the hub — do nothing
+  shown = "hub";
   loginScreen().classList.add("hidden");
   hub().classList.remove("hidden");
-  // tell the rest of the app we're in
+  // tell the rest of the app we're in (fires once per login)
   document.dispatchEvent(new CustomEvent("hub:ready", { detail: { session } }));
 }
 
 function showLogin() {
+  if (shown === "login") return;
+  shown = "login";
   hub().classList.add("hidden");
   loginScreen().classList.remove("hidden");
+  document.dispatchEvent(new CustomEvent("hub:left"));
 }
 
 export async function initAuth() {
