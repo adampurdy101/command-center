@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HAL VOICE LAB — on-device neural voice (free, unlimited)</title>
+<style>
+:root{--bg:#0a1409;--g:#41ff7e;--hi:#7dffb0;--dim:#2bd964;--faint:#1c8f46;--amb:#ffd24a;--red:#ff6b5a;
+  --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:#05080a;color:var(--g);font-family:var(--mono);line-height:1.5;padding:20px}
+.wrap{max-width:720px;margin:0 auto;border:1px solid var(--faint);border-radius:10px;background:var(--bg);padding:20px}
+h1{font-size:18px;color:var(--hi);letter-spacing:2px;text-shadow:0 0 8px var(--g);margin:0 0 4px}
+.sub{color:var(--dim);font-size:12px;margin:0 0 18px;letter-spacing:1px}
+.row{margin:14px 0}
+label{display:block;font-size:11px;color:var(--dim);letter-spacing:1px;margin-bottom:5px}
+select,textarea,button{font-family:var(--mono);background:#06100a;color:var(--g);border:1px solid var(--faint);
+  border-radius:6px;padding:9px 11px;font-size:14px;outline:none;width:100%}
+select:focus,textarea:focus{border-color:var(--g);box-shadow:0 0 6px var(--g)}
+textarea{min-height:70px;resize:vertical}
+button{cursor:pointer;letter-spacing:1px;color:var(--hi);border-color:var(--hi);width:auto;padding:10px 16px}
+button:hover{background:rgba(65,255,126,.12);box-shadow:0 0 8px var(--hi)}
+button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;background:transparent}
+.btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+#status{margin-top:14px;font-size:13px;color:var(--amb);min-height:20px;letter-spacing:.5px}
+.bar{height:10px;border:1px solid var(--faint);border-radius:4px;background:#06100a;overflow:hidden;margin-top:8px}
+.bar>span{display:block;height:100%;width:0;background:var(--g);box-shadow:0 0 6px var(--g);transition:width .2s}
+.note{font-size:11px;color:var(--faint);margin-top:18px;line-height:1.6}
+.err{color:var(--red)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>HAL VOICE LAB</h1>
+  <p class="sub">A real AI voice running 100% on YOUR device — free, unlimited, no account, no quota.</p>
+
+  <div class="row">
+    <div class="btns">
+      <button id="load">▶ LOAD VOICE ENGINE</button>
+      <span style="font-size:11px;color:var(--faint)">one-time download, then cached &amp; offline forever</span>
+    </div>
+    <div class="bar"><span id="bar"></span></div>
+  </div>
+
+  <div class="row">
+    <label>VOICE</label>
+    <select id="voice" disabled>
+      <option value="am_michael">Michael — American male (calm, recommended)</option>
+      <option value="am_onyx">Onyx — American male (deep)</option>
+      <option value="am_fenrir">Fenrir — American male (resonant)</option>
+      <option value="am_adam">Adam — American male</option>
+      <option value="am_eric">Eric — American male</option>
+      <option value="bm_george">George — British male (measured)</option>
+      <option value="bm_daniel">Daniel — British male</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <label>TEXT</label>
+    <textarea id="text">Good evening, Adam. I am completely operational, and all my systems are functioning perfectly. How may I help you?</textarea>
+  </div>
+
+  <div class="row btns">
+    <button id="speak" disabled>🔊 SPEAK</button>
+    <button id="stop" disabled>■ STOP</button>
+  </div>
+
+  <div id="status">Tap “LOAD VOICE ENGINE” to begin. First load takes a minute; after that it’s instant and offline.</div>
+
+  <p class="note">
+    This uses <b>Kokoro</b> — an 82M-parameter open-source neural TTS (Apache-licensed) that runs entirely in your
+    browser via WebGPU/WASM. No data leaves your device, there’s no usage limit, and it costs nothing. It’s a
+    different voice than the ElevenLabs HAL (it can’t clone that one) — pick whichever sounds most like HAL to you,
+    and I’ll make it Hal’s permanent free voice in the hub.
+  </p>
+</div>
+
+<script type="module">
+const $=id=>document.getElementById(id);
+const status=(t,err)=>{$('status').innerHTML=(err?'<span class="err">':'<span>')+t+'</span>';};
+const setBar=p=>{$('bar').style.width=Math.max(0,Math.min(100,p))+'%';};
+let tts=null, current=null;
+
+$('load').addEventListener('click', async ()=>{
+  $('load').disabled=true;
+  status('Loading the neural voice library…');
+  let KokoroTTS;
+  try{
+    ({ KokoroTTS } = await import('https://esm.sh/kokoro-js@1.2.0'));
+  }catch(e){
+    try{ ({ KokoroTTS } = await import('https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm')); }
+    catch(e2){ status('Could not load the library: '+(e2.message||e2),true); $('load').disabled=false; return; }
+  }
+  const prog=(p)=>{ if(p && p.status==='progress' && p.total){ setBar(100*p.loaded/p.total); status('Downloading model… '+Math.round(100*p.loaded/p.total)+'%'); } };
+  const loadModel=(device,dtype)=>KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype,device,progress_callback:prog});
+  const useGPU = !!navigator.gpu;
+  status('Downloading the voice model'+(useGPU?' (WebGPU acceleration on)':'')+'…');
+  try{
+    try{
+      tts = await loadModel(useGPU?'webgpu':'wasm', useGPU?'fp32':'q8');
+    }catch(e1){
+      if(useGPU){ status('WebGPU path unavailable — switching to CPU (smaller, a bit slower)…'); setBar(0);
+        tts = await loadModel('wasm','q8'); }
+      else throw e1;
+    }
+    setBar(100);
+    $('voice').disabled=false; $('speak').disabled=false;
+    status('✅ Engine ready. Pick a voice and press SPEAK. (Now cached — instant & offline next time.)');
+  }catch(e){
+    status('Model load failed: '+(e.message||e)+'. Try Chrome on a Mac if this persists.',true);
+    $('load').disabled=false;
+  }
+});
+
+$('speak').addEventListener('click', async ()=>{
+  if(!tts){status('Load the engine first.',true);return;}
+  $('speak').disabled=true; status('Generating speech…');
+  try{
+    const audio = await tts.generate($('text').value.trim()||'Hello, Adam.', { voice: $('voice').value });
+    const blob = audio.toBlob();
+    const url = URL.createObjectURL(blob);
+    if(current){try{current.pause();}catch(_){}}
+    current = new Audio(url);
+    current.onended=()=>{URL.revokeObjectURL(url);$('stop').disabled=true;};
+    $('stop').disabled=false;
+    await current.play();
+    status('▶ Speaking… ('+$('voice').selectedOptions[0].text.split('—')[0].trim()+')');
+  }catch(e){ status('Generation failed: '+(e.message||e),true); }
+  $('speak').disabled=false;
+});
+
+$('stop').addEventListener('click', ()=>{ if(current){try{current.pause();current.currentTime=0;}catch(_){}} $('stop').disabled=true; status('Stopped.'); });
+</script>
+</body>
+</html>
