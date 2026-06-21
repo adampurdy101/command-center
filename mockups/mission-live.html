@@ -101,6 +101,8 @@ body{
 .bottom{grid-column:1/4;display:grid;grid-template-columns:1.3fr 1fr;gap:8px;height:170px}
 .scope-bd,.game-bd{position:relative;flex:1;min-height:0}
 #voice,#game{position:absolute;inset:0;width:100%;height:100%;display:block}
+#heard{position:absolute;left:8px;right:8px;bottom:3px;text-align:center;font-size:11px;letter-spacing:1px;
+  color:var(--hi);opacity:0;transition:opacity .2s;pointer-events:none;text-shadow:0 0 6px var(--g)}
 .btn{background:transparent;color:var(--hi);border:1px solid var(--hi);border-radius:4px;
   font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:4px 9px;cursor:pointer}
 .btn:hover{background:rgba(65,255,126,.12);box-shadow:var(--glow) var(--hi)}
@@ -220,7 +222,7 @@ body{
       <section class="panel">
         <div class="tb"><span class="led on" id="micLed"></span><span class="n">Voice Scope · HAL</span><span class="sp"></span>
           <button class="btn" id="talkBtn">WAKE HAL ▸</button></div>
-        <div class="bd" style="padding:4px"><div class="scope-bd"><canvas id="voice"></canvas></div></div>
+        <div class="bd" style="padding:4px"><div class="scope-bd"><canvas id="voice"></canvas><div id="heard"></div></div></div>
       </section>
       <section class="panel">
         <div class="tb"><span class="led amb"></span><span class="n">Defense Grid</span><span class="sp"></span>
@@ -346,15 +348,13 @@ tick();setInterval(tick,1000);
   let micTried=false;
   document.getElementById('talkBtn').addEventListener('click',()=>{
     const btn=document.getElementById('talkBtn');
+    if(window.halUnlock) window.halUnlock();   // unlock audio silently — Hal does NOT speak on tap
     if(!micTried){
       micTried=true;
-      // speech recognition owns the mic (no separate getUserMedia to conflict with it)
-      const ok=window.halStart&&window.halStart();
-      if(ok){document.getElementById('micLed').className='led amb';btn.textContent='LISTENING ● “DADDY’S HOME”';}
-      else{document.getElementById('micLed').className='led';btn.textContent='AWAKE ● TAP = HAL';}
+      const ok=window.halStart&&window.halStart();  // start listening (prompts for the mic)
+      if(ok){document.getElementById('micLed').className='led amb';btn.textContent='LISTENING ● SAY “DADDY’S HOME”';}
+      else{document.getElementById('micLed').className='led';btn.textContent='VOICE N/A ON THIS BROWSER';}
     }
-    // always wake Hal on tap, so he speaks regardless of the mic (and this gesture unlocks audio)
-    if(window.halGreet) window.halGreet();
   });
   function draw(){
     const w=cv.width/DPR,h=cv.height/DPR;ctx.save();ctx.scale(DPR,DPR);ctx.clearRect(0,0,w,h);
@@ -513,7 +513,12 @@ tick();setInterval(tick,1000);
   function startRec(){if(rec&&listening&&!speaking){try{rec.start();}catch(e){}}}
   function stopRec(){if(rec){try{rec.stop();}catch(e){}}}
   const HAL_VOICE_URL='https://fzsfizqkolkxkorgvtcl.supabase.co/functions/v1/hal-voice';
-  let levelIv=null;
+  let levelIv=null, halAudio=null;
+  function ensureAudio(){if(!halAudio){halAudio=new Audio();halAudio.preload='auto';}return halAudio;}
+  // play a tiny silent clip on a user tap to unlock audio playback (esp. iOS) without speaking
+  window.halUnlock=function(){try{const a=ensureAudio();a.muted=true;
+    a.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+    const p=a.play();if(p&&p.then)p.then(()=>{a.pause();a.currentTime=0;a.muted=false;}).catch(()=>{a.muted=false;});}catch(e){}};
   function endSpeak(){ if(!speaking)return; if(levelIv){clearInterval(levelIv);levelIv=null;}
     speaking=false; window.HAL.speaking=false; window.HAL.level=0; cd=Date.now()+2000; setTimeout(startRec,400); }
   function browserSpeak(text){
@@ -533,11 +538,13 @@ tick();setInterval(tick,1000);
     if((r.headers.get('content-type')||'').indexOf('audio')<0) return false;
     const blob=await r.blob();
     if(!blob||blob.size<400) return false;
-    const url=URL.createObjectURL(blob);const a=new Audio(url);
+    const url=URL.createObjectURL(blob);const a=ensureAudio();a.muted=false;
     a.onended=()=>{URL.revokeObjectURL(url);endSpeak();};
     a.onerror=()=>{URL.revokeObjectURL(url);endSpeak();};
+    if(levelIv)clearInterval(levelIv);
     levelIv=setInterval(()=>{ if(a.paused||a.ended){if(levelIv){clearInterval(levelIv);levelIv=null;}}
       else {window.HAL.level=0.55+0.45*Math.random();} },110);
+    a.src=url;
     try{ await a.play(); }catch(e){ if(levelIv){clearInterval(levelIv);levelIv=null;} URL.revokeObjectURL(url); return false; }
     return true;
   }
@@ -550,7 +557,24 @@ tick();setInterval(tick,1000);
     if(!ok) browserSpeak(text);
     setTimeout(()=>{ if(speaking) endSpeak(); }, Math.max(14000, text.length*230));
   }
-  function greet(){ say(pick(STATUS,ls)+" "+pick(TASKS,lt)); }
+  function panelVal(panelName,key){
+    const ps=[...document.querySelectorAll('.panel')];
+    const p=ps.find(x=>{const n=x.querySelector('.tb .n');return n&&n.textContent.toLowerCase().includes(panelName);});
+    if(!p)return null;
+    const row=[...p.querySelectorAll('.row')].find(r=>{const k=r.querySelector('.k');return k&&k.textContent.toUpperCase().includes(key);});
+    const v=row&&row.querySelector('.v');return v?v.textContent.trim():null;
+  }
+  function buildBrief(){
+    const unread=panelVal('daily brief','UNREAD')||'201';
+    const flagged=panelVal('daily brief','FLAGGED')||'3';
+    const tasks=panelVal('daily brief','TASKS')||'0';
+    const tn=parseInt(tasks,10);
+    const tphrase=(tn===0||isNaN(tn))?'no open tasks':(tasks+' open task'+(tn===1?'':'s'));
+    return "Welcome home, Adam. Here is your brief. You have "+unread+" unread messages, "+flagged+" flagged, and "+tphrase+
+      ". Your morning digest is ready. As for my own activities, the market agent is running, the mail agent is standing by, "+
+      "and all systems remain fully operational. "+pick(TASKS,lt);
+  }
+  function greet(){ say(buildBrief()); }
   function tellTime(){const d=new Date();
     const tm=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
     say("The time is currently "+tm+", Adam.");}
@@ -560,14 +584,23 @@ tick();setInterval(tick,1000);
     if(!SR)return false; if(listening)return true;
     try{rec=new SR();}catch(e){return false;}
     rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
-    rec.onresult=e=>{ if(speaking||pending)return; let t='';
-      for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript; t=t.toLowerCase();
-      if(t.includes('time')&&t.includes('what')){ if(Date.now()>cd){cd=Date.now()+5000;tellTime();} return; }
-      const hit=t.includes('daddy')||(t.includes('wake')&&(t.includes('hal')||t.includes('how')||t.includes('pal')));
-      if(hit&&Date.now()>cd){cd=Date.now()+9000;pending=true;
-        setTimeout(()=>{pending=false;if(!speaking)greet();},1500);}
+    rec.onresult=e=>{ let t='';
+      for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;
+      const heard=document.getElementById('heard');
+      if(heard&&t.trim()){heard.textContent='heard:  “'+t.trim()+'”';heard.style.opacity='1';
+        clearTimeout(heard._to);heard._to=setTimeout(()=>{heard.style.opacity='0';},2800);}
+      if(speaking||pending)return;
+      const tl=t.toLowerCase();
+      if(tl.includes('time')){ if(Date.now()>cd){cd=Date.now()+5000;tellTime();} return; }
+      const wantBrief=tl.includes('daddy')||(tl.includes('wake')&&(tl.includes('hal')||tl.includes('how')||tl.includes('pal')))
+        ||tl.includes('brief')||tl.includes('report')||tl.includes('what are we doing');
+      if(wantBrief&&Date.now()>cd){cd=Date.now()+9000;pending=true;
+        setTimeout(()=>{pending=false;if(!speaking)greet();},1200);}
     };
-    rec.onerror=()=>{};rec.onend=()=>{if(listening&&!speaking){try{rec.start();}catch(e){}}};
+    rec.onerror=ev=>{ if(ev&&(ev.error==='not-allowed'||ev.error==='service-not-allowed')){
+        listening=false; const b=document.getElementById('talkBtn'); if(b)b.textContent='MIC DENIED · ALLOW IT';
+        const l=document.getElementById('micLed'); if(l)l.className='led red'; } };
+    rec.onend=()=>{ if(listening&&!speaking){ setTimeout(()=>{try{rec.start();}catch(e){}},250); } };
     try{rec.start();listening=true;return true;}catch(e){listening=false;return false;}
   };
 })();
