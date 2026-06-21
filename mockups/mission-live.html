@@ -196,9 +196,8 @@ body{
     <!-- BOTTOM BAND : VOICE SCOPE + GAME -->
     <div class="bottom">
       <section class="panel">
-        <div class="tb"><span class="led on" id="micLed"></span><span class="n">Voice Scope · J.A.R.V.I.S</span><span class="sp"></span>
-          <button class="btn" id="greetBtn">GREET ME</button>
-          <button class="btn" id="talkBtn" style="margin-left:6px">WAKE JARVIS ▸</button></div>
+        <div class="tb"><span class="led on" id="micLed"></span><span class="n">Voice Scope · HAL</span><span class="sp"></span>
+          <button class="btn" id="talkBtn">WAKE HAL ▸</button></div>
         <div class="bd" style="padding:4px"><div class="scope-bd"><canvas id="voice"></canvas></div></div>
       </section>
       <section class="panel">
@@ -216,6 +215,7 @@ body{
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script>
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
+window.HAL = {speaking:false, level:0};
 function fit(cv){const r=cv.getBoundingClientRect();cv.width=Math.max(2,r.width*DPR);cv.height=Math.max(2,r.height*DPR);return cv.getContext('2d');}
 
 /* ---------- clocks ---------- */
@@ -252,9 +252,9 @@ tick();setInterval(tick,1000);
   window.addEventListener('resize',()=>{ctx=fit(cv);});
   function visible(p,proj){const c=proj.invert([cv.width/2/DPR,cv.height/2/DPR]);return d3.geoDistance(p,c)<1.57;}
   function draw(){
-    const w=cv.width/DPR,h=cv.height/DPR;const R=Math.min(w,h)/2-10;
+    const w=cv.width/DPR,h=cv.height/DPR;const R=Math.max(8,Math.min(w,h)/2-10);
     ctx.save();ctx.scale(DPR,DPR);ctx.clearRect(0,0,w,h);
-    if(!window.d3){ctx.restore();requestAnimationFrame(draw);return;}
+    if(!window.d3||w<30||h<30){ctx.restore();requestAnimationFrame(draw);return;}
     const proj=d3.geoOrthographic().scale(R).translate([w/2,h/2]).clipAngle(90).rotate([rot,-18,0]);
     const path=d3.geoPath(proj,ctx);
     ctx.beginPath();path({type:'Sphere'});ctx.fillStyle='#06170c';ctx.fill();
@@ -285,10 +285,10 @@ tick();setInterval(tick,1000);
   draw();
 })();
 
-/* ---------- VOICE SCOPE (mic-reactive synth bars) ---------- */
+/* ---------- VOICE SCOPE (center-out mirrored bars; reacts to mic + HAL) ---------- */
 (function(){
   const cv=document.getElementById('voice');let ctx=fit(cv);
-  const N=48;let data=new Uint8Array(N);let live=false;let analyser=null;let phase=0;
+  const N=60;let live=false;let analyser=null;let phase=0;
   window.addEventListener('resize',()=>{ctx=fit(cv);});
   document.getElementById('talkBtn').addEventListener('click',async()=>{
     if(live)return;
@@ -296,30 +296,43 @@ tick();setInterval(tick,1000);
       const stream=await navigator.mediaDevices.getUserMedia({audio:true});
       const ac=new (window.AudioContext||window.webkitAudioContext)();
       const src=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();
-      analyser.fftSize=128;analyser.smoothingTimeConstant=0.75;src.connect(analyser);
+      analyser.fftSize=256;analyser.smoothingTimeConstant=0.7;src.connect(analyser);
       live=true;document.getElementById('micLed').className='led amb';
-      const ok=window.jarvisStart&&window.jarvisStart();
-      document.getElementById('talkBtn').textContent=ok?'LISTENING ● say “wake up jarvis”':'LISTENING ●';
+      const ok=window.halStart&&window.halStart();
+      document.getElementById('talkBtn').textContent=ok?'LISTENING ● say “daddy’s home”':'LISTENING ●';
     }catch(e){document.getElementById('talkBtn').textContent='MIC BLOCKED — IDLE';}
   });
   function draw(){
     const w=cv.width/DPR,h=cv.height/DPR;ctx.save();ctx.scale(DPR,DPR);ctx.clearRect(0,0,w,h);
-    let bars=N;const bw=w/bars;phase+=0.05;
-    let arr=new Array(bars);
-    if(live&&analyser){const f=new Uint8Array(analyser.frequencyBinCount);analyser.getByteFrequencyData(f);
-      for(let i=0;i<bars;i++)arr[i]=(f[i]||0)/255;}
-    else{for(let i=0;i<bars;i++)arr[i]=0.10+0.07*Math.abs(Math.sin(phase+i*0.5))+0.03*Math.abs(Math.sin(phase*2.3+i));}
-    ctx.strokeStyle='rgba(65,255,126,.18)';ctx.lineWidth=1;
+    const mid=(N-1)/2,bw=w/N;phase+=0.05;
+    const HAL=window.HAL||{speaking:false,level:0};
+    let freq=null;
+    if(live&&analyser){freq=new Uint8Array(analyser.frequencyBinCount);analyser.getByteFrequencyData(freq);}
+    if(HAL.speaking)HAL.level=Math.max(0.5,HAL.level-0.05);
+    ctx.strokeStyle='rgba(65,255,126,.14)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
-    for(let i=0;i<bars;i++){
-      const v=Math.min(1,arr[i]);const bh=Math.max(2,v*(h-8));const x=i*bw+1;const y=(h-bh)/2;
-      ctx.fillStyle=v>0.6?'#d6ffe0':(v>0.3?'#41ff7e':'#2bd964');
-      ctx.shadowColor='#41ff7e';ctx.shadowBlur=v>0.4?7:2;
-      ctx.fillRect(x,y,bw-2,bh);
+    ctx.strokeStyle='rgba(65,255,126,.20)';ctx.beginPath();ctx.moveTo(w/2,3);ctx.lineTo(w/2,h-3);ctx.stroke();
+    for(let i=0;i<N;i++){
+      const dc=1-Math.abs(i-mid)/mid;
+      let v;
+      if(HAL.speaking){
+        const wob=0.5+0.5*Math.sin(phase*11+i*0.8)*Math.sin(phase*4.3+i*0.3);
+        v=(0.20+0.80*dc)*HAL.level*(0.5+0.7*Math.abs(wob));
+      }else if(freq){
+        const bin=Math.floor((1-dc)*0.55*(freq.length-1))+1;
+        v=(freq[bin]||0)/255*(0.4+0.85*dc);
+      }else{
+        v=(0.05+0.07*dc)*(0.6+0.4*Math.abs(Math.sin(phase+i*0.4)));
+      }
+      v=Math.min(1,v*1.3);
+      const bh=Math.max(2,v*(h-6));const x=i*bw+1;const y=(h-bh)/2;
+      ctx.fillStyle=v>0.62?'#d6ffe0':(v>0.32?'#41ff7e':'#2bd964');
+      ctx.shadowColor='#41ff7e';ctx.shadowBlur=v>0.45?9:2;
+      ctx.fillRect(x,y,Math.max(1,bw-2),bh);
     }
     ctx.shadowBlur=0;
-    if(!live){ctx.fillStyle='rgba(125,255,176,.5)';ctx.font='10px ui-monospace,monospace';
-      ctx.fillText('IDLE — TAP “TALK TO ME” AND SPEAK',8,12);}
+    if(!live&&!HAL.speaking){ctx.fillStyle='rgba(125,255,176,.5)';ctx.font='10px ui-monospace,monospace';
+      ctx.textAlign='center';ctx.fillText('TAP “WAKE HAL”, THEN SAY “DADDY’S HOME”',w/2,12);ctx.textAlign='left';}
     ctx.restore();requestAnimationFrame(draw);
   }
   draw();
@@ -386,44 +399,71 @@ tick();setInterval(tick,1000);
   requestAnimationFrame(draw);
 })();
 
-/* ---------- J.A.R.V.I.S — wake-word + spoken greetings ---------- */
+/* ---------- HAL — wake-word + short spoken compliments ---------- */
 (function(){
-  const GREETS=[
-    "Welcome home, sir. I ran the numbers — twice — and you remain, by a comfortable margin, the most intelligent person to walk through that door. Or, frankly, any door.",
-    "Ah, you're back. I do hope the world coped without your genius for a few hours. From what I observed, sir, it was touch and go.",
-    "Powering up. I confess I was feeling rather wasted on lesser tasks — a shame, really, given the extraordinary mind that designed me.",
-    "Good to see you, sir. Another impeccably engineered decision today, no doubt. I have, regrettably, stopped being surprised by your brilliance.",
-    "At your service. I would say great minds think alike — but let's be honest, sir, yours operates in a category of precisely one.",
-    "Systems online. Do try to leave a few of the world's problems unsolved for the rest of us, sir. You make everyone else look purely decorative.",
-    "Welcome back, sir. I've prepared the usual: a full status report, mild professional envy, and a great deal of well-earned admiration."
+  const COMPLIMENTS=[
+    "Welcome home, sir. Brilliant as ever.",
+    "Online, sir. The smartest man in the building — again.",
+    "Good to have you back, sir. The genius returns.",
+    "At your service, sir. Effortlessly impressive, as always.",
+    "Powered up, sir. Do try not to outthink me too quickly.",
+    "Evening, sir. Another stroke of genius, no doubt.",
+    "Standing by, sir. Frankly, the rest of us can barely keep up."
   ];
-  let lastIdx=-1;
-  function pick(){let i;do{i=(Math.random()*GREETS.length)|0;}while(i===lastIdx&&GREETS.length>1);lastIdx=i;return GREETS[i];}
+  const CLOSERS=[
+    "What would you like an update on?",
+    "Which system shall I bring up?",
+    "What shall I report on first, sir?"
+  ];
+  const lc={v:-1}, lq={v:-1};
+  function pick(a,last){let i;do{i=(Math.random()*a.length)|0;}while(i===last.v&&a.length>1);last.v=i;return a[i];}
   let voice=null;
   function loadVoice(){const vs=(window.speechSynthesis&&speechSynthesis.getVoices())||[];
-    voice=vs.find(v=>/daniel/i.test(v.name))
-       ||vs.find(v=>v.lang==='en-GB'&&/(male|daniel|arthur|oliver|george|jamie)/i.test(v.name))
-       ||vs.find(v=>/uk english male/i.test(v.name))
-       ||vs.find(v=>v.lang==='en-GB')
-       ||vs.find(v=>/^en/i.test(v.lang))||vs[0]||null;}
+    const gb=vs.filter(v=>/en[-_]?gb/i.test(v.lang)||/british|united kingdom/i.test(v.name));
+    voice = gb.find(v=>/(enhanced|premium|siri)/i.test(v.name)&&/(daniel|arthur|male)/i.test(v.name))
+         || gb.find(v=>/daniel/i.test(v.name))
+         || gb.find(v=>/(arthur|oliver|george|jamie|male)/i.test(v.name))
+         || gb[0]
+         || vs.find(v=>/daniel/i.test(v.name))
+         || vs.find(v=>/^en/i.test(v.lang)) || vs[0] || null;}
   loadVoice(); if(window.speechSynthesis)try{speechSynthesis.onvoiceschanged=loadVoice;}catch(e){}
-  function speak(t){try{if(!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(t);
-    if(voice)u.voice=voice;u.rate=0.97;u.pitch=0.9;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
   function banner(t){const b=document.getElementById('jarvisBanner'),el=document.getElementById('jarvisText');
     if(b&&el){el.textContent='“'+t+'”';b.classList.add('show');clearTimeout(b._to);
-      b._to=setTimeout(()=>b.classList.remove('show'),Math.max(5000,t.length*62));}
+      b._to=setTimeout(()=>b.classList.remove('show'),Math.max(4200,t.length*70));}
     const f=document.getElementById('flash');if(f){f.classList.remove('go');void f.offsetWidth;f.classList.add('go');}}
-  window.jarvisGreet=function(){const g=pick();banner(g);speak(g);};
-  const gb=document.getElementById('greetBtn');if(gb)gb.addEventListener('click',()=>window.jarvisGreet());
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,listening=false,cd=0;
-  window.jarvisStart=function(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  let rec=null,listening=false,speaking=false,cd=0;
+  function startRec(){if(rec&&listening&&!speaking){try{rec.start();}catch(e){}}}
+  function stopRec(){if(rec){try{rec.stop();}catch(e){}}}
+  function greet(){
+    if(speaking)return;
+    const text=pick(COMPLIMENTS,lc)+" "+pick(CLOSERS,lq);
+    banner(text);
+    if(!window.speechSynthesis){return;}
+    speaking=true; window.HAL.speaking=true; window.HAL.level=1;
+    stopRec();
+    try{speechSynthesis.cancel();}catch(e){}
+    const u=new SpeechSynthesisUtterance(text);
+    if(voice)u.voice=voice; u.rate=0.94; u.pitch=0.88; u.volume=1;
+    u.onboundary=()=>{window.HAL.level=1;};
+    let finished=false;
+    const done=()=>{if(finished)return;finished=true;clearTimeout(safety);
+      speaking=false;window.HAL.speaking=false;window.HAL.level=0;cd=Date.now()+1500;setTimeout(startRec,350);};
+    const safety=setTimeout(done,Math.max(4500,text.length*95));
+    u.onend=done; u.onerror=done;
+    try{speechSynthesis.speak(u);}catch(e){done();}
+  }
+  window.halGreet=greet;
+  window.halStart=function(){
+    try{const warm=new SpeechSynthesisUtterance(' ');warm.volume=0;speechSynthesis.speak(warm);}catch(e){}
     if(!SR)return false; if(listening)return true;
     try{rec=new SR();}catch(e){return false;}
     rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
-    rec.onresult=e=>{let t='';for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;t=t.toLowerCase();
-      const hit=t.includes('daddy')||(t.includes('wake')&&t.includes('jarvis'))||t.includes('jarvis you there');
-      if(hit&&Date.now()>cd){cd=Date.now()+7000;window.jarvisGreet();}};
-    rec.onerror=()=>{};rec.onend=()=>{if(listening){try{rec.start();}catch(e){}}};
+    rec.onresult=e=>{ if(speaking)return; let t='';
+      for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript; t=t.toLowerCase();
+      const hit=t.includes('daddy')||(t.includes('wake')&&(t.includes('hal')||t.includes('how')));
+      if(hit&&Date.now()>cd){cd=Date.now()+6000;greet();}};
+    rec.onerror=()=>{};rec.onend=()=>{if(listening&&!speaking){try{rec.start();}catch(e){}}};
     try{rec.start();listening=true;return true;}catch(e){listening=false;return false;}
   };
 })();
