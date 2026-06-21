@@ -1,0 +1,45 @@
+/* ============================================================
+   THEME  ·  GREEN PHOSPHOR CONTROL PANEL
+   ------------------------------------------------------------
+   This is the ONE file to edit when you want a different look.
+   Every color in the hub comes from a variable below. To make a
+   new theme (e.g. amber, blue), copy this file, change the hex
+   values, and point index.html at the new file. Nothing else
+   needs to change.
+   ============================================================ */
+
+:root {
+  /* ---- screen (the CRT) ---- */
+  --screen-bg:        #0a1409;   /* deep almost-black green */
+  --screen-bg-2:      #0d1b0c;   /* slightly lighter, for panels */
+
+  /* ---- phosphor text ---- */
+  --text-bright:      #41ff7e;   /* main readable text */
+  --text-hi:          #7dffb0;   /* highlights / headings */
+  --text-dim:         #2bd964;   /* secondary / labels */
+  --text-faint:       #1c8f46;   /* very quiet / borders-as-text */
+
+  /* ---- accent LEDs ---- */
+  --led-amber:        #ffd24a;   /* RUNNING / busy */
+  --led-red:          #ff6b5a;   /* ALERT / error / market down */
+  --led-green:        #41ff7e;   /* ONLINE / ok / market up */
+  --led-off:          #14361f;   /* an LED that is dark */
+
+  /* ---- chassis (the box around the screen) ---- */
+  --chassis:          #2b2e22;   /* charcoal-olive */
+  --chassis-light:    #3a3d2e;   /* bevel highlight */
+  --chassis-dark:     #1a1c14;   /* bevel shadow */
+  --bolt:             #4a4d3c;   /* corner bolts */
+
+  /* ---- semantic ---- */
+  --up:               var(--led-green);
+  --down:             var(--led-red);
+  --warn:             var(--led-amber);
+
+  /* ---- glow strength (turn down if it's too much on the eyes) ---- */
+  --glow: 0 0 6px;
+
+  /* ---- type ---- */
+  --mono: "SFMono-Regular", "JetBrains Mono", "Cascadia Code",
+          "Menlo", "Consolas", ui-monospace, monospace;
+}

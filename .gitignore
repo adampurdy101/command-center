@@ -1,0 +1,21 @@
+# --- secrets: NEVER commit these ---
+.env
+.env.*
+*.key
+*.pem
+secrets.json
+service-account*.json
+gmail-token*.json
+google-credentials*.json
+
+# --- os / editor junk ---
+.DS_Store
+Thumbs.db
+node_modules/
+dist/
+.vscode/
+.idea/
+*.log
+
+# --- local tooling (not part of the published site) ---
+.claude/

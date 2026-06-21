@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <title>ADAM // COMMAND CENTER</title>
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+</head>
+<body>
+  <!-- chassis corner bolts -->
+  <span class="bolt tl"></span><span class="bolt tr"></span>
+  <span class="bolt bl"></span><span class="bolt br"></span>
+
+  <main class="crt">
+
+    <!-- ============ LOGIN ============ -->
+    <div id="login-screen">
+      <div class="login-wrap">
+        <div class="login-box">
+          <h1>COMMAND CENTER</h1>
+          <p class="sub">AUTHORIZED ACCESS ONLY</p>
+          <form id="login-form">
+            <label for="login-email">EMAIL</label>
+            <input id="login-email" type="email" autocomplete="email" placeholder="you@example.com" />
+            <label for="login-password">PASSWORD</label>
+            <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" />
+            <div class="actions">
+              <button id="login-submit" type="submit" class="btn">LOG IN ▸</button>
+            </div>
+          </form>
+          <button id="login-toggle" class="toggle">first time here? create an account</button>
+          <div id="login-msg" class="msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ HUB ============ -->
+    <div id="hub" class="hidden">
+
+      <!-- header -->
+      <header class="hdr">
+        <div class="callsign">
+          <span id="callsign-main" class="glow">ADAM // COMMAND CENTER</span>
+          <small id="callsign-sub">RENTON · WA</small>
+        </div>
+        <div class="spacer"></div>
+        <div class="clock">
+          <div class="time" id="clock-time">--:--:--</div>
+          <div class="date" id="clock-date">—</div>
+        </div>
+        <div class="master">
+          <span class="led green pulse"></span>
+          <span class="label">SYSTEM<br>ONLINE</span>
+        </div>
+        <button id="logout-btn" class="logout">LOG OUT</button>
+      </header>
+
+      <!-- the five stations get built here -->
+      <div class="grid" id="grid"></div>
+
+      <!-- command console -->
+      <section class="console">
+        <div class="prompt-line">
+          <span class="sigil glow">CMD ›</span>
+          <input id="cmd-input" type="text" autocomplete="off"
+                 placeholder="type an order…  e.g. 'read my email and give me today's brief'" />
+          <span class="cursor"></span>
+        </div>
+        <div class="logbox clog" id="cmd-log"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
