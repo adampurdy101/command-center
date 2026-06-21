@@ -343,17 +343,26 @@ tick();setInterval(tick,1000);
   const cv=document.getElementById('voice');let ctx=fit(cv);
   const N=60;let live=false;let analyser=null;let phase=0;let vals=new Array(N).fill(0);
   window.addEventListener('resize',()=>{ctx=fit(cv);});
+  let micTried=false;
   document.getElementById('talkBtn').addEventListener('click',async()=>{
-    if(live)return;
-    try{
-      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-      const ac=new (window.AudioContext||window.webkitAudioContext)();
-      const src=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();
-      analyser.fftSize=256;analyser.smoothingTimeConstant=0.88;src.connect(analyser);
-      live=true;document.getElementById('micLed').className='led amb';
-      const ok=window.halStart&&window.halStart();
-      document.getElementById('talkBtn').textContent=ok?'LISTENING ● say “daddy’s home”':'LISTENING ●';
-    }catch(e){document.getElementById('talkBtn').textContent='MIC BLOCKED — IDLE';}
+    const btn=document.getElementById('talkBtn');
+    if(!micTried){
+      micTried=true;
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+        const ac=new (window.AudioContext||window.webkitAudioContext)();
+        const src=ac.createMediaStreamSource(stream);analyser=ac.createAnalyser();
+        analyser.fftSize=256;analyser.smoothingTimeConstant=0.88;src.connect(analyser);
+        live=true;document.getElementById('micLed').className='led amb';
+        const ok=window.halStart&&window.halStart();
+        btn.textContent=ok?'LISTENING ● “DADDY’S HOME”':'AWAKE ● TAP = HAL';
+      }catch(e){
+        document.getElementById('micLed').className='led';
+        btn.textContent='MIC OFF · TAP = WAKE HAL';
+      }
+    }
+    // always wake Hal on tap, so he speaks with or without the mic (and this gesture unlocks audio)
+    if(window.halGreet) window.halGreet();
   });
   function draw(){
     const w=cv.width/DPR,h=cv.height/DPR;ctx.save();ctx.scale(DPR,DPR);ctx.clearRect(0,0,w,h);
