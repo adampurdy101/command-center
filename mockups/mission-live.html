@@ -714,36 +714,49 @@ tick();setInterval(tick,1000);
     const tm=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
     say(pick(TIMES,ltm).replace('TM',tm));}
   window.halGreet=greet; window.halTime=tellTime;
+  // ---- speech recognition: bulletproof keep-alive so it listens even WHILE Hal talks ----
+  let recRunning=false, keepAlive=null;
+  function ensureRec(){ if(!rec||!listening||recRunning)return; try{rec.start();}catch(e){} }
+  function processSpeech(t){
+    const heard=document.getElementById('heard');
+    if(heard&&t.trim()){heard.textContent='heard:  “'+t.trim()+'”';heard.style.opacity='1';
+      clearTimeout(heard._to);heard._to=setTimeout(()=>{heard.style.opacity='0';},2800);}
+    const tl=t.toLowerCase();
+    // STOP hot-words — interrupt Hal even while he is mid-sentence
+    if(tl.includes('stop')||tl.includes('pause')||tl.includes('shut up')||tl.includes('shutup')
+      ||tl.includes('quiet')||tl.includes('enough')||tl.includes('silence')||tl.includes('shush')
+      ||tl.includes('halt')||tl.includes('never mind')){
+      if(speaking||pending) stopSpeaking();
+      return 'stop';
+    }
+    if(speaking||pending)return 'busy';
+    if(tl.includes('time')){ if(Date.now()>cd){cd=Date.now()+5000;tellTime();} return 'time'; }
+    const wantBrief=tl.includes('daddy')||(tl.includes('wake')&&(tl.includes('hal')||tl.includes('how')||tl.includes('pal')))
+      ||tl.includes('brief')||tl.includes('report')||tl.includes('what are we doing');
+    if(wantBrief&&Date.now()>cd){cd=Date.now()+9000;pending=true;
+      pendTimer=setTimeout(()=>{pendTimer=null;pending=false;if(!speaking)greet();},1200);return 'brief';}
+    return null;
+  }
+  window.__halProcess=processSpeech;   // test hook: simulate a heard phrase
   window.halStart=function(){
     try{const warm=new SpeechSynthesisUtterance(' ');warm.volume=0;speechSynthesis.speak(warm);}catch(e){}
-    if(!SR)return false; if(listening)return true;
-    try{rec=new SR();}catch(e){return false;}
-    rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
-    rec.onresult=e=>{ let t='';
-      for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;
-      const heard=document.getElementById('heard');
-      if(heard&&t.trim()){heard.textContent='heard:  “'+t.trim()+'”';heard.style.opacity='1';
-        clearTimeout(heard._to);heard._to=setTimeout(()=>{heard.style.opacity='0';},2800);}
-      const tl=t.toLowerCase();
-      // STOP hot-words — work even while Hal is talking, to interrupt him
-      if(tl.includes('stop')||tl.includes('pause')||tl.includes('shut up')||tl.includes('shutup')
-        ||tl.includes('quiet')||tl.includes('enough')||tl.includes('silence')||tl.includes('shush')){
-        if(speaking||pending) stopSpeaking();
-        return;
-      }
-      if(speaking||pending)return;
-      if(tl.includes('time')){ if(Date.now()>cd){cd=Date.now()+5000;tellTime();} return; }
-      const wantBrief=tl.includes('daddy')||(tl.includes('wake')&&(tl.includes('hal')||tl.includes('how')||tl.includes('pal')))
-        ||tl.includes('brief')||tl.includes('report')||tl.includes('what are we doing');
-      if(wantBrief&&Date.now()>cd){cd=Date.now()+9000;pending=true;
-        pendTimer=setTimeout(()=>{pendTimer=null;pending=false;if(!speaking)greet();},1200);}
-    };
-    rec.onerror=ev=>{ const e=ev&&ev.error;
-      if(e==='not-allowed'||e==='service-not-allowed'){ listening=false;
-        const b=document.getElementById('talkBtn'); if(b)b.textContent='VOICE SERVICE BLOCKED · USE CHROME';
-        const l=document.getElementById('micLed'); if(l)l.className='led red'; } };
-    rec.onend=()=>{ if(listening){ setTimeout(()=>{try{rec.start();}catch(e){}},250); } };
-    try{rec.start();listening=true;return true;}catch(e){listening=false;return false;}
+    if(!SR)return false;
+    if(!rec){
+      try{rec=new SR();}catch(e){return false;}
+      rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
+      rec.onstart=()=>{recRunning=true;};
+      rec.onresult=e=>{ let t=''; for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript; processSpeech(t); };
+      rec.onerror=ev=>{ recRunning=false; const er=ev&&ev.error;
+        if(er==='not-allowed'||er==='service-not-allowed'){ listening=false;
+          const b=document.getElementById('talkBtn'); if(b)b.textContent='VOICE SERVICE BLOCKED · USE CHROME';
+          const l=document.getElementById('micLed'); if(l)l.className='led red'; } };
+      rec.onend=()=>{ recRunning=false; if(listening) setTimeout(ensureRec,200); };
+    }
+    if(listening)return true;
+    listening=true;
+    try{rec.start();}catch(e){}
+    if(!keepAlive) keepAlive=setInterval(ensureRec,1000);   // restart within 1s if it ever drops (e.g. during speech)
+    return true;
   };
 
   (function wireVoiceUI(){
