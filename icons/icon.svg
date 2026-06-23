@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#0d1b0c"/><stop offset="100%" stop-color="#070f08"/>
+    </radialGradient>
+    <filter id="g"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <g transform="translate(256 256)" fill="none" stroke="#41ff7e">
+    <circle r="170" fill="#06170c"/>
+    <g stroke="#41ff7e" stroke-opacity=".45" stroke-width="2">
+      <ellipse rx="170" ry="56"/><ellipse rx="170" ry="112"/>
+      <ellipse rx="56" ry="170"/><ellipse rx="112" ry="170"/>
+      <line x1="-170" y1="0" x2="170" y2="0"/><line x1="0" y1="-170" x2="0" y2="170"/>
+    </g>
+    <circle r="170" stroke="#7dffb0" stroke-width="6" filter="url(#g)"/>
+    <circle r="170" stroke="#7dffb0" stroke-width="4"/>
+    <path d="M -60 -50 A 150 150 0 0 1 150 -20" stroke="#7dffb0" stroke-width="5" stroke-opacity=".85"/>
+    <circle cx="-58" cy="-50" r="9" fill="#ffd24a" stroke="none"/>
+  </g>
+  <g stroke="#ffd24a" stroke-width="15" stroke-linecap="round">
+    <line x1="346" y1="392" x2="378" y2="346"/><line x1="380" y1="392" x2="412" y2="346"/>
+  </g>
+</svg>
