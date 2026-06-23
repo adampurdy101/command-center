@@ -1,0 +1,145 @@
+/* ============================================================
+   MISSION CONTROL  ·  the authenticated hub
+   ------------------------------------------------------------
+   Everything here is scoped to #hub, so the login screen and the
+   rest of the app are untouched. This is the rich interface
+   (cities clocks, globe, Voice Scope + HAL, Defense Grid, panels)
+   ported from the mission-live prototype and wired to live data.
+   ============================================================ */
+
+#hub{
+  /* local palette — scoped so it never overrides theme.css globally */
+  --g:#41ff7e; --hi:#7dffb0; --dim:#2bd964; --faint:#1c8f46;
+  --amb:#ffd24a; --red:#ff6b5a; --bg:#0a1409; --bg2:#0d1b0c; --deep:#06100a;
+  --mono:ui-monospace,"SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
+  --glow2:0 0 6px;
+
+  position:relative; z-index:10;
+  display:flex; flex-direction:column; gap:8px;
+  height:calc(100vh - 64px); min-height:0;
+  font-family:var(--mono); color:var(--g);
+}
+
+/* ---------- HEADER ---------- */
+#hub .hdr{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--faint);
+  padding-bottom:8px;margin-bottom:0;flex:none;z-index:10}
+#hub .hdr .title{font-size:19px;letter-spacing:2px;color:var(--hi);text-shadow:var(--glow2) var(--hi)}
+#hub .hdr .title small{display:block;font-size:10px;letter-spacing:2px;color:var(--dim)}
+#hub .cities{display:flex;gap:14px;margin-left:8px}
+#hub .cities div{text-align:center}
+#hub .cities .c{font-size:9px;color:var(--dim);letter-spacing:1px}
+#hub .cities .t{font-size:12px;color:var(--g)}
+#hub .hdr .spacer{flex:1}
+#hub .hdr .clock{text-align:right}
+#hub .hdr .clock .times{display:flex;gap:10px;align-items:baseline;justify-content:flex-end}
+#hub .hdr .clock .time{font-size:20px;color:var(--hi);text-shadow:var(--glow2) var(--hi)}
+#hub .hdr .clock .time12{font-size:13px;color:var(--dim);letter-spacing:1px}
+#hub .hdr .clock .date{font-size:10px;color:var(--dim);letter-spacing:1px}
+#hub .master{display:flex;align-items:center;gap:7px;padding-left:14px;border-left:1px solid var(--faint)}
+#hub .master .lab{font-size:9px;letter-spacing:1px;color:var(--dim);line-height:1.1}
+#hub .tools{display:flex;align-items:center;gap:8px;padding-left:14px;border-left:1px solid var(--faint)}
+#hub .tools button{background:transparent;color:var(--dim);border:1px solid var(--faint);
+  font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:5px 9px;border-radius:4px;cursor:pointer}
+#hub .tools button:hover{color:var(--hi);border-color:var(--hi)}
+#hub .tools .logout:hover{color:var(--red);border-color:var(--red)}
+
+/* ---------- LED dots (mission style: .on / .amb) ---------- */
+#hub .led{width:9px;height:9px;border-radius:50%;background:#14361f;display:inline-block;flex:none;box-shadow:none}
+#hub .led.on{background:var(--g);box-shadow:0 0 8px var(--g);animation:mc-pulse 1.6s ease-in-out infinite}
+#hub .led.amb{background:var(--amb);box-shadow:0 0 8px var(--amb);animation:mc-pulse 1.6s ease-in-out infinite}
+#hub .led.red{background:var(--red);box-shadow:0 0 8px var(--red)}
+@keyframes mc-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ---------- DECK GRID ---------- */
+#hub .deck{flex:1;display:grid;gap:8px;min-height:0;
+  grid-template-columns:minmax(230px,1fr) minmax(380px,2.1fr) minmax(230px,1fr);
+  grid-template-rows:1fr auto}
+#hub .col{display:flex;flex-direction:column;gap:8px;min-height:0}
+#hub .center{display:flex;flex-direction:column;gap:8px;min-height:0}
+
+/* ---------- PANELS ---------- */
+#hub .panel{background:
+    linear-gradient(rgba(65,255,126,.055) 1px, transparent 1px) 0 0/100% 22px,
+    linear-gradient(90deg, rgba(65,255,126,.055) 1px, transparent 1px) 0 0/22px 100%,
+    radial-gradient(150% 105% at 8% -16%, rgba(65,255,126,.20), transparent 55%),
+    radial-gradient(120% 80% at 105% 120%, rgba(125,255,176,.08), transparent 60%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+  border:1px solid var(--faint);border-radius:7px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#hub .panel .tb{display:flex;align-items:center;gap:7px;padding:5px 9px;border-bottom:1px solid var(--faint);
+  background:rgba(65,255,126,.05);flex:none}
+#hub .panel .tb .n{color:var(--hi);font-size:11px;letter-spacing:1px;text-transform:uppercase}
+#hub .panel .tb .sp{flex:1}
+#hub .panel .tb .s{font-size:9px;color:var(--dim);letter-spacing:1px}
+#hub .panel .bd{padding:8px 9px;flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;overflow:hidden}
+#hub .row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+#hub .row .k{color:var(--dim)} #hub .row .v{color:var(--g)}
+#hub .row .v.big{font-size:18px;color:var(--hi)}
+#hub .up{color:var(--g)} #hub .down{color:var(--red)} #hub .warn{color:var(--amb)}
+#hub .bar{height:9px;border:1px solid var(--faint);border-radius:3px;background:var(--deep);overflow:hidden}
+#hub .bar>span{display:block;height:100%;background:var(--g);box-shadow:var(--glow2) var(--g)}
+#hub .spark{width:100%;height:30px}
+#hub .ag{display:flex;align-items:center;gap:7px;font-size:12px}
+#hub .ag .nm{color:var(--g);min-width:96px} #hub .ag .st{color:var(--dim);margin-left:auto;font-size:10px}
+
+/* ---------- buttons inside the hub ---------- */
+#hub .btn{background:transparent;color:var(--hi);border:1px solid var(--hi);border-radius:4px;
+  font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:4px 9px;cursor:pointer}
+#hub .btn:hover{background:rgba(65,255,126,.12);box-shadow:var(--glow2) var(--hi)}
+#hub .btn.amb{color:var(--amb);border-color:var(--amb)}
+#hub .tb .btn{padding:2px 7px;font-size:10px}
+
+/* ---------- GLOBE ---------- */
+#hub .globe-wrap{flex:1;position:relative;border:1px solid var(--faint);border-radius:7px;
+  background:radial-gradient(circle at 50% 42%,#0c2012,var(--deep) 70%);overflow:hidden;min-height:0}
+#hub .globe-wrap .lab{position:absolute;top:7px;left:10px;font-size:10px;color:var(--dim);letter-spacing:2px;z-index:3}
+#hub .globe-wrap .lab2{position:absolute;top:7px;right:10px;font-size:10px;color:var(--dim);letter-spacing:1px;z-index:3}
+#hub #globe{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+#hub .globe-wrap .lab,#hub .globe-wrap .lab2,#hub .globe-wrap .readout,#hub .globe-wrap .continent{pointer-events:none}
+#hub .globe-wrap .continent{position:absolute;top:13%;left:0;right:0;text-align:center;z-index:3;
+  color:#7dffb0;font-size:18px;letter-spacing:5px;text-shadow:0 0 12px var(--g);opacity:0;transition:opacity .25s}
+#hub .readout{position:absolute;bottom:7px;left:10px;right:10px;display:flex;justify-content:space-between;
+  font-size:10px;color:var(--faint);letter-spacing:1px;z-index:3}
+
+/* ---------- BOTTOM BAND : VOICE + GAME ---------- */
+#hub .bottom{grid-column:1/4;display:grid;grid-template-columns:1.3fr 1fr;gap:8px;height:170px}
+#hub .scope-bd,#hub .game-bd{position:relative;flex:1;min-height:0}
+#hub #voice,#hub #game{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hub #heard{position:absolute;left:8px;right:8px;bottom:3px;text-align:center;font-size:11px;letter-spacing:1px;
+  color:var(--hi);opacity:0;transition:opacity .2s;pointer-events:none;text-shadow:0 0 6px var(--g)}
+#hub #hsEntry{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;background:rgba(6,16,10,.92);z-index:6;color:var(--hi);font-size:13px;letter-spacing:2px;text-align:center}
+#hub #hsEntry.show{display:flex}
+#hub #hsEntry .big{font-size:15px;color:var(--amb);letter-spacing:3px;text-shadow:var(--glow2) var(--amb)}
+#hub #hsName{width:96px;text-align:center;text-transform:uppercase;background:var(--deep);color:var(--g);
+  border:1px solid var(--g);border-radius:4px;font-family:var(--mono);font-size:20px;letter-spacing:6px;padding:7px 4px;outline:none}
+#hub #hsName:focus{box-shadow:var(--glow2) var(--g)}
+
+/* ---------- HAL overlays (cover the hub) ---------- */
+#hub #flash{position:absolute;inset:0;background:#41ff7e;opacity:0;pointer-events:none;z-index:84;mix-blend-mode:screen}
+#hub #flash.go{animation:mc-fl .55s ease-out}
+@keyframes mc-fl{0%{opacity:.16}100%{opacity:0}}
+#hub #jarvisBanner{position:absolute;left:6%;right:6%;top:44%;transform:translateY(-50%);z-index:85;
+  text-align:center;pointer-events:none;opacity:0;transition:opacity .35s}
+#hub #jarvisBanner.show{opacity:1}
+#hub #jarvisText{display:inline-block;background:rgba(6,16,10,.86);border:1px solid var(--g);border-radius:10px;
+  padding:16px 24px;color:var(--hi);font-size:19px;line-height:1.55;max-width:720px;
+  text-shadow:0 0 8px var(--g);box-shadow:0 0 34px rgba(65,255,126,.45),inset 0 0 18px rgba(65,255,126,.12);
+  font-style:italic;letter-spacing:.3px}
+#hub #voiceCfg{position:fixed;inset:0;z-index:88;display:flex;align-items:center;justify-content:center;background:rgba(3,8,5,.8)}
+#hub #voiceCfg.hidden{display:none}
+#hub .vc-box{width:min(560px,92%);max-height:92%;overflow:auto;background:linear-gradient(180deg,#0d1b0c,#0a1409);
+  border:1px solid var(--g);border-radius:10px;box-shadow:0 0 40px rgba(65,255,126,.3);padding:16px 18px;font-size:13px}
+#hub .vc-title{color:var(--hi);letter-spacing:2px;font-size:13px;text-shadow:var(--glow2) var(--hi);margin-bottom:12px}
+#hub .vc-line{display:flex;align-items:center;gap:10px;margin:9px 0;flex-wrap:wrap}
+#hub .vc-k{color:var(--dim);font-size:11px;letter-spacing:1px;min-width:54px}
+#hub .vc-s{color:var(--amb);font-size:11px;flex:1;min-width:120px}
+#hub .vc-box select{flex:1;min-width:150px;background:var(--deep);color:var(--g);border:1px solid var(--faint);border-radius:5px;
+  font-family:var(--mono);font-size:13px;padding:6px 8px;outline:none}
+#hub .vc-bar{height:7px;border:1px solid var(--faint);border-radius:4px;background:var(--deep);overflow:hidden;margin:2px 0 6px}
+#hub .vc-bar>span{display:block;height:100%;width:0;background:var(--g);box-shadow:var(--glow2) var(--g)}
+#hub .vc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:10px 0;border:1px solid var(--faint);border-radius:7px;padding:10px}
+#hub .vc-grid label{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);letter-spacing:1px;margin-bottom:3px}
+#hub .vc-grid b{color:var(--g);font-weight:400}
+#hub .vc-grid input[type=range]{width:100%;accent-color:var(--g)}
+#hub .vc-btns{justify-content:flex-end;margin-top:6px}
+#hub .vc-note{color:var(--faint);font-size:10px;line-height:1.5;margin-top:8px}

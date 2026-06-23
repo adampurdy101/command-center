@@ -18,6 +18,7 @@
   <title>ADAM // COMMAND CENTER</title>
   <link rel="stylesheet" href="css/theme.css" />
   <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/mission.css" />
   <link rel="stylesheet" href="css/mobile.css" />
 </head>
 <body>
@@ -48,46 +49,160 @@
       </div>
     </div>
 
-    <!-- ============ HUB ============ -->
+    <!-- ============ HUB · MISSION CONTROL ============ -->
     <div id="hub" class="hidden">
 
-      <!-- header -->
       <header class="hdr">
-        <div class="callsign">
-          <span id="callsign-main" class="glow">ADAM // COMMAND CENTER</span>
-          <small id="callsign-sub">RENTON · WA</small>
-        </div>
+        <div class="title">ADAM // COMMAND CENTER<small id="callsign-sub">RENTON · WA — MISSION CONTROL</small></div>
+        <div class="cities" id="cities"></div>
         <div class="spacer"></div>
         <div class="clock">
-          <div class="time" id="clock-time">--:--:--</div>
-          <div class="date" id="clock-date">—</div>
+          <div class="times"><span class="time" id="clk">--:--:--</span><span class="time12" id="clk12">--:-- --</span></div>
+          <div class="date" id="dt">—</div>
         </div>
-        <div class="master">
-          <span class="led green pulse"></span>
-          <span class="label">SYSTEM<br>ONLINE</span>
+        <div class="master"><span class="led on"></span><span class="lab">SYSTEM<br>ONLINE</span></div>
+        <div class="tools">
+          <button id="fs-btn" type="button" title="Toggle fullscreen">⤢ FULLSCREEN</button>
+          <button id="logout-btn" class="logout">LOG OUT</button>
         </div>
-        <button id="fs-btn" type="button" title="Toggle fullscreen">⤢ FULLSCREEN</button>
-        <button id="logout-btn" class="logout">LOG OUT</button>
       </header>
 
-      <!-- the five stations get built here -->
-      <div class="grid" id="grid"></div>
-
-      <!-- command console -->
-      <section class="console">
-        <div class="prompt-line">
-          <span class="sigil glow">CMD ›</span>
-          <input id="cmd-input" type="text" autocomplete="off"
-                 placeholder="type an order…  e.g. 'read my email and give me today's brief'" />
-          <span class="cursor"></span>
+      <div class="deck">
+        <!-- LEFT -->
+        <div class="col">
+          <section class="panel" id="panel-brief" style="flex:1.1">
+            <div class="tb"><span class="led on"></span><span class="n">01 Daily Brief</span><span class="sp"></span><span class="s" id="brief-stat">…</span></div>
+            <div class="bd" id="brief-bd">
+              <div class="row"><span class="k">UNREAD MAIL</span><span class="v big" id="brief-unread">–</span></div>
+              <div class="row"><span class="k">FLAGGED</span><span class="v warn" id="brief-flagged">–</span></div>
+              <div class="row"><span class="k">NEXT EVENT</span><span class="v" id="brief-next" style="font-size:11px">—</span></div>
+              <div class="row"><span class="k">TASKS</span><span class="v" id="brief-tasks">–</span></div>
+              <div class="row"><span class="k" style="font-size:10px">MORNING DIGEST · 06:00</span><button class="btn" id="brief-report" style="padding:2px 8px;font-size:10px">READY ▸</button></div>
+            </div>
+          </section>
+          <section class="panel" style="flex:1">
+            <div class="tb"><span class="led amb"></span><span class="n">02 Markets</span><span class="sp"></span><span class="s">DEMO</span></div>
+            <div class="bd">
+              <div class="row"><span class="k">NVDA</span><span class="v up">+2.4%</span></div>
+              <div class="row"><span class="k">VRT</span><span class="v up">+1.1%</span></div>
+              <div class="row"><span class="k">NBIS</span><span class="v down">−3.2%</span></div>
+              <div class="row"><span class="k">AMD</span><span class="v up">+0.6%</span></div>
+              <svg class="spark" viewBox="0 0 200 30" preserveAspectRatio="none"><polyline fill="none" stroke="#41ff7e" stroke-width="1.4" points="0,24 22,18 44,21 66,12 88,16 110,8 132,12 154,5 176,9 200,3"/></svg>
+            </div>
+          </section>
+          <section class="panel" style="flex:1">
+            <div class="tb"><span class="led amb"></span><span class="n">05 Life Admin</span><span class="sp"></span><span class="s">DEMO</span></div>
+            <div class="bd" style="gap:4px">
+              <div class="row"><span class="k">Tesla lemon-law</span><span class="v warn">OPEN</span></div>
+              <div class="row"><span class="k">Skin routine</span><span class="v">DONE</span></div>
+              <div class="row"><span class="k">Mom · POA</span><span class="v warn">WAIT</span></div>
+              <div class="row"><span class="k">Dog walk</span><span class="v">17:00</span></div>
+            </div>
+          </section>
         </div>
-        <div class="logbox clog" id="cmd-log"></div>
-      </section>
+
+        <!-- CENTER : GLOBE -->
+        <div class="center">
+          <div class="globe-wrap">
+            <span class="lab">GLOBAL TRACK SYS · ORBIT 4471</span>
+            <span class="lab2">DRAG TO ROTATE · SCROLL TO ZOOM</span>
+            <canvas id="globe"></canvas>
+            <div class="continent" id="continent"></div>
+            <div class="readout"><span id="zoomr">ZOOM 1.0×</span><span>GREAT-CIRCLE LOCK · BKK / TYO / SEA</span><span>HOME · RENTON</span></div>
+          </div>
+        </div>
+
+        <!-- RIGHT -->
+        <div class="col">
+          <section class="panel" style="flex:1">
+            <div class="tb"><span class="led on"></span><span class="n">03 Projects</span><span class="sp"></span><span class="s">DEMO</span></div>
+            <div class="bd">
+              <div class="row"><span class="k" style="font-size:11px">WESTERN STATE HOSPITAL</span></div>
+              <div class="row"><span class="k" style="font-size:11px">Wall Shops</span><span class="v">62%</span></div>
+              <div class="bar"><span style="width:62%"></span></div>
+              <div class="row"><span class="k">DEADLINE</span><span class="v warn">T−38d</span></div>
+            </div>
+          </section>
+          <section class="panel" style="flex:1.1">
+            <div class="tb"><span class="led on"></span><span class="n">04 Agent Ops</span><span class="sp"></span><span class="s">3 LIVE</span></div>
+            <div class="bd" style="gap:6px">
+              <div class="ag"><span class="led on"></span><span class="nm">hal-openclaw</span><span class="st">HEARTBEAT</span></div>
+              <div class="ag"><span class="led on"></span><span class="nm">mail-agent</span><span class="st">IDLE</span></div>
+              <div class="ag"><span class="led amb"></span><span class="nm">market-agent</span><span class="st">RUN</span></div>
+              <div class="row" style="margin-top:auto;font-size:10px"><span class="k">UPTIME</span><span class="v">99.4%</span></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- BOTTOM BAND : VOICE SCOPE + GAME -->
+        <div class="bottom">
+          <section class="panel">
+            <div class="tb"><span class="led on" id="micLed"></span><span class="n">Voice Scope · HAL</span><span class="sp"></span>
+              <button class="btn" id="stopBtn" style="padding:2px 8px;color:var(--red);border-color:var(--red)" title="stop talking">■ STOP</button>
+              <button class="btn" id="voiceCfgBtn" style="padding:2px 7px;margin-left:6px" title="voice settings">⚙</button>
+              <button class="btn" id="talkBtn" style="margin-left:6px">WAKE HAL ▸</button></div>
+            <div class="bd" style="padding:4px"><div class="scope-bd"><canvas id="voice"></canvas><div id="heard"></div></div></div>
+          </section>
+          <section class="panel">
+            <div class="tb"><span class="led amb"></span><span class="n">Defense Grid</span><span class="sp"></span>
+              <button class="btn" id="restartBtn" style="padding:2px 8px;font-size:10px">↻ NEW ROUND</button></div>
+            <div class="bd" style="padding:4px"><div class="game-bd"><canvas id="game"></canvas>
+              <div id="hsEntry">
+                <div class="big">NEW HIGH SCORE</div>
+                <div>ENTER YOUR INITIALS</div>
+                <input id="hsName" maxlength="3" placeholder="ABC" autocomplete="off" />
+                <button class="btn" id="hsSave">SAVE ▸</button>
+              </div>
+            </div></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- HAL overlays -->
+      <div id="flash"></div>
+      <div id="jarvisBanner"><span id="jarvisText"></span></div>
+      <div id="voiceCfg" class="hidden">
+        <div class="vc-box">
+          <div class="vc-title">HAL VOICE — on-device · free · unlimited</div>
+          <div class="vc-line"><span class="vc-k">ENGINE</span><span id="vcStatus" class="vc-s">browser fallback (tap LOAD for the free neural voice)</span>
+            <button class="btn" id="vcLoad">LOAD FREE VOICE</button></div>
+          <div class="vc-bar"><span id="vcBar"></span></div>
+          <div class="vc-line"><span class="vc-k">VOICE</span>
+            <select id="vcVoice">
+              <option value="am_michael">Michael — US male (calm)</option>
+              <option value="am_onyx">Onyx — US male (deep)</option>
+              <option value="am_fenrir">Fenrir — US male (resonant)</option>
+              <option value="am_adam">Adam — US male</option>
+              <option value="am_eric">Eric — US male</option>
+              <option value="bm_george">George — UK male (measured)</option>
+              <option value="bm_daniel">Daniel — UK male</option>
+            </select></div>
+          <div class="vc-grid">
+            <div><label>PACE <b id="vcPaceV"></b></label><input type="range" id="vcPace" min="0.6" max="1.2" step="0.02"></div>
+            <div><label>DEPTH <b id="vcDepthV"></b></label><input type="range" id="vcDepth" min="0.8" max="1.06" step="0.01"></div>
+            <div><label>REVERB <b id="vcReverbV"></b></label><input type="range" id="vcReverb" min="0" max="0.6" step="0.02"></div>
+            <div><label>WARMTH <b id="vcWarmthV"></b></label><input type="range" id="vcWarmth" min="2200" max="9000" step="100"></div>
+          </div>
+          <div class="vc-line vc-btns">
+            <button class="btn" id="vcTest">🔊 TEST</button>
+            <button class="btn amb" id="vcPreset">↺ HAL preset</button>
+            <button class="btn" id="vcDone">DONE</button>
+          </div>
+          <div class="vc-note">Free neural voice (Kokoro) running on your device — no quota, no cost. Changes apply to Hal instantly. First LOAD downloads the model once, then it’s cached &amp; offline. Until loaded, Hal uses the browser voice.</div>
+        </div>
+      </div>
 
     </div>
   </main>
 
+  <!-- geo libs for the globe -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+  <!-- Mission Control interactive layer (globe, voice scope, HAL, game) -->
+  <script defer src="js/mission.js"></script>
+  <!-- auth + live data wiring -->
   <script type="module" src="js/app.js"></script>
+  <!-- PWA plumbing (service worker + fullscreen button) -->
   <script defer src="js/mobile.js"></script>
 </body>
 </html>
