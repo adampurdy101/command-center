@@ -31,7 +31,14 @@
   #hub .globe-wrap { height: 44vh; min-height: 260px; }
   /* avoid the corner caption labels colliding on a narrow globe */
   #hub .globe-wrap .lab2 { display: none; }
-  #hub .globe-wrap .readout span:nth-child(2) { display: none; }
+  /* drop the redundant "HOME · RENTON" label; keep zoom + the two weather chips */
+  #hub .globe-wrap .readout span:nth-child(4) { display: none; }
+  #hub .readout { font-size: 9px; gap: 6px; }
+
+  /* heartbeat: on phones show the inline pulse after the title, hide the bigger
+     one by SYSTEM ONLINE to keep the header tidy */
+  #hub .ekg-inline { display: inline-block; }
+  #hub #ekg-sys { display: none; }
 
   /* panels get comfortable tap heights */
   #hub .panel { min-height: 0; }

@@ -22,6 +22,16 @@
   <link rel="stylesheet" href="css/mobile.css" />
 </head>
 <body>
+  <!-- branded power-on splash / boot sequence (paints instantly, no white flash) -->
+  <div id="boot">
+    <div class="boot-inner">
+      <div class="boot-globe"></div>
+      <div class="boot-title">ADAM // COMMAND CENTER</div>
+      <div class="boot-log" id="boot-log"></div>
+      <div class="boot-bar"><span></span></div>
+    </div>
+  </div>
+
   <!-- chassis corner bolts -->
   <span class="bolt tl"></span><span class="bolt tr"></span>
   <span class="bolt bl"></span><span class="bolt br"></span>
@@ -53,16 +63,22 @@
     <div id="hub" class="hidden">
 
       <header class="hdr">
-        <div class="title">ADAM // COMMAND CENTER<small id="callsign-sub">RENTON · WA — MISSION CONTROL</small></div>
+        <div class="title">ADAM // COMMAND CENTER<canvas id="ekg-title" class="ekg ekg-inline" width="74" height="22"></canvas><small id="callsign-sub">RENTON · WA — MISSION CONTROL</small></div>
         <div class="cities" id="cities"></div>
         <div class="spacer"></div>
         <div class="clock">
           <div class="times"><span class="time" id="clk">--:--:--</span><span class="time12" id="clk12">--:-- --</span></div>
           <div class="date" id="dt">—</div>
         </div>
-        <div class="master"><span class="led on"></span><span class="lab">SYSTEM<br>ONLINE</span></div>
+        <div class="master">
+          <span class="led on"></span>
+          <span class="lab">SYSTEM<br>ONLINE</span>
+          <canvas id="ekg-sys" class="ekg" width="92" height="30"></canvas>
+        </div>
         <div class="tools">
-          <button id="fs-btn" type="button" title="Toggle fullscreen">⤢ FULLSCREEN</button>
+          <button id="amb-btn" type="button" title="Ambient sound">♪ HUM</button>
+          <button id="fs-btn" type="button" title="Enter fullscreen">⤢ FULLSCREEN</button>
+          <button id="fs-exit" type="button" title="Exit fullscreen">⤡ EXIT FULL</button>
           <button id="logout-btn" class="logout">LOG OUT</button>
         </div>
       </header>
@@ -108,7 +124,12 @@
             <span class="lab2">DRAG TO ROTATE · SCROLL TO ZOOM</span>
             <canvas id="globe"></canvas>
             <div class="continent" id="continent"></div>
-            <div class="readout"><span id="zoomr">ZOOM 1.0×</span><span>GREAT-CIRCLE LOCK · BKK / TYO / SEA</span><span>HOME · RENTON</span></div>
+            <div class="readout">
+              <span id="zoomr">ZOOM 1.0×</span>
+              <span id="wx-home" class="wx">RENTON —</span>
+              <span id="wx-bkk" class="wx">PATTAYA —</span>
+              <span>HOME · RENTON</span>
+            </div>
           </div>
         </div>
 
@@ -137,7 +158,7 @@
         <!-- BOTTOM BAND : VOICE SCOPE + GAME -->
         <div class="bottom">
           <section class="panel">
-            <div class="tb"><span class="led on" id="micLed"></span><span class="n">Voice Scope · HAL</span><span class="sp"></span>
+            <div class="tb"><span id="hal-eye" title="HAL 9000"></span><span class="n">Voice Scope · HAL</span><span class="sp"></span>
               <button class="btn" id="stopBtn" style="padding:2px 8px;color:var(--red);border-color:var(--red)" title="stop talking">■ STOP</button>
               <button class="btn" id="voiceCfgBtn" style="padding:2px 7px;margin-left:6px" title="voice settings">⚙</button>
               <button class="btn" id="talkBtn" style="margin-left:6px">WAKE HAL ▸</button></div>
@@ -200,9 +221,11 @@
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
   <!-- Mission Control interactive layer (globe, voice scope, HAL, game) -->
   <script defer src="js/mission.js"></script>
+  <!-- visual flourishes (heartbeat, HAL eye, boot, ambient, weather, tilt, haptics, fullscreen) -->
+  <script defer src="js/effects.js"></script>
   <!-- auth + live data wiring -->
   <script type="module" src="js/app.js"></script>
-  <!-- PWA plumbing (service worker + fullscreen button) -->
+  <!-- PWA plumbing (service worker) -->
   <script defer src="js/mobile.js"></script>
 </body>
 </html>
