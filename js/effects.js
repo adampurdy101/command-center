@@ -41,29 +41,31 @@
     function refit() { cans.forEach(function (c) { var x = fitC(c.cv); if (x) c.ctx = x; }); }
     refit();
     window.addEventListener("resize", refit);
-    var BEATS = 1.7, RATE = 0.95;
+    var BPM = 65, T = 60 / BPM;                  // one heartbeat per ~0.92s
     function frame(now) {
       var t = now / 1000;
-      var beatPhase = (t * RATE) % 1;
-      var flash = beatPhase < 0.06 ? 1 : 0.55;     // brighten on the R spike
+      var phase = (t % T) / T;                    // 0..1 sweep position (stationary trace)
+      var sweepX = phase;
       for (var ci = 0; ci < cans.length; ci++) {
         var c = cans[ci]; if (!c.ctx) { c.ctx = fitC(c.cv); if (!c.ctx) continue; }
-        var ctx = c.ctx, w = c.cv.width / DPR, h = c.cv.height / DPR, mid = h * 0.56, amp = h * 0.42;
+        var ctx = c.ctx, w = c.cv.width / DPR, h = c.cv.height / DPR, mid = h * 0.56, amp = h * 0.44;
         ctx.save(); ctx.scale(DPR, DPR); ctx.clearRect(0, 0, w, h);
-        ctx.lineWidth = 1.4; ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(65,255,126," + flash + ")";
-        ctx.shadowColor = "#41ff7e"; ctx.shadowBlur = 6 * flash;
+        ctx.lineJoin = "round"; ctx.lineCap = "round";
+        // faint full waveform (the monitor's resting trace — one beat fills the width)
+        ctx.lineWidth = 1.1; ctx.strokeStyle = "rgba(43,217,100,0.28)";
         ctx.beginPath();
-        for (var x = 0; x <= w; x++) {
-          var u = (((x / w) * BEATS - t * RATE) % 1 + 1) % 1;
-          var y = mid - ecg(u) * amp;
-          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
+        for (var x = 0; x <= w; x++) { var y = mid - ecg(x / w) * amp; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
         ctx.stroke();
-        // leading blip at the right edge
-        var ue = ((BEATS - t * RATE) % 1 + 1) % 1;
-        var ye = mid - ecg(ue) * amp;
-        ctx.shadowBlur = 8; ctx.fillStyle = "#d6ffe0";
-        ctx.beginPath(); ctx.arc(w - 1, ye, 1.6, 0, 7); ctx.fill();
+        // bright beam: the part of the trace the sweep has drawn this beat
+        ctx.lineWidth = 1.7; ctx.strokeStyle = "#41ff7e"; ctx.shadowColor = "#41ff7e"; ctx.shadowBlur = 7;
+        ctx.beginPath();
+        var sx = sweepX * w, started = false;
+        for (var x2 = 0; x2 <= sx; x2++) { var y2 = mid - ecg(x2 / w) * amp; if (!started) { ctx.moveTo(x2, y2); started = true; } else ctx.lineTo(x2, y2); }
+        ctx.stroke();
+        // glowing sweep head
+        var yh = mid - ecg(sweepX) * amp;
+        ctx.shadowBlur = 9; ctx.fillStyle = "#d6ffe0";
+        ctx.beginPath(); ctx.arc(sx, yh, 1.9, 0, 7); ctx.fill();
         ctx.restore();
       }
       requestAnimationFrame(frame);
@@ -146,9 +148,9 @@
         g.gain.linearRampToValueAtTime(0.03, n + 0.02);
         g.gain.exponentialRampToValueAtTime(0.0001, n + 0.18);
         o.start(n); o.stop(n + 0.2);
-        beepTimer = setTimeout(blip, 3500 + Math.random() * 6000);
+        beepTimer = setTimeout(blip, 20000 + Math.random() * 20000);  // an occasional accent, ~20–40s apart
       }
-      beepTimer = setTimeout(blip, 2500);
+      beepTimer = setTimeout(blip, 9000);
     }
     function set(v) {
       on = v; btn.classList.toggle("active", on);
@@ -199,53 +201,7 @@
     });
   }
 
-  /* ============================================================
-     6 · TILT PARALLAX  (cursor on desktop, device tilt on mobile)
-     ============================================================ */
-  function startParallax() {
-    var hub = document.getElementById("hub");
-    var globeWrap = document.querySelector("#hub .globe-wrap");
-    if (!hub) return;
-    var nx = 0, ny = 0, cx = 0, cy = 0;
-    function apply() {
-      cx += (nx - cx) * 0.08; cy += (ny - cy) * 0.08;
-      if (window.__setGlobeTilt) window.__setGlobeTilt(cx * 16, cy * 12);
-      if (globeWrap) globeWrap.style.transform =
-        "perspective(900px) rotateY(" + (cx * 5).toFixed(2) + "deg) rotateX(" + (-cy * 5).toFixed(2) + "deg)";
-      if (!coarse) {  // skip column shift on touch screens (avoids horizontal overflow)
-        var cols = hub.querySelectorAll(".col");
-        for (var i = 0; i < cols.length; i++)
-          cols[i].style.transform = "translate3d(" + (-cx * 7).toFixed(1) + "px," + (-cy * 5).toFixed(1) + "px,0)";
-      }
-      requestAnimationFrame(apply);
-    }
-    requestAnimationFrame(apply);
-
-    if (!coarse) {
-      window.addEventListener("mousemove", function (e) {
-        nx = (e.clientX / window.innerWidth) * 2 - 1;
-        ny = (e.clientY / window.innerHeight) * 2 - 1;
-      });
-    } else {
-      function onTilt(e) {
-        var g = e.gamma || 0, b = e.beta || 0;            // gamma: L/R, beta: F/B
-        nx = Math.max(-1, Math.min(1, g / 35));
-        ny = Math.max(-1, Math.min(1, (b - 45) / 35));
-      }
-      function enable() {
-        if (typeof DeviceOrientationEvent !== "undefined" &&
-            typeof DeviceOrientationEvent.requestPermission === "function") {
-          DeviceOrientationEvent.requestPermission().then(function (s) {
-            if (s === "granted") window.addEventListener("deviceorientation", onTilt);
-          }).catch(function () {});
-        } else {
-          window.addEventListener("deviceorientation", onTilt);
-        }
-        window.removeEventListener("pointerdown", enable);
-      }
-      window.addEventListener("pointerdown", enable, { once: true });
-    }
-  }
+  /* (cursor/device parallax removed by request — the globe and panels stay put) */
 
   /* ============================================================
      7 · FULLSCREEN  (enter + explicit exit; graceful fallback)
@@ -293,7 +249,6 @@
   startHalEye();
   startBoot();
   startAmbient();
-  startParallax();
   startFullscreen();
   startHaptics();
   loadWeather();

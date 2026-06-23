@@ -103,6 +103,17 @@
 }
 
 /* ============================================================
+   DETAIL OVERLAY on phones  ·  full-screen, single column
+   ============================================================ */
+@media (pointer: coarse), (max-width: 880px) {
+  #hub #detail { padding: 8px; }
+  #hub .dx-box { width: 100%; max-height: 96vh; border-radius: 10px; }
+  #hub .dx-grid { grid-template-columns: 1fr; gap: 10px; }
+  #hub .dx-card.dx-wide { grid-column: auto; }
+  #hub .dx-body { padding: 12px; }
+}
+
+/* ============================================================
    STANDALONE (installed PWA)  ·  respect the notch, hide the
    in-page fullscreen button (already full screen)
    ============================================================ */
