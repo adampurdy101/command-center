@@ -228,30 +228,14 @@
     function inFS() { return document.fullscreenElement || document.webkitFullscreenElement; }
     function doEnter() { try { (root.requestFullscreen || root.webkitRequestFullscreen).call(root); } catch (e) {} }
     function doExit() { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {} }
-
-    // BULLETPROOF exit affordance: a fixed-position button bolted to <body>, NOT the
-    // header — so it can't be clipped by header overflow, hidden, or missed. Shows
-    // only while in fullscreen, high above everything.
-    var fixedExit = document.getElementById("fs-exit-fixed");
-    if (!fixedExit) {
-      fixedExit = document.createElement("button");
-      fixedExit.id = "fs-exit-fixed";
-      fixedExit.type = "button";
-      fixedExit.textContent = "✕ EXIT FULLSCREEN";
-      fixedExit.style.cssText = [
-        "position:fixed", "top:52px", "right:18px", "z-index:2147483647", "display:none",
-        "background:rgba(8,20,13,0.94)", "color:#7dffb0", "border:1.5px solid #41ff7e",
-        "border-radius:9px", "font:700 13px/1 ui-monospace,Menlo,Consolas,monospace",
-        "letter-spacing:1px", "padding:11px 15px", "cursor:pointer",
-        "box-shadow:0 0 18px rgba(65,255,126,.55)", "-webkit-backdrop-filter:blur(5px)", "backdrop-filter:blur(5px)"
-      ].join(";");
-      fixedExit.addEventListener("click", function (e) { e.preventDefault(); doExit(); });
-      document.body.appendChild(fixedExit);
-    }
+    // remove any leftover floating exit button from a previous build
+    var stray = document.getElementById("fs-exit-fixed");
+    if (stray && stray.parentNode) stray.parentNode.removeChild(stray);
 
     function sync() {
       var f = !!inFS();
-      // ONE in-bar button: flips to a lit-green EXIT while fullscreen
+      // ONE in-bar button, right where ⤢ FULLSCREEN was: it flips to a lit-green
+      // ⤡ EXIT FULLSCREEN while fullscreen, blended into the top bar.
       if (enter) {
         enter.style.display = canFS ? "" : "none";
         enter.textContent = f ? "⤡ EXIT FULLSCREEN" : "⤢ FULLSCREEN";
@@ -259,8 +243,6 @@
         enter.classList.toggle("fs-on", f);
       }
       if (exit) exit.style.display = "none";   // legacy 2nd button stays unused
-      // the guaranteed fixed button, only while actually in fullscreen
-      fixedExit.style.display = f ? "block" : "none";
     }
     if (!canFS) {
       // iPhone Safari has no Fullscreen API — hide both; install-to-home-screen gives full screen
