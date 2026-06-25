@@ -9,9 +9,20 @@
    ============================================================ */
 (function () {
   "use strict";
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").catch(function () {});
-    });
-  }
+  if (!("serviceWorker" in navigator)) return;
+
+  // Auto-reload ONCE when a newly-deployed service worker takes control, so
+  // updates reach the user without manual hard-refreshes (kills stale-UI bugs).
+  var refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", function () {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").then(function (reg) {
+      try { reg.update(); } catch (e) {}   // check for a new version on every load
+    }).catch(function () {});
+  });
 })();
