@@ -1,7 +1,7 @@
 /* command-center service worker — minimal + safe.
    Network-first so the live site always wins; cache is only a
    last-resort offline fallback. Old caches are cleared on activate. */
-const CACHE = 'cc-shell-v7';
+const CACHE = 'cc-shell-v8';
 const SHELL = [
   '.', 'index.html',
   'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css',
@@ -16,9 +16,13 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+      // a freshly-deployed worker force-reloads any open tab so a stale page can't linger
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then((clients) => { clients.forEach((c) => { try { c.navigate(c.url); } catch (err) {} }); })
+      .catch(() => {})
   );
 });
 
