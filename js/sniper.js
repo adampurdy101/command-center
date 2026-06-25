@@ -220,6 +220,19 @@
     this.kills = 0;
     this.combo = 0;
     this.comboTimer = 0;
+    this.bestCombo = 0;
+
+    /* ----- FOCUS (bullet-time) ----- */
+    this.focus = 0;          // charge 0..1, fills with kills
+    this.focusActive = false;
+    this.focusT = 0;         // seconds remaining in current activation
+    this.focusDur = 0;       // total seconds this activation
+    this.focusFlash = 0;     // activation white-out flash
+
+    /* ----- callout (DOUBLE / TRIPLE KILL banners) ----- */
+    this.callout = null;     // { text, t, life }
+    this.rings = [];         // expanding shockwave rings (screen space)
+
     this.waveBanner = 0;
     this.waveBannerText = '';
     this.spawnTimer = 1.2;
@@ -285,7 +298,7 @@
     var h = ridgeHeight(wx * 0.06 + 100, L.seed, L.oct);
     var baseY = this.cy + (L.baseY - 0.5) * this.H * 0.9;
     var amp = L.amp * this.H * (0.6 + z * 0.05);
-    var y = baseY - h * amp + fin(this.camY, 0) * L.parallax * 0.4;
+    var y = baseY - h * amp + fin(this.camY, 0) * (0.7 + L.parallax * 0.3);   // vertical pan moves the world (near layers move most)
     return fin(y, this.H);
   };
 
@@ -315,7 +328,7 @@
     var exit = document.createElement('button');
     exit.textContent = '✕ EXIT';
     exit.style.cssText = [
-      'position:absolute', 'top:12px', 'right:14px', 'z-index:5',
+      'position:absolute', 'top:12px', 'right:14px', 'z-index:60',
       'background:rgba(8,20,13,0.7)', 'color:' + C.green,
       'border:1px solid ' + C.faint, 'border-radius:8px',
       'font:600 13px/1 ' + FONT, 'letter-spacing:1px',
@@ -342,6 +355,32 @@
       snd.textContent = on ? '♪ SND' : '✕ SND';
     });
     ov.appendChild(snd);
+
+    // Keyframes for the rotate-gate phone animation (injected once)
+    if (!document.getElementById('sn-rotate-style')) {
+      var st = document.createElement('style');
+      st.id = 'sn-rotate-style';
+      st.textContent = '@keyframes snTilt{0%,28%{transform:rotate(0deg)}58%,100%{transform:rotate(-90deg)}}';
+      document.head.appendChild(st);
+    }
+
+    // ROTATE-TO-LANDSCAPE gate — covers the game on portrait touch devices
+    var gate = document.createElement('div');
+    gate.id = 'sniper-rotate-gate';
+    gate.style.cssText = [
+      'position:absolute', 'inset:0', 'z-index:40', 'display:none',
+      'flex-direction:column', 'align-items:center', 'justify-content:center',
+      'background:radial-gradient(120% 120% at 50% 50%, #08160e 0%, #040b07 70%, #02060380 100%), #040a07',
+      'color:' + C.green, 'text-align:center', 'font-family:' + FONT,
+      'touch-action:none', '-webkit-user-select:none', 'user-select:none'
+    ].join(';');
+    gate.innerHTML =
+      '<div style="width:48px;height:80px;border:3px solid ' + C.green + ';border-radius:9px;box-shadow:0 0 16px rgba(65,255,126,.55);animation:snTilt 2.2s ease-in-out infinite"></div>'
+      + '<div style="font:700 22px ' + FONT + ';letter-spacing:3px;margin-top:28px;text-shadow:0 0 12px ' + C.green + '">ROTATE TO LANDSCAPE</div>'
+      + '<div style="font:500 13px ' + FONT + ';letter-spacing:1px;color:' + C.dim + ';margin-top:10px;max-width:78%">DEEP SCOPE deploys in landscape — turn your device sideways</div>';
+    ov.appendChild(gate);
+    this.rotateGate = gate;
+    this.portraitBlocked = false;
 
     document.body.appendChild(ov);
 
@@ -378,8 +417,8 @@
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     this.cx = W * 0.5;
-    this.cy = H * 0.46;
-    this.lensR = Math.max(80, Math.min(W, H) * 0.47);
+    this.cy = H * 0.48;
+    this.lensR = Math.max(58, Math.min(W, H) * 0.17);   // small scope overlay — the scene fills the whole screen
 
     // Control geometry (landscape, two thumbs)
     var pad = Math.max(18, Math.min(W, H) * 0.05);
@@ -400,7 +439,29 @@
     this.zoomSlider.w = sw;
     this.zoomSlider.h = sh;
     this.zoomSlider.x = W - pad - sw;
-    this.zoomSlider.y = this.fireBtn.y - this.fireBtn.r - sh - 18;
+    // sit the slider above the gun-status block (name ~46px + ammo/heat bar) that hugs the fire button
+    this.zoomSlider.y = this.fireBtn.y - this.fireBtn.r - sh - 54;
+
+    this.updateOrientation();
+  };
+
+  /* ------------------------------------------------------------------ *
+   * ORIENTATION — force landscape on phones/tablets. Where the browser
+   * can't lock orientation (iOS), show a "rotate to landscape" gate that
+   * blocks play until the device is held sideways.
+   * ------------------------------------------------------------------ */
+  Game.prototype.isTouchDevice = function () {
+    return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ||
+      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  };
+
+  Game.prototype.updateOrientation = function () {
+    if (!this.rotateGate) return;
+    var portrait = (window.innerHeight || 0) > (window.innerWidth || 0);
+    var block = portrait && this.isTouchDevice();
+    this.portraitBlocked = block;
+    this.rotateGate.style.display = block ? 'flex' : 'none';
+    if (block) { this.firing = false; this.stick.active = false; this.stick.dx = 0; this.stick.dy = 0; }
   };
 
   /* ------------------------------------------------------------------ *
@@ -414,12 +475,20 @@
     document.body.style.overflow = 'hidden';
     Audio2.resume();
 
-    // Best-effort native fullscreen.
+    // Best-effort native fullscreen, then lock to landscape where supported.
     try {
       var el = this.overlay;
-      if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    } catch (e) { /* iOS Safari etc — overlay still covers viewport */ }
+      var lockLandscape = function () {
+        try {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(function () {});
+          }
+        } catch (e) { /* iOS Safari has no orientation lock — the rotate gate covers it */ }
+      };
+      if (el.requestFullscreen) el.requestFullscreen().then(lockLandscape).catch(lockLandscape);
+      else if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); lockLandscape(); }
+      else lockLandscape();
+    } catch (e) { /* iOS Safari etc — overlay still covers viewport, gate enforces landscape */ }
 
     window.addEventListener('resize', this._onResize);
     window.addEventListener('orientationchange', this._onResize);
@@ -442,6 +511,9 @@
     this.firing = false;
 
     try {
+      if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+    } catch (e) {}
+    try {
       if (document.fullscreenElement) document.exitFullscreen();
       else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
     } catch (e) {}
@@ -460,9 +532,11 @@
   };
 
   Game.prototype.resetGame = function () {
-    this.score = 0; this.wave = 0; this.kills = 0; this.combo = 0; this.comboTimer = 0;
+    this.score = 0; this.wave = 0; this.kills = 0; this.combo = 0; this.comboTimer = 0; this.bestCombo = 0;
     this.agents.length = 0; this.tracers.length = 0; this.particles.length = 0;
     this.debris.length = 0; this.popups.length = 0; this.feed.length = 0; this.blooms.length = 0;
+    this.rings.length = 0; this.callout = null;
+    this.focus = 0; this.focusActive = false; this.focusT = 0; this.focusDur = 0; this.focusFlash = 0;
     this.camX = 0; this.camY = 0; this.zoom = 6; this.zoomTarget = 6;
     this.recoil = 0; this.vibe = 0; this.shake = 0; this.flash = 0; this.hitMarker = 0;
     this.heat = 0; this.overheated = false; this.spin = 0;
@@ -489,8 +563,9 @@
     var diff = this.wave;
     var r = Math.random();
     var type;
-    if (r < 0.12 + diff * 0.005) type = 'depot';
-    else if (r < 0.55) type = 'runner';
+    if (r < 0.10) type = 'depot';
+    else if (r < 0.26 + diff * 0.01) type = 'drone';   // flying — aim up to hit
+    else if (r < 0.58) type = 'runner';
     else type = 'popup';
 
     // World X chosen relative to current camera so they appear near view sometimes.
@@ -520,6 +595,13 @@
       a.peek = rand(2.5, 5);
     }
     if (type === 'depot') { a.peek = 99; a.h = 1; a.state = 'up'; }
+    if (type === 'drone') {
+      a.fly = true; a.h = 1; a.state = 'up'; a.peek = 99;
+      a.skyY = rand(0.05, 0.95); a.bob = 0; a.spin = 0;
+      a.vx = rand(22, 46) * a.dir;
+      a.sx = a.dir > 0 ? -50 : W + 50;   // enter from a side and drift across
+      a.hp = 2; a.maxhp = 2; a.size = rand(0.95, 1.25);
+    }
     this.agents.push(a);
   };
 
@@ -673,14 +755,32 @@
 
   Game.prototype.killAgent = function (a, head, p) {
     if (a.dead) return;
-    a.dead = true; a.state = 'dead';
+    a.dead = true; a.state = 'dead'; a.deadT = 0;
+    // ragdoll launch (gravity applied in update)
+    a.deadVX = (a.vx || 0) * 0.3 + (a.dir || 1) * rand(10, 60) * (head ? 1.6 : 1);
+    a.deadVY = -rand(40, 130) - (head ? 60 : 0);
+    a.deadSpin = rand(-7, 7);
+    a.deadDX = 0; a.deadDY = 0; a.deadRot = 0;
     this.kills++;
     this.killsThisWave++;
 
     // Combo
     this.combo++;
     this.comboTimer = 2.4;
+    if (this.combo > this.bestCombo) this.bestCombo = this.combo;
     var mult = 1 + Math.min(8, this.combo - 1) * 0.25;
+
+    // FOCUS charges with kills (headshots & depots give more), unless already in bullet-time
+    if (!this.focusActive) {
+      this.focus = clamp(this.focus + (head ? 0.16 : 0.10) + (a.type === 'depot' ? 0.10 : 0), 0, 1);
+    }
+    // Combo callout banner
+    var co = this.comboName(this.combo);
+    if (co) this.callout = { text: co, t: 0, life: 1.3 };
+    // Shockwave ring at the kill point
+    this.rings.push({ x: p.x, y: p.y, t: 0, life: head ? 0.5 : 0.38, r0: p.r * 0.4,
+      r1: p.r * (head ? 4.5 : 3) + 40, col: head ? C.hi : C.green, lw: head ? 3 : 2 });
+    if (this.rings.length > 14) this.rings.shift();
 
     var base = a.type === 'depot' ? 250 : (a.type === 'runner' ? 150 : 100);
     if (head) base += 100;
@@ -704,6 +804,29 @@
     }
   };
 
+  /* Combo-streak callout names. */
+  Game.prototype.comboName = function (c) {
+    if (c === 2) return 'DOUBLE KILL';
+    if (c === 3) return 'TRIPLE KILL';
+    if (c === 4) return 'MULTI KILL';
+    if (c === 5) return 'RAMPAGE';
+    if (c === 7) return 'UNSTOPPABLE';
+    if (c === 10) return 'GODLIKE';
+    if (c > 10 && c % 5 === 0) return 'OVERWATCH x' + c;
+    return null;
+  };
+
+  /* Spend the FOCUS charge to enter bullet-time. */
+  Game.prototype.activateFocus = function () {
+    if (this.focusActive || this.focus < 0.4) return;
+    this.focusActive = true;
+    this.focusDur = 2.2 + this.focus * 4.0;   // 2.2..6.2s, scaled by charge
+    this.focusT = this.focusDur;
+    this.focusFlash = 1;
+    if (navigator.vibrate) { try { navigator.vibrate([8, 30, 8]); } catch (e) {} }
+    try { Audio2.focus && Audio2.focus(); } catch (e) {}
+  };
+
   /* Massive chain explosion from a depot. */
   Game.prototype.detonate = function (x, y, r) {
     Audio2.explosion();
@@ -711,6 +834,8 @@
     this.flash = Math.min(3, this.flash + 1.6);
     this.blooms.push({ x: x, y: y, t: 0, life: 0.6, r0: r, r1: r * 9 + 140 });
     if (this.blooms.length > 6) this.blooms.shift();
+    this.rings.push({ x: x, y: y, t: 0, life: 0.55, r0: r, r1: r * 8 + 180, col: C.amber, lw: 4 });
+    if (this.rings.length > 14) this.rings.shift();
 
     // debris rain
     for (var i = 0; i < 26 && this.debris.length < 90; i++) {
@@ -766,8 +891,16 @@
   Game.prototype.agentScreen = function (a) {
     // Agents store a screen-space X that scrolls as the camera pans.
     var x = a.sx;
-    var ridge = this.ridgeY(a.layer, x);
     var z = fin(this.zoom, 6);
+    if (a.fly) {
+      // FLYING drone: lives high in the sky; you aim UP to bring it to the crosshair.
+      var hor = fin(this.cy + this.camY * 0.85, this.cy);
+      var fy = hor - this.H * (0.16 + (a.skyY || 0.5) * 0.34) + (a.bob || 0);
+      var fH = 26 * a.size * (0.5 + z * 0.12);
+      if (!isFinite(x) || !isFinite(fy) || !isFinite(fH)) return null;
+      return { x: x, y: fy, top: fy - fH * 0.5, ridge: fy, r: fH * 0.72, figH: fH, pop: a.h };
+    }
+    var ridge = this.ridgeY(a.layer, x);
     var figH = (a.type === 'depot' ? 30 : 22) * a.size * (0.5 + z * 0.12);
     var pop = ease(a.h);
     var r = figH * 0.5 * (a.type === 'depot' ? 1.2 : 0.9);
@@ -785,6 +918,7 @@
     else if (k === '2') this.setGun('mg');
     else if (k === '3') this.setGun('minigun');
     else if (k === 'r' || k === 'R') this.startReload();
+    else if (k === 'f' || k === 'F' || k === 'Shift') this.activateFocus();
     else if (k === 'Escape') this.close();
     else if (k === ' ') { this.firing = true; e.preventDefault(); }
     else if (k === '+' || k === '=') this.nudgeZoom(1);
@@ -940,27 +1074,39 @@
   /* ==================================================================== *
    * UPDATE
    * ==================================================================== */
-  Game.prototype.update = function (dt) {
+  Game.prototype.update = function (rdt) {
     var W = this.W, H = this.H;
 
-    // Smooth zoom
-    this.zoom += (this.zoomTarget - this.zoom) * Math.min(1, dt * 9);
+    // Held in portrait on a phone/tablet — freeze the game behind the rotate gate.
+    if (this.portraitBlocked) return;
+
+    // FOCUS bullet-time: meter drains on REAL time; the world runs on scaled dt.
+    if (this.focusActive) {
+      this.focusT -= rdt;
+      if (this.focusT <= 0) { this.focusActive = false; this.focusT = 0; this.focus = 0; }
+    }
+    this.focusFlash = Math.max(0, this.focusFlash - rdt * 3);
+    var tscale = this.focusActive ? 0.34 : 1;   // slow the world during focus
+    var dt = rdt * tscale;
+
+    // Smooth zoom (responsive — real time)
+    this.zoom += (this.zoomTarget - this.zoom) * Math.min(1, rdt * 9);
     this.zoom = clamp(fin(this.zoom, 6), 2, 12);
 
-    // Joystick pan: world scrolls under fixed reticle. Push further = faster.
-    var panSpeedBase = 320 / Math.max(2, this.zoom); // less pan at high mag
+    // Joystick pan: world scrolls under fixed reticle. Aim stays full-speed even in focus.
+    var panSpeedBase = 560 / Math.max(2, this.zoom); // less pan at high mag
     var sx = this.stick.active ? this.stick.dx : (this.panVX || 0);
     var sy = this.stick.active ? this.stick.dy : (this.panVY || 0);
-    // apply nonlinear response for fine control
-    var resp = function (v) { return Math.sign(v) * v * v; };
-    var panDX = resp(sx) * panSpeedBase * dt;
-    var panDY = resp(sy) * panSpeedBase * dt * 0.7;
+    // response: fine control near center, full speed toward the edge
+    var resp = function (v) { var s = Math.sign(v), a = Math.min(1, Math.abs(v)); return s * a * (0.4 + 0.6 * a); };
+    var panDX = resp(sx) * panSpeedBase * rdt;
+    var panDY = resp(sy) * panSpeedBase * rdt;                // full vertical speed
     this.camX = fin(this.camX + panDX, this.camX || 0);
-    this.camY = fin(this.camY + panDY, this.camY || 0);
-    this.camY = clamp(this.camY, -H * 0.25, H * 0.25);
+    this.camY = fin(this.camY - panDY, this.camY || 0);       // stick up = look up (non-inverted)
+    this.camY = clamp(this.camY, -H * 0.45, H * 0.7);          // look down (foreground) limited; look up (sky) generous
     // decay keyboard pan
-    this.panVX *= (1 - Math.min(1, dt * 6));
-    this.panVY *= (1 - Math.min(1, dt * 6));
+    this.panVX *= (1 - Math.min(1, rdt * 6));
+    this.panVY *= (1 - Math.min(1, rdt * 6));
 
     // Scope sway (slow lissajous), amplified by gun & zoom; settles recoil.
     this.swayT += dt;
@@ -987,8 +1133,8 @@
     // Auto-reload assault/mg when empty and not firing
     if (this.ammo !== Infinity && this.ammo <= 0 && this.reloading <= 0) this.startReload();
 
-    // Firing logic
-    this.tryFire(dt);
+    // Firing logic (real time — full fire rate during focus)
+    this.tryFire(rdt);
 
     // Minigun barrel spin visual
     if (this.gun.spinup) this.barrelAngle += dt * (3 + this.spin * 40);
@@ -1022,8 +1168,20 @@
 
       if (a.dead) {
         a.deadT = (a.deadT || 0) + dt;
-        if (a.deadT > 0.25) { this.agents.splice(i, 1); }
+        a.deadVY = (a.deadVY || 0) + 340 * dt;            // gravity on the ragdoll
+        a.deadDX = (a.deadDX || 0) + (a.deadVX || 0) * dt;
+        a.deadDY = (a.deadDY || 0) + a.deadVY * dt;
+        a.deadRot = (a.deadRot || 0) + (a.deadSpin || 0) * dt;
+        if (a.deadT > 0.9) { this.agents.splice(i, 1); }
         continue;
+      }
+
+      if (a.fly) {
+        a.sx += a.vx * dt;                  // drift across the sky
+        a.bob = Math.sin(a.t * 2.5) * 10;   // bob
+        a.spin = (a.spin || 0) + dt * 34;   // rotor spin
+        if (a.sx < -130 || a.sx > this.W + 130) { this.agents.splice(i, 1); }
+        continue;                            // drones skip the ground rise/duck/run states
       }
 
       if (a.state === 'rise') {
@@ -1082,6 +1240,15 @@
       if (bm.t >= bm.life) this.blooms.splice(bl, 1);
     }
 
+    // Shockwave rings
+    for (var rg = this.rings.length - 1; rg >= 0; rg--) {
+      var rn = this.rings[rg]; rn.t += dt;
+      if (rn.t >= rn.life) this.rings.splice(rg, 1);
+    }
+
+    // Combo callout banner
+    if (this.callout) { this.callout.t += dt; if (this.callout.t >= this.callout.life) this.callout = null; }
+
     // Feed
     for (var f = 0; f < this.feed.length; f++) this.feed[f].t += dt;
   };
@@ -1126,6 +1293,12 @@
     // Explosion bloom washes (full screen)
     this.drawBlooms(ctx);
 
+    // Shockwave rings from kills / explosions
+    this.drawRings(ctx);
+
+    // FOCUS bullet-time treatment (under the HUD so readouts stay crisp)
+    if (this.focusActive || this.focusFlash > 0) this.drawFocusFX(ctx, W, H);
+
     // HUD + controls (screen space)
     this.drawHUD(ctx, W, H);
     this.drawControls(ctx, W, H);
@@ -1136,30 +1309,77 @@
 
   /* --- The scene inside the lens: sky, ridges, agents, tracers, particles --- */
   Game.prototype.drawWorld = function (ctx, W, H) {
-    // Sky band gradient behind mountains
-    var skyTop = this.cy - this.lensR * 1.1;
-    var skyBot = this.cy + this.lensR * 0.4;
-    if (isFinite(skyTop) && isFinite(skyBot) && skyBot > skyTop) {
-      var g = ctx.createLinearGradient(0, skyTop, 0, skyBot);
-      g.addColorStop(0, '#04140c');
-      g.addColorStop(0.6, '#06180e');
-      g.addColorStop(1, '#0a2014');
+    // Full-screen sky gradient; the horizon shifts with vertical aim (camY)
+    var horizon = fin(this.cy + this.camY * 0.85, this.cy);
+    var top = horizon - H * 1.2, bot = horizon + H * 0.5;
+    if (isFinite(top) && isFinite(bot) && bot > top) {
+      var g = ctx.createLinearGradient(0, top, 0, bot);
+      g.addColorStop(0, '#02100a');      // deep upper sky
+      g.addColorStop(0.55, '#05160e');
+      g.addColorStop(0.86, '#0a2214');   // horizon haze glow
+      g.addColorStop(1, '#0e2c1a');
       ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-    } else {
-      ctx.fillStyle = '#06180e'; ctx.fillRect(0, 0, W, H);
+    } else { ctx.fillStyle = '#06180e'; }
+    ctx.fillRect(0, 0, W, H);
+
+    // ===== ATMOSPHERE: stars, moon, aurora, drifting mist =====
+    var aCamX = fin(this.camX, 0), aCamY = fin(this.camY, 0), T = this.swayT;
+    // twinkling starfield (slow parallax, follows vertical aim)
+    ctx.save();
+    for (var s = 0; s < 70; s++) {
+      var sxp = ((((s * 149.3 - aCamX * 0.04) % (W + 60)) + W + 60) % (W + 60)) - 30;
+      var syp = ((s * 71.7) % Math.max(40, horizon)) * 0.78 + aCamY * 0.25;
+      if (syp > horizon - 18 || !isFinite(sxp) || !isFinite(syp)) continue;
+      var tw = 0.3 + 0.6 * (0.5 + 0.5 * Math.sin(T * 1.5 + s));
+      ctx.globalAlpha = (s % 9 === 0 ? 0.85 : 0.38) * tw;
+      ctx.fillStyle = (s % 11 === 0) ? C.cyan : C.faint;
+      var ss = (s % 13 === 0) ? 1.8 : 1.1;
+      ctx.fillRect(sxp, syp, ss, ss);
+    }
+    ctx.restore();
+
+    // MOON — glowing disc in the upper sky; kept off-center (and below the HUD row) so it never sits behind the SCORE
+    var mr = Math.min(W, H) * 0.085;
+    var mx = ((((W * 0.66 - aCamX * 0.02) % (W * 1.4)) + W * 1.4) % (W * 1.4));
+    var my = horizon - H * 0.30 + aCamY * 0.18;
+    if (isFinite(mx) && isFinite(my)) {
+      ctx.save();
+      var mg = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 3.6);
+      mg.addColorStop(0, 'rgba(120,255,176,0.15)'); mg.addColorStop(0.5, 'rgba(65,255,126,0.05)'); mg.addColorStop(1, 'rgba(65,255,126,0)');
+      ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx, my, mr * 3.6, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.9; ctx.fillStyle = '#0c2a18'; ctx.shadowColor = C.green; ctx.shadowBlur = 22;
+      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0; ctx.globalAlpha = 0.6; ctx.strokeStyle = C.hi; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 0.16; ctx.fillStyle = C.green;
+      ctx.beginPath(); ctx.arc(mx - mr * 0.3, my - mr * 0.2, mr * 0.22, 0, 6.28); ctx.fill();
+      ctx.beginPath(); ctx.arc(mx + mr * 0.35, my + mr * 0.25, mr * 0.16, 0, 6.28); ctx.fill();
+      ctx.beginPath(); ctx.arc(mx + mr * 0.12, my - mr * 0.4, mr * 0.1, 0, 6.28); ctx.fill();
+      ctx.restore();
     }
 
-    // faint scan stars
+    // AURORA shimmer bands near the horizon
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (var au = 0; au < 3; au++) {
+      var ay = horizon - H * (0.30 + au * 0.07) + Math.sin(T * 0.4 + au) * 8;
+      if (!isFinite(ay)) continue;
+      ctx.globalAlpha = 0.055 - au * 0.012; ctx.fillStyle = au === 1 ? C.cyan : C.green;
+      ctx.beginPath(); ctx.moveTo(-20, ay);
+      for (var ax = 0; ax <= W + 20; ax += 26) ctx.lineTo(ax, ay + Math.sin(ax * 0.012 + T * 0.6 + au * 2) * 14);
+      ctx.lineTo(W + 20, ay + 70); ctx.lineTo(-20, ay + 70); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+
+    // drifting MIST bands (slow, low alpha)
     ctx.save();
-    ctx.globalAlpha = 0.5;
-    for (var s = 0; s < 40; s++) {
-      var sxp = ((s * 137.5 + this.camX * 0.05) % (W + 40)) - 20;
-      var syp = (s * 53.3) % (H * 0.35) + 8;
-      if (!isFinite(sxp) || !isFinite(syp)) continue;
-      ctx.fillStyle = (s % 7 === 0) ? C.cyan : C.faint;
-      ctx.globalAlpha = 0.15 + (s % 5) * 0.05;
-      ctx.fillRect(sxp, syp, 1.4, 1.4);
+    for (var cl = 0; cl < 4; cl++) {
+      var cyB = horizon - H * (0.04 + cl * 0.06) + aCamY * (0.55 - cl * 0.08);
+      var cw = W * (0.5 + cl * 0.12), ch = H * (0.045 + cl * 0.014);
+      var cxB = ((((T * (7 + cl * 2) + aCamX * 0.06) - 200) % (W + 400)) + W + 400) % (W + 400) - 200;
+      if (!isFinite(cxB) || !isFinite(cyB)) continue;
+      ctx.globalAlpha = 0.05 + cl * 0.008; ctx.fillStyle = '#0b2616';
+      ctx.beginPath(); ctx.ellipse(cxB, cyB, cw, ch, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cxB - cw * 0.55, cyB + ch * 0.3, cw * 0.6, ch * 0.7, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
 
@@ -1248,6 +1468,11 @@
 
     ctx.save();
     ctx.translate(x, ridge);
+    if (a.dead) {
+      // ragdoll: drift + tumble as the body falls
+      ctx.translate(a.deadDX || 0, a.deadDY || 0);
+      ctx.rotate(a.deadRot || 0);
+    }
     ctx.lineWidth = Math.max(1, figH * 0.06);
     ctx.strokeStyle = col;
     ctx.fillStyle = col;
@@ -1255,10 +1480,28 @@
     ctx.globalAlpha = clamp(0.4 + pop * 0.6, 0, 1);
 
     if (a.dead) {
-      ctx.globalAlpha *= clamp(1 - (a.deadT || 0) * 4, 0, 1);
+      ctx.globalAlpha *= clamp(1 - (a.deadT || 0) / 0.9, 0, 1);
     }
 
-    if (a.type === 'depot') {
+    if (a.fly) {
+      // DRONE — diamond body + spinning rotor arms + scanning eye
+      var dw = figH * 1.0;
+      ctx.strokeStyle = a.flash > 0 ? C.amber : C.green; ctx.fillStyle = 'rgba(18,40,26,0.55)';
+      ctx.lineWidth = Math.max(1, figH * 0.07); ctx.shadowColor = C.green; ctx.shadowBlur = 7;
+      ctx.beginPath();
+      ctx.moveTo(0, -figH * 0.22); ctx.lineTo(dw * 0.42, 0); ctx.lineTo(0, figH * 0.22); ctx.lineTo(-dw * 0.42, 0); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      for (var rr = 0; rr < 2; rr++) {
+        var sgn = rr ? 1 : -1;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(sgn * dw * 0.58, -figH * 0.14); ctx.stroke();
+        ctx.save(); ctx.translate(sgn * dw * 0.58, -figH * 0.14); ctx.globalAlpha *= 0.55;
+        var blur = dw * 0.32 * (0.55 + 0.45 * Math.abs(Math.sin((a.spin || 0) + rr)));
+        ctx.beginPath(); ctx.ellipse(0, 0, blur, 2.2, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.fillStyle = C.red; ctx.shadowColor = C.red; ctx.shadowBlur = 9;
+      ctx.beginPath(); ctx.arc(0, figH * 0.12, Math.max(1.5, figH * 0.07), 0, Math.PI * 2); ctx.fill();
+    } else if (a.type === 'depot') {
       // fuel depot / vehicle box with tank + hazard mark
       var w = figH * 0.9, hh = figH * 0.8;
       ctx.strokeStyle = a.flash > 0 ? C.amber : C.dim;
@@ -1337,24 +1580,31 @@
       var a = clamp(1 - t.age / t.life, 0, 1);
       if (!isFinite(t.x0) || !isFinite(t.y0) || !isFinite(t.x1) || !isFinite(t.y1)) continue;
       ctx.save();
-      ctx.globalAlpha = a;
-      ctx.strokeStyle = t.kind === 'beam' ? C.hi : C.green;
-      ctx.shadowColor = C.green;
-      ctx.shadowBlur = t.kind === 'beam' ? 16 : 8;
       ctx.lineCap = 'round';
+      ctx.shadowColor = C.green;
+      var seg = function (x0, y0, x1, y1, w, col, al, blur) {
+        ctx.globalAlpha = al; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.shadowBlur = blur;
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      };
       if (t.kind === 'double') {
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(t.x0 - 3, t.y0); ctx.lineTo(t.x1 - 1.5, t.y1); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(t.x0 + 3, t.y0); ctx.lineTo(t.x1 + 1.5, t.y1); ctx.stroke();
+        // MG: twin bolts — glow + hot white core
+        seg(t.x0 - 3, t.y0, t.x1 - 1.5, t.y1, 2.6, C.green, a, 11);
+        seg(t.x0 + 3, t.y0, t.x1 + 1.5, t.y1, 2.6, C.green, a, 11);
+        seg(t.x0 - 3, t.y0, t.x1 - 1.5, t.y1, 1, '#eafff2', a, 0);
+        seg(t.x0 + 3, t.y0, t.x1 + 1.5, t.y1, 1, '#eafff2', a, 0);
       } else if (t.kind === 'beam') {
-        ctx.lineWidth = 3.4;
-        ctx.beginPath(); ctx.moveTo(t.x0, t.y0); ctx.lineTo(t.x1, t.y1); ctx.stroke();
-        ctx.globalAlpha = a * 0.5; ctx.lineWidth = 7;
-        ctx.beginPath(); ctx.moveTo(t.x0, t.y0); ctx.lineTo(t.x1, t.y1); ctx.stroke();
+        // Minigun: roaring laser — wide bloom, bright body, white core
+        seg(t.x0, t.y0, t.x1, t.y1, 12, C.green, a * 0.38, 22);
+        seg(t.x0, t.y0, t.x1, t.y1, 4.6, C.hi, a * 0.92, 14);
+        seg(t.x0, t.y0, t.x1, t.y1, 1.8, '#f2fff7', a, 0);
       } else {
-        ctx.lineWidth = 2.2;
-        ctx.beginPath(); ctx.moveTo(t.x0, t.y0); ctx.lineTo(t.x1, t.y1); ctx.stroke();
+        // Assault: crisp bolt + hot core
+        seg(t.x0, t.y0, t.x1, t.y1, 3, C.green, a, 12);
+        seg(t.x0, t.y0, t.x1, t.y1, 1.2, '#eafff2', a, 0);
       }
+      // muzzle spark at the barrel
+      ctx.globalAlpha = a * 0.85; ctx.fillStyle = C.hi; ctx.shadowColor = C.green; ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.arc(t.x0, t.y0, (t.kind === 'beam' ? 4.5 : 3) * a + 1, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
   };
@@ -1408,59 +1658,50 @@
     var cx = this.cx, cy = this.cy, R = this.lensR;
     if (!isFinite(cx) || !isFinite(cy) || !isFinite(R) || R <= 0) return;
 
-    // Darken everything outside the lens circle using even-odd fill.
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, W, H);
-    ctx.arc(cx, cy, R, 0, Math.PI * 2, true);
-    ctx.fillStyle = '#030806';
-    ctx.fill('evenodd');
-    ctx.restore();
+    // Gentle full-screen edge vignette — NOT a hard mask; the whole scene stays visible.
+    var vig = ctx.createRadialGradient(W * 0.5, H * 0.5, Math.min(W, H) * 0.34, W * 0.5, H * 0.5, Math.max(W, H) * 0.74);
+    if (vig) {
+      vig.addColorStop(0, 'rgba(2,8,5,0)');
+      vig.addColorStop(0.7, 'rgba(2,8,5,0.12)');
+      vig.addColorStop(1, 'rgba(2,8,5,0.6)');
+      ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+    }
 
-    // soft inner lens vignette (darken edges inside lens)
-    var vg = ctx.createRadialGradient(cx, cy, R * 0.55, cx, cy, R);
-    if (vg) {
-      vg.addColorStop(0, 'rgba(0,0,0,0)');
-      vg.addColorStop(0.82, 'rgba(2,8,5,0.15)');
-      vg.addColorStop(1, 'rgba(2,8,5,0.85)');
+    // faint "glass" darkening just inside the small scope so the aim area reads as a lens
+    var lens = ctx.createRadialGradient(cx, cy, R * 0.2, cx, cy, R);
+    if (lens) {
+      lens.addColorStop(0, 'rgba(0,0,0,0)');
+      lens.addColorStop(0.74, 'rgba(0,0,0,0)');
+      lens.addColorStop(1, 'rgba(4,16,10,0.42)');
       ctx.save();
       ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
-      ctx.fillStyle = vg; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+      ctx.fillStyle = lens; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+      // soft diagonal glint
+      ctx.globalAlpha = 0.05; ctx.fillStyle = C.cyan;
+      ctx.beginPath(); ctx.ellipse(cx - R * 0.3, cy - R * 0.35, R * 0.5, R * 0.18, -0.7, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
 
-    // Lens glint (faint diagonal highlight)
-    ctx.save();
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
-    ctx.globalAlpha = 0.06;
-    ctx.fillStyle = C.cyan;
-    ctx.beginPath();
-    ctx.ellipse(cx - R * 0.35, cy - R * 0.4, R * 0.5, R * 0.18, -0.7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // Glowing rim ring
+    // glowing scope rim (double ring)
     ctx.save();
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.strokeStyle = C.green; ctx.lineWidth = 2.4;
-    ctx.shadowColor = C.green; ctx.shadowBlur = 14; ctx.globalAlpha = 0.9;
-    ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx, cy, Math.max(0, R - 5), 0, Math.PI * 2);
-    ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.shadowBlur = 0; ctx.globalAlpha = 0.6;
-    ctx.stroke();
+    ctx.strokeStyle = C.green; ctx.lineWidth = 2.2; ctx.shadowColor = C.green; ctx.shadowBlur = 12; ctx.globalAlpha = 0.95; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, Math.max(0, R - 4), 0, Math.PI * 2);
+    ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.shadowBlur = 0; ctx.globalAlpha = 0.6; ctx.stroke();
     ctx.restore();
 
-    // Elevation / windage tick marks around the rim
+    // tick marks around the rim
     ctx.save();
-    ctx.strokeStyle = C.dim; ctx.globalAlpha = 0.55;
-    for (var k = 0; k < 72; k++) {
-      var ang = (k / 72) * Math.PI * 2;
-      var major = (k % 6 === 0);
-      var r0 = R + 3, r1 = R + (major ? 11 : 6);
-      var x0 = cx + Math.cos(ang) * r0, y0 = cy + Math.sin(ang) * r0;
-      var x1 = cx + Math.cos(ang) * r1, y1 = cy + Math.sin(ang) * r1;
-      ctx.lineWidth = major ? 1.6 : 0.8;
-      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.strokeStyle = C.dim; ctx.globalAlpha = 0.5;
+    for (var k = 0; k < 48; k++) {
+      var ang = (k / 48) * Math.PI * 2;
+      var major = (k % 4 === 0);
+      var r0 = R + 2, r1 = R + (major ? 9 : 5);
+      ctx.lineWidth = major ? 1.5 : 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ang) * r0, cy + Math.sin(ang) * r0);
+      ctx.lineTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
+      ctx.stroke();
     }
     ctx.restore();
   };
@@ -1572,6 +1813,52 @@
     }
   };
 
+  /* Expanding shockwave rings from kills & explosions. */
+  Game.prototype.drawRings = function (ctx) {
+    for (var i = 0; i < this.rings.length; i++) {
+      var rn = this.rings[i];
+      var t = clamp(rn.t / rn.life, 0, 1);
+      var r = lerp(rn.r0, rn.r1, ease(t));
+      var a = (1 - t);
+      if (!isFinite(rn.x) || !isFinite(rn.y) || !isFinite(r) || r <= 0) continue;
+      ctx.save();
+      ctx.globalAlpha = a * 0.8;
+      ctx.strokeStyle = rn.col || C.green;
+      ctx.lineWidth = Math.max(0.5, (rn.lw || 2) * (1 - t * 0.6));
+      ctx.shadowColor = rn.col || C.green; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(rn.x, rn.y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  /* FOCUS bullet-time screen treatment: activation flash + cool edge vignette. */
+  Game.prototype.drawFocusFX = function (ctx, W, H) {
+    ctx.save();
+    if (this.focusFlash > 0) {
+      ctx.globalAlpha = this.focusFlash * 0.5;
+      ctx.fillStyle = C.hi;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+    if (this.focusActive) {
+      var cx = this.cx, cy = this.cy;
+      var pulse = 0.5 + 0.5 * Math.sin(this.swayT * 8);
+      var maxR = Math.hypot(W, H) * 0.62;
+      if (isFinite(cx) && isFinite(cy) && this.lensR > 0) {
+        var g = ctx.createRadialGradient(cx, cy, this.lensR * 1.2, cx, cy, maxR);
+        g.addColorStop(0, 'rgba(0,20,18,0)');
+        g.addColorStop(1, 'rgba(0,28,30,' + (0.45 + pulse * 0.12) + ')');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+      ctx.globalAlpha = 0.06 + pulse * 0.03;
+      ctx.fillStyle = C.cyan;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  };
+
   /* ------------------------------------------------------------------ *
    * HUD — top, clear.
    * ------------------------------------------------------------------ */
@@ -1580,10 +1867,10 @@
     ctx.textBaseline = 'top';
     ctx.shadowColor = C.green; ctx.shadowBlur = 4;
 
-    // Title
+    // Title (indented past the top-left SND button)
     ctx.fillStyle = C.green; ctx.font = '600 14px ' + FONT;
     ctx.textAlign = 'left';
-    ctx.fillText('DEEP SCOPE // OVERWATCH', 56, 14);
+    ctx.fillText('DEEP SCOPE // OVERWATCH', 96, 14);
 
     // Score + wave (center-top)
     ctx.textAlign = 'center';
@@ -1592,22 +1879,22 @@
     ctx.fillStyle = C.dim; ctx.font = '11px ' + FONT;
     ctx.fillText('SCORE', W * 0.5, 38);
 
-    // Wave + progress (left under title)
+    // Wave + progress (left under title, also clear of the SND button)
     ctx.textAlign = 'left';
     ctx.fillStyle = C.amber; ctx.font = '600 13px ' + FONT;
-    ctx.fillText('WAVE ' + this.wave, 56, 36);
-    var pw = 90, ppx = 120, ppy = 40;
+    ctx.fillText('WAVE ' + this.wave, 96, 36);
+    var pw = 90, ppx = 164, ppy = 40;
     ctx.fillStyle = 'rgba(20,40,26,0.7)';
     ctx.fillRect(ppx, ppy, pw, 5);
     ctx.fillStyle = C.amber;
     ctx.fillRect(ppx, ppy, pw * clamp(this.killsThisWave / this.killsNeeded, 0, 1), 5);
 
-    // Magnification (right-of-center top)
+    // Magnification (top-right, left of the EXIT button)
     ctx.textAlign = 'right';
     ctx.fillStyle = C.cyan; ctx.font = '600 16px ' + FONT;
-    ctx.fillText(this.zoom.toFixed(1) + 'x', W - 70, 16);
+    ctx.fillText(this.zoom.toFixed(1) + 'x', W - 118, 16);
     ctx.fillStyle = C.dim; ctx.font = '10px ' + FONT;
-    ctx.fillText('MAG', W - 70, 36);
+    ctx.fillText('MAG', W - 118, 36);
 
     // Combo
     if (this.combo > 1) {
@@ -1615,6 +1902,35 @@
       var mult = 1 + Math.min(8, this.combo - 1) * 0.25;
       ctx.fillStyle = C.amber; ctx.font = '700 15px ' + FONT;
       ctx.fillText('x' + mult.toFixed(2) + '  COMBO ' + this.combo, W * 0.5, 56);
+    }
+
+    // Combo callout (DOUBLE / TRIPLE KILL …) — punchy mid-upper banner
+    if (this.callout) {
+      var ct = this.callout.t / this.callout.life;            // 0..1
+      var cA = ct < 0.15 ? ct / 0.15 : clamp(1 - (ct - 0.15) / 0.85, 0, 1);
+      var cpop = 1 + (ct < 0.18 ? (0.18 - ct) / 0.18 * 0.5 : 0);
+      ctx.save();
+      ctx.globalAlpha = cA;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.translate(W * 0.5, Math.max(H * 0.2, 116));   // keep clear of the top HUD readouts on short screens
+      ctx.scale(cpop, cpop);
+      ctx.fillStyle = C.amber; ctx.font = '800 30px ' + FONT;
+      ctx.shadowColor = C.amber; ctx.shadowBlur = 20;
+      ctx.fillText(this.callout.text, 0, 0);
+      ctx.restore();
+    }
+
+    // FOCUS active indicator (pulsing, under score)
+    if (this.focusActive) {
+      ctx.save();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      var fp = 0.6 + 0.4 * Math.sin(this.swayT * 8);
+      ctx.globalAlpha = fp;
+      ctx.fillStyle = C.cyan; ctx.font = '700 13px ' + FONT;
+      ctx.shadowColor = C.cyan; ctx.shadowBlur = 10;
+      // sits below the combo line when one is showing, else takes the combo slot
+      ctx.fillText('◆ FOCUS ' + Math.ceil(this.focusT) + 's', W * 0.5, this.combo > 1 ? 74 : 56);
+      ctx.restore();
     }
 
     // Kill feed (left, mid-upper)
@@ -1661,7 +1977,7 @@
 
     /* ---- Gun-select buttons (bottom-center cluster, above stick area) ---- */
     var keys = ['rifle', 'mg', 'minigun'];
-    var gbW = clamp(W * 0.12, 78, 120), gbH = 30, gap = 8;
+    var gbW = clamp(W * 0.12, 78, 120), gbH = clamp(Math.min(W, H) * 0.06, 44, 54), gap = 8;
     var gx0 = W * 0.5 - (gbW * 3 + gap * 2) / 2;
     var gy = H - pad - gbH;
     for (var i = 0; i < 3; i++) {
@@ -1685,7 +2001,7 @@
     }
 
     /* ---- Zoom +/- buttons (bottom-center, just above gun row) ---- */
-    var zbS = clamp(Math.min(W, H) * 0.085, 40, 58);
+    var zbS = clamp(Math.min(W, H) * 0.085, 44, 58);
     var zby = gy - zbS - 10;
     var zMinusX = W * 0.5 - zbS - 60, zPlusX = W * 0.5 + 60;
     this.drawZoomBtn(ctx, zMinusX, zby, zbS, '−');
@@ -1710,6 +2026,9 @@
 
     /* ---- Fire button (bottom-right) ---- */
     this.drawFireButton(ctx);
+
+    /* ---- FOCUS (bullet-time) button, left of fire ---- */
+    this.drawFocusButton(ctx);
 
     /* ---- Heat / ammo readout above fire ---- */
     this.drawGunStatus(ctx, W, H);
@@ -1837,6 +2156,44 @@
     ctx.fillStyle = C.dim; ctx.font = '10px ' + FONT; ctx.textBaseline = 'top';
     ctx.fillText('FIRE', fb.x, fb.y + fb.r + 6);
     ctx.restore();
+  };
+
+  Game.prototype.drawFocusButton = function (ctx) {
+    var fb = this.fireBtn;
+    if (!isFinite(fb.x) || !isFinite(fb.y) || !(fb.r > 0)) return;
+    var fr = fb.r * 0.6;
+    var fx = fb.x - fb.r - fr - 12;
+    var fy = fb.y;
+    if (!isFinite(fx)) return;
+    var ready = this.focus >= 0.4 && !this.focusActive;
+    var charge = this.focusActive ? (this.focusT / Math.max(0.001, this.focusDur)) : this.focus;
+    ctx.save();
+    // base disc
+    ctx.beginPath(); ctx.arc(fx, fy, fr, 0, Math.PI * 2);
+    ctx.fillStyle = this.focusActive ? 'rgba(125,247,255,0.20)' : (ready ? 'rgba(125,247,255,0.14)' : 'rgba(10,22,24,0.55)');
+    ctx.fill();
+    ctx.strokeStyle = (this.focusActive || ready) ? C.cyan : C.faint;
+    ctx.lineWidth = (this.focusActive || ready) ? 2.4 : 1.4;
+    ctx.shadowColor = C.cyan; ctx.shadowBlur = (this.focusActive || ready) ? 12 : 0;
+    ctx.stroke();
+    // charge / countdown arc
+    ctx.beginPath();
+    ctx.arc(fx, fy, fr * 0.78, -Math.PI / 2, -Math.PI / 2 + clamp(charge, 0, 1) * Math.PI * 2);
+    ctx.strokeStyle = this.focusActive ? C.hi : C.cyan; ctx.lineWidth = 3.2;
+    ctx.shadowColor = C.cyan; ctx.shadowBlur = 8;
+    ctx.stroke();
+    // label
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = this.focusActive ? C.hi : (ready ? C.cyan : C.dim);
+    ctx.font = '700 12px ' + FONT;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(this.focusActive ? 'SLOW' : 'FOCUS', fx, fy);
+    // sublabel
+    ctx.fillStyle = C.dim; ctx.font = '9px ' + FONT; ctx.textBaseline = 'top';
+    ctx.fillText(ready ? 'READY' : (this.focusActive ? '' : Math.round(charge * 100) + '%'), fx, fy + fr + 4);
+    ctx.restore();
+    var self = this;
+    this.uiHotspots.push({ kind: 'focus', x: fx - fr, y: fy - fr, w: fr * 2, h: fr * 2, action: function () { self.activateFocus(); } });
   };
 
   Game.prototype.drawGunStatus = function (ctx, W, H) {
@@ -2051,6 +2408,17 @@
     open: function () { getInstance().open(); },
     close: function () { if (instance) instance.close(); },
     mountPreview: function (cv) { getInstance().mountPreview(cv); },
-    isOpen: function () { return !!(instance && instance.running); }
+    isOpen: function () { return !!(instance && instance.running); },
+    // test/debug hook — manually advance the loop (preview tabs throttle rAF)
+    step: function (n) { var g = instance; if (!g) return null; for (var i = 0; i < (n || 30); i++) { try { g.update(0.05); } catch (e) {} } try { g.render(); } catch (e) {} return window.SniperGame.debug(); },
+    // test/debug hook — inspect live state (agents, camera, score)
+    debug: function () { var g = instance; if (!g) return null;
+      return { agents: g.agents.length, up: g.agents.filter(function(a){return a.h>0.2&&!a.dead;}).length,
+        drones: g.agents.filter(function(a){return a.fly&&!a.dead;}).length,
+        dead: g.agents.filter(function(a){return a.dead;}).length,
+        camX: Math.round(g.camX), camY: Math.round(g.camY), wave: g.wave, score: g.score, combo: g.combo,
+        focus: +g.focus.toFixed(2), focusActive: g.focusActive, rings: g.rings.length, callout: g.callout ? g.callout.text : null,
+        banner: +(g.waveBanner||0).toFixed(2),
+        sample: g.agents.slice(0,4).map(function(a){var p=g.agentScreen(a);return {type:a.fly?'drone':a.type,h:+a.h.toFixed(2),sx:Math.round(a.sx),sy:p?Math.round(p.y):null};}) }; }
   };
 })();

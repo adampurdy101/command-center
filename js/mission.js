@@ -317,17 +317,35 @@ tick();setInterval(tick,1000);
   ];
   const ls={v:-1}, lt={v:-1}, ltm={v:-1}, lop={v:-1};
   function pick(a,last){let i;do{i=(Math.random()*a.length)|0;}while(i===last.v&&a.length>1);last.v=i;return a[i];}
-  let voice=null;
-  function loadVoice(){const vs=(window.speechSynthesis&&speechSynthesis.getVoices())||[];
-    const us=vs.filter(v=>/en[-_]?us/i.test(v.lang)||/american/i.test(v.name));
-    voice = us.find(v=>/(enhanced|premium)/i.test(v.name))
-         || us.find(v=>/siri/i.test(v.name))
-         || vs.find(v=>/^alex$/i.test(v.name))
-         || vs.find(v=>/google us english/i.test(v.name))
-         || us.find(v=>/(aaron|tom|reed|evan|nathan|fred|male)/i.test(v.name))
-         || us[0]
-         || vs.find(v=>/^en/i.test(v.lang)) || vs[0] || null;}
-  loadVoice(); if(window.speechSynthesis)try{speechSynthesis.onvoiceschanged=loadVoice;}catch(e){}
+  // Browser-voice mapping: each dropdown choice -> the best REAL browser voice + a base pitch,
+  // so the selection actually changes the voice even when the neural engine isn't loaded.
+  // (Picked from quality male voices; novelty + female voices are explicitly avoided.)
+  const BROWSER_VOICE={
+    am_michael:{m:['reed','tom','aaron','alex','evan','nathan'],lang:'en-us',pitch:0.92},
+    am_onyx:   {m:['rocko','reed','aaron','alex','tom'],        lang:'en-us',pitch:0.72},
+    am_fenrir: {m:['eddy','reed','rocko','alex','tom'],         lang:'en-us',pitch:0.84},
+    am_adam:   {m:['reed','rocko','tom','aaron','alex'],        lang:'en-us',pitch:0.90},
+    am_eric:   {m:['rocko','reed','eddy','tom','alex'],         lang:'en-us',pitch:0.98},
+    bm_george: {m:['daniel','arthur','oliver','reed','rocko'],  lang:'en-gb',pitch:0.90},
+    bm_daniel: {m:['daniel','arthur','reed','rocko','oliver'],  lang:'en-gb',pitch:0.96}
+  };
+  const V_NOVELTY=/bad news|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|bahh|pipe|junior|ralph|kathy|fred|grandma|grandpa|sandy|shelley|flo/i;
+  const V_FEMALE=/samantha|victoria|allison|ava|susan|karen|moira|tessa|fiona|veena|kate|serena|catherine|nicky|female|zoe|isha|martha|stephanie/i;
+  function browserVoices(){return (window.speechSynthesis&&speechSynthesis.getVoices())||[];}
+  function pickBrowserVoice(key){
+    const vs=browserVoices(); if(!vs.length)return null;
+    const c=BROWSER_VOICE[key]||BROWSER_VOICE.am_michael;
+    const inLang=v=>(v.lang||'').toLowerCase().replace('_','-').indexOf(c.lang)===0;
+    const named=(list,langOnly)=>{for(const p of c.m){const v=vs.find(x=>(!langOnly||inLang(x))&&new RegExp('\\b'+p,'i').test(x.name));if(v)return v;}return null;};
+    let v=named(vs,true) || named(vs,false)                                                  // preferred name (accent first, then any)
+       || vs.find(x=>inLang(x)&&!V_NOVELTY.test(x.name)&&!V_FEMALE.test(x.name))               // any clean voice in the right accent
+       || vs.find(x=>/daniel/i.test(x.name))                                                   // Daniel is a great default male
+       || vs.find(x=>/^en/i.test(x.lang)&&!V_NOVELTY.test(x.name)&&!V_FEMALE.test(x.name))      // any clean english male
+       || vs.find(x=>/^en/i.test(x.lang)) || vs[0];
+    return {voice:v,pitch:c.pitch,name:v?v.name.replace(/\s*\(.*$/,''):'default'};
+  }
+  // keep the voice list warm (getVoices is async on first paint)
+  if(window.speechSynthesis)try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=function(){speechSynthesis.getVoices();};}catch(e){}
   function banner(t){const b=document.getElementById('jarvisBanner'),el=document.getElementById('jarvisText');
     if(b&&el){el.textContent='“'+t+'”';b.classList.add('show');clearTimeout(b._to);
       b._to=setTimeout(()=>b.classList.remove('show'),Math.max(5500,t.length*95));}
@@ -403,8 +421,12 @@ tick();setInterval(tick,1000);
     if(!window.speechSynthesis){endSpeak();return;}
     try{speechSynthesis.cancel();}catch(e){}
     const u=new SpeechSynthesisUtterance(text);
-    if(voice)u.voice=voice; u.rate=0.82; u.pitch=0.9; u.volume=1;
-    u.onboundary=()=>{window.HAL.level=1;};
+    const sel=pickBrowserVoice(voiceCfg.voice);                  // honor the dropdown selection
+    if(sel&&sel.voice){ u.voice=sel.voice; if(sel.voice.lang)u.lang=sel.voice.lang; }
+    u.rate=Math.max(0.6,Math.min(1.15,(+voiceCfg.pace||0.9)));   // pace slider drives speed
+    u.pitch=sel?sel.pitch:0.9; u.volume=1;
+    u.onstart=()=>{window.HAL.level=1;};
+    u.onboundary=()=>{window.HAL.level=0.55+0.45*Math.random();};  // drive the Voice Scope bars
     u.onend=endSpeak; u.onerror=endSpeak;
     try{speechSynthesis.speak(u);}catch(e){endSpeak();}
   }
@@ -509,18 +531,21 @@ tick();setInterval(tick,1000);
     if(!cfg||!openBtn)return;
     function labels(){ $('vcPaceV').textContent=(+voiceCfg.pace).toFixed(2)+'×'; $('vcDepthV').textContent=(+voiceCfg.depth).toFixed(2)+'×';
       $('vcReverbV').textContent=Math.round(voiceCfg.reverb*100)+'%'; $('vcWarmthV').textContent=voiceCfg.warmth+' Hz'; }
+    function updateStatus(){
+      if(kokoroReady){$('vcStatus').textContent='✅ on-device neural voice ready';$('vcBar').style.width='100%';}
+      else{ const sel=pickBrowserVoice(voiceCfg.voice); $('vcStatus').textContent='browser voice: '+((sel&&sel.name)||'default')+'  ·  tap LOAD for the free neural voice'; }
+    }
     function reflect(){ $('vcVoice').value=voiceCfg.voice; $('vcPace').value=voiceCfg.pace; $('vcDepth').value=voiceCfg.depth;
-      $('vcReverb').value=voiceCfg.reverb; $('vcWarmth').value=voiceCfg.warmth; labels();
-      if(kokoroReady){$('vcStatus').textContent='✅ on-device voice ready';$('vcBar').style.width='100%';} }
+      $('vcReverb').value=voiceCfg.reverb; $('vcWarmth').value=voiceCfg.warmth; labels(); updateStatus(); }
     openBtn.addEventListener('click',()=>{ reflect(); cfg.classList.toggle('hidden'); });
     const sb=$('stopBtn'); if(sb)sb.addEventListener('click',()=>stopSpeaking());
     $('vcDone').addEventListener('click',()=>cfg.classList.add('hidden'));
     cfg.addEventListener('click',e=>{ if(e.target===cfg)cfg.classList.add('hidden'); });
-    $('vcVoice').addEventListener('change',()=>{voiceCfg.voice=$('vcVoice').value;saveVoiceCfg();});
+    $('vcVoice').addEventListener('change',()=>{voiceCfg.voice=$('vcVoice').value;saveVoiceCfg();updateStatus();});
     [['vcPace','pace'],['vcDepth','depth'],['vcReverb','reverb'],['vcWarmth','warmth']].forEach(([id,k])=>{
       $(id).addEventListener('input',()=>{voiceCfg[k]=+$(id).value;labels();saveVoiceCfg();}); });
     $('vcPreset').addEventListener('click',()=>{Object.assign(voiceCfg,VOICE_DEFAULTS);reflect();saveVoiceCfg();});
-    $('vcTest').addEventListener('click',()=>{ if(!speaking) say('Good evening, Adam. This is my voice. I am ready when you are.'); });
+    $('vcTest').addEventListener('click',()=>{ stopSpeaking(); setTimeout(()=>say('Good evening, Adam. This is my voice. I am ready when you are.'),90); });
     $('vcLoad').addEventListener('click',async()=>{
       $('vcStatus').textContent='loading the free voice engine…'; $('vcLoad').disabled=true;
       const ok=await loadKokoro(p=>{ if(p&&p.status==='progress'&&p.total){const pc=Math.round(100*p.loaded/p.total);$('vcStatus').textContent='downloading model… '+pc+'%';$('vcBar').style.width=pc+'%';} });

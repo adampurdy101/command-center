@@ -136,20 +136,98 @@
     if (s.indexOf("life") >= 0) return "life";
     return null;
   }
+  var TOUCH = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0) ||
+    (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+
   function wire() {
     var panels = document.querySelectorAll("#hub .col .panel");
     for (var i = 0; i < panels.length; i++) {
       (function (panel) {
+        if (panel.__dxWired) return;          // wire() can run twice (initial + hub:ready)
         var key = keyOf(panel); if (!key) return;
+        panel.__dxWired = true;
         panel.classList.add("dx-clickable");
-        panel.setAttribute("title", "Click for detail");
-        panel.addEventListener("click", function () { open(key); });
+        panel.setAttribute("data-dxkey", key);
+        if (TOUCH) {
+          // touch: single tap/scrub highlights, double-tap opens (handled globally below)
+          panel.setAttribute("title", "Double-tap to open");
+        } else {
+          panel.setAttribute("title", "Click for detail");
+          panel.addEventListener("click", function () { open(key); });
+        }
         // don't let the inner "READY ▸" button also open the panel
         var rep = panel.querySelector("#brief-report");
         if (rep) rep.addEventListener("click", function (e) { e.stopPropagation(); });
       })(panels[i]);
     }
+    if (TOUCH) setupTouch();
   }
+
+  /* ---------- touch: finger-scrub highlight + double-tap to open ---------- */
+  var touchReady = false;
+  function setupTouch() {
+    if (touchReady) return; touchReady = true;
+    var DOUBLE_MS = 380, MOVE_TOL = 12, ARM_MS = 1500;
+    var startX = 0, startY = 0, moved = false, lastKey = null, lastTime = 0, armTimer = 0;
+
+    function under(x, y, sel) {
+      var el = document.elementFromPoint(x, y);
+      return el && el.closest ? el.closest(sel) : null;
+    }
+    function clearHL() {
+      var hl = document.querySelectorAll("#hub .touch-hover");
+      for (var i = 0; i < hl.length; i++) hl[i].classList.remove("touch-hover");
+    }
+    function disarm() {
+      if (armTimer) { clearTimeout(armTimer); armTimer = 0; }
+      var a = document.querySelector("#hub .dx-armed"); if (a) a.classList.remove("dx-armed");
+      lastKey = null; lastTime = 0;
+    }
+    function highlight(x, y) {
+      clearHL();
+      var p = under(x, y, "#hub .col .panel.dx-clickable"); if (p) p.classList.add("touch-hover");
+      var r = under(x, y, "#hub .col .panel .bd .row, #hub .col .panel .bd .ag"); if (r) r.classList.add("touch-hover");
+      return p;
+    }
+    function onInnerControl(t) {
+      return t && t.closest && t.closest("button,a,input,select,textarea,.btn,.tools");
+    }
+
+    document.addEventListener("touchstart", function (e) {
+      var t = e.touches[0]; if (!t) return;
+      startX = t.clientX; startY = t.clientY; moved = false;
+      if (onInnerControl(e.target)) return;            // let buttons/links behave normally
+      if (!under(t.clientX, t.clientY, "#hub .col .panel.dx-clickable")) { disarm(); clearHL(); return; }
+      highlight(t.clientX, t.clientY);
+    }, { passive: true });
+
+    document.addEventListener("touchmove", function (e) {
+      var t = e.touches[0]; if (!t) return;
+      if (Math.abs(t.clientX - startX) > MOVE_TOL || Math.abs(t.clientY - startY) > MOVE_TOL) moved = true;
+      if (onInnerControl(e.target)) return;
+      highlight(t.clientX, t.clientY);                 // follow the finger (page still scrolls)
+    }, { passive: true });
+
+    document.addEventListener("touchend", function (e) {
+      var t = e.changedTouches[0]; if (!t) return;
+      if (onInnerControl(e.target)) { disarm(); return; }
+      if (moved) { lastKey = null; lastTime = 0; return; }   // a scrub/scroll, keep last highlight
+      var p = under(t.clientX, t.clientY, "#hub .col .panel.dx-clickable");
+      if (!p) { disarm(); clearHL(); return; }
+      var key = p.getAttribute("data-dxkey");
+      var now = Date.now();
+      if (lastKey === key && (now - lastTime) < DOUBLE_MS) {   // second tap → open
+        disarm(); clearHL();
+        open(key);
+      } else {                                                 // first tap → arm + hint
+        disarm(); clearHL();
+        p.classList.add("dx-armed");
+        lastKey = key; lastTime = now;
+        armTimer = setTimeout(disarm, ARM_MS);
+      }
+    }, { passive: true });
+  }
+
   if (document.getElementById("hub")) wire();
   document.addEventListener("hub:ready", wire);
 })();

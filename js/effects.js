@@ -229,15 +229,15 @@
     function doEnter() { try { (root.requestFullscreen || root.webkitRequestFullscreen).call(root); } catch (e) {} }
     function doExit() { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {} }
     function sync() {
-      var f = inFS();
-      // ONE button that never disappears — it just flips to a clear EXIT while fullscreen
+      var f = !!inFS();
+      // ONE button, same spot in the bar: it flips to a lit-green EXIT while fullscreen
       if (enter) {
         enter.style.display = canFS ? "" : "none";
-        enter.textContent = f ? "⤡ EXIT FULL SCREEN" : "⤢ FULLSCREEN";
-        enter.title = f ? "Exit fullscreen" : "Enter fullscreen";
-        enter.classList.toggle("fs-on", !!f);   // amber "you are in fullscreen" styling
+        enter.textContent = f ? "⤡ EXIT FULLSCREEN" : "⤢ FULLSCREEN";
+        enter.title = f ? "Click to exit fullscreen" : "Enter fullscreen";
+        enter.classList.toggle("fs-on", f);
       }
-      if (exit) exit.style.display = "none";     // single persistent toggle; keep the legacy 2nd button hidden
+      if (exit) exit.style.display = "none";   // the dedicated 2nd button isn't used; the toggle stays in the bar
     }
     if (!canFS) {
       // iPhone Safari has no Fullscreen API — hide both; install-to-home-screen gives full screen
