@@ -23,7 +23,13 @@ async function updateBrief() {
   if (brief) {
     set("brief-unread", brief.unread ?? "–");
     set("brief-flagged", brief.flagged ?? "0");
-    set("brief-next", brief.next_event ?? "—");
+    // an empty next-event reads as a data gap — show a calm "all clear" instead of a lonely dash
+    const nextEl = document.getElementById("brief-next");
+    if (nextEl) {
+      const hasNext = brief.next_event != null && String(brief.next_event).trim() !== "";
+      nextEl.textContent = hasNext ? brief.next_event : "CLEAR · nothing scheduled";
+      nextEl.classList.toggle("muted", !hasNext);
+    }
     set("brief-tasks", brief.open_tasks ?? "0");
     set("brief-stat", "LIVE");
     if (report) report.onclick = () => alert(brief.digest || "No digest text yet.");

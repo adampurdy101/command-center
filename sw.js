@@ -1,11 +1,11 @@
 /* command-center service worker — minimal + safe.
    Network-first so the live site always wins; cache is only a
    last-resort offline fallback. Old caches are cleared on activate. */
-const CACHE = 'cc-shell-v4';
+const CACHE = 'cc-shell-v6';
 const SHELL = [
   '.', 'index.html',
   'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css',
-  'js/mission.js', 'js/effects.js', 'js/panels.js', 'js/mobile.js',
+  'js/mission.js', 'js/effects.js', 'js/panels.js', 'js/mobile.js', 'js/sniper.js',
   'manifest.webmanifest', 'icons/icon.svg'
 ];
 
@@ -29,7 +29,10 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   e.respondWith(
-    fetch(req)
+    // {cache:'no-cache'} forces a revalidation so "network-first" actually delivers
+    // fresh assets — otherwise the browser's heuristic HTTP cache (the dev/Pages server
+    // sends no Cache-Control) serves stale files and your deploys never show up.
+    fetch(req, { cache: 'no-cache' })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});

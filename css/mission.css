@@ -28,7 +28,8 @@
 #hub .cities{display:flex;gap:14px;margin-left:8px}
 #hub .cities div{text-align:center}
 #hub .cities .c{font-size:9px;color:var(--dim);letter-spacing:1px}
-#hub .cities .t{font-size:12px;color:var(--g)}
+#hub .cities .t{font-size:12px;color:var(--g);line-height:1.2}
+#hub .cities .t12{font-size:10px;color:var(--dim);letter-spacing:.5px;line-height:1.25;white-space:nowrap}
 #hub .hdr .spacer{flex:1}
 #hub .hdr .clock{text-align:right}
 #hub .hdr .clock .times{display:flex;gap:10px;align-items:baseline;justify-content:flex-end}
@@ -42,6 +43,19 @@
   font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:5px 9px;border-radius:4px;cursor:pointer}
 #hub .tools button:hover{color:var(--hi);border-color:var(--hi)}
 #hub .tools .logout:hover{color:var(--red);border-color:var(--red)}
+/* ambient hum: volume is tucked INTO the ♪ HUM control and flies out on hover */
+#hub .amb-wrap{position:relative;display:inline-flex;align-items:center}
+#hub .amb-pop{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(-4px);
+  display:flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--faint);border-radius:8px;
+  background:linear-gradient(180deg,var(--bg2),var(--deep));
+  box-shadow:0 8px 20px rgba(0,0,0,.55),inset 0 0 0 1px rgba(65,255,126,.07);
+  opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease;z-index:60;white-space:nowrap}
+#hub .amb-wrap:hover .amb-pop,#hub .amb-wrap:focus-within .amb-pop{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+#hub .amb-pop .amb-ico{color:var(--dim);font-size:12px;line-height:1}
+#hub #amb-vol{width:108px;height:16px;cursor:pointer;vertical-align:middle;accent-color:var(--g);background:transparent}
+/* single fullscreen toggle: turns amber to show "you're in fullscreen — click to EXIT" */
+#hub #fs-exit{display:none}
+#hub .tools #fs-btn.fs-on{color:var(--amb);border-color:var(--amb);box-shadow:0 0 9px rgba(255,210,74,.4)}
 
 /* ---------- LED dots (mission style: .on / .amb) ---------- */
 #hub .led{width:9px;height:9px;border-radius:50%;background:#14361f;display:inline-block;flex:none;box-shadow:none}
@@ -71,10 +85,17 @@
 #hub .panel .tb .sp{flex:1}
 #hub .panel .tb .s{font-size:9px;color:var(--dim);letter-spacing:1px}
 #hub .panel .bd{padding:8px 9px;flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;overflow:hidden}
-#hub .row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+#hub .row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;
+  padding:3px 7px;margin:0 -7px;border-radius:4px;position:relative;
+  transition:transform .18s cubic-bezier(.2,.7,.3,1),background .18s ease,box-shadow .18s ease}
+/* TARGET LOCK row/clickable hover treatment is in the FLOURISHES section below */
 #hub .row .k{color:var(--dim)} #hub .row .v{color:var(--g)}
 #hub .row .v.big{font-size:18px;color:var(--hi)}
+#hub .row .v.muted{color:var(--faint);font-size:10px;letter-spacing:.5px}   /* calm empty state */
 #hub .up{color:var(--g)} #hub .down{color:var(--red)} #hub .warn{color:var(--amb)}
+/* a brief phosphor flash when a live value updates (markets ticker) */
+#hub .row .v.tick{animation:mc-tick .55s ease-out}
+@keyframes mc-tick{0%{text-shadow:0 0 9px currentColor;filter:brightness(1.5)}100%{text-shadow:none;filter:none}}
 #hub .bar{height:9px;border:1px solid var(--faint);border-radius:3px;background:var(--deep);overflow:hidden}
 #hub .bar>span{display:block;height:100%;background:var(--g);box-shadow:var(--glow2) var(--g)}
 #hub .spark{width:100%;height:30px}
@@ -266,3 +287,59 @@
   background:var(--deep);border:1px solid var(--faint);border-radius:6px;padding:8px}
 #hub .dx-actions{margin-top:12px}
 #hub .dx-note{margin-top:10px;color:var(--faint);font-size:10px;letter-spacing:.5px}
+
+/* ============================================================
+   TARGET LOCK  ·  chosen hover treatment (sci-fi HUD lock-on)
+   Lift + faint ring + top-emboss + one scan-sweep + corner
+   brackets, on data rows (.row) AND agent rows (.ag), plus a
+   subtle protrude on every clickable. Brackets (.brk spans) are
+   injected by js/mission.js. Honors prefers-reduced-motion.
+   ============================================================ */
+#hub .ag{position:relative;padding:3px 7px;margin:0 -7px;border-radius:4px;
+  transition:transform .18s cubic-bezier(.2,.7,.3,1),background .18s ease,box-shadow .18s ease}
+#hub .row .k,#hub .row .v,#hub .ag .led,#hub .ag .nm,#hub .ag .st{position:relative;z-index:2}
+
+/* ring + top-highlight emboss (layer 1) */
+#hub .row::before,#hub .ag::before{content:"";position:absolute;inset:0;border-radius:4px;pointer-events:none;z-index:1;
+  box-shadow:inset 0 0 0 1px transparent;opacity:0;transition:opacity .18s ease,box-shadow .18s ease}
+/* single phosphor scan-sweep (layer 3) */
+#hub .row::after,#hub .ag::after{content:"";position:absolute;inset:0;border-radius:4px;pointer-events:none;z-index:3;
+  background:linear-gradient(100deg,transparent 40%,rgba(125,255,176,.28) 50%,transparent 60%);
+  background-size:240% 100%;background-position:120% 0;opacity:0}
+
+/* HOVER: bubble up + green tint + soft bloom */
+#hub .col .panel .bd .row:hover,#hub .col .panel .bd .ag:hover{
+  transform:translateY(-2px) scale(1.012);background:rgba(65,255,126,.07);
+  box-shadow:0 6px 14px rgba(0,0,0,.4),0 0 10px rgba(65,255,126,.12)}
+#hub .col .panel .bd .row:hover::before,#hub .col .panel .bd .ag:hover::before{opacity:1;
+  box-shadow:inset 0 0 0 1px rgba(65,255,126,.32),inset 0 1px 0 rgba(125,255,176,.18)}
+#hub .col .panel .bd .row:hover::after,#hub .col .panel .bd .ag:hover::after{animation:tl-sweep .55s ease-out 1}
+@keyframes tl-sweep{0%{opacity:0;background-position:120% 0}10%{opacity:1}100%{opacity:0;background-position:-120% 0}}
+
+/* corner brackets — the "locked on" reticle */
+#hub .row .brk,#hub .ag .brk{position:absolute;width:9px;height:9px;pointer-events:none;z-index:4;
+  opacity:0;transition:opacity .18s ease,transform .2s cubic-bezier(.2,.7,.3,1)}
+#hub .brk::before,#hub .brk::after{content:"";position:absolute;background:var(--hi);box-shadow:0 0 5px var(--g)}
+#hub .brk.tlft{top:2px;left:2px;transform:translate(-4px,-4px)}
+#hub .brk.trgt{top:2px;right:2px;transform:translate(4px,-4px)}
+#hub .brk.blft{bottom:2px;left:2px;transform:translate(-4px,4px)}
+#hub .brk.brgt{bottom:2px;right:2px;transform:translate(4px,4px)}
+#hub .brk::before{width:9px;height:1px;top:0;left:0}
+#hub .brk::after{width:1px;height:9px;top:0;left:0}
+#hub .brk.trgt::before,#hub .brk.trgt::after{right:0;left:auto}
+#hub .brk.blft::before,#hub .brk.blft::after{bottom:0;top:auto}
+#hub .brk.brgt::before,#hub .brk.brgt::after{bottom:0;top:auto;right:0;left:auto}
+#hub .col .panel .bd .row:hover .brk,#hub .col .panel .bd .ag:hover .brk{opacity:1;transform:translate(0,0)}
+
+/* subtle protrude on every clickable so it registers */
+#hub .btn{transition:transform .16s cubic-bezier(.2,.7,.3,1),background .16s ease,box-shadow .16s ease}
+#hub .btn:hover{transform:translateY(-2px);box-shadow:0 5px 12px rgba(0,0,0,.4),var(--glow2) var(--hi)}
+#hub .btn:active{transform:translateY(0)}
+#hub .tools button{transition:transform .16s cubic-bezier(.2,.7,.3,1),color .16s ease,border-color .16s ease}
+#hub .tools button:hover{transform:translateY(-2px)}
+
+@media (prefers-reduced-motion:reduce){
+  #hub .row,#hub .ag,#hub .btn,#hub .tools button,#hub .brk{transition:opacity .18s ease}
+  #hub .col .panel .bd .row:hover,#hub .col .panel .bd .ag:hover,#hub .btn:hover,#hub .tools button:hover{transform:none}
+  #hub .col .panel .bd .row:hover::after,#hub .col .panel .bd .ag:hover::after{animation:none;opacity:0}
+}

@@ -76,7 +76,14 @@
           <canvas id="ekg-sys" class="ekg" width="92" height="30"></canvas>
         </div>
         <div class="tools">
-          <button id="amb-btn" type="button" title="Ambient sound">♪ HUM</button>
+          <span class="amb-wrap">
+            <button id="amb-btn" type="button" title="Ambient sound — hover for volume">♪ HUM</button>
+            <span class="amb-pop">
+              <span class="amb-ico">▁</span>
+              <input id="amb-vol" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Ambient hum volume" />
+              <span class="amb-ico">▆</span>
+            </span>
+          </span>
           <button id="fs-btn" type="button" title="Enter fullscreen">⤢ FULLSCREEN</button>
           <button id="fs-exit" type="button" title="Exit fullscreen">⤡ EXIT FULL</button>
           <button id="logout-btn" class="logout">LOG OUT</button>
@@ -165,16 +172,9 @@
             <div class="bd" style="padding:4px"><div class="scope-bd"><canvas id="voice"></canvas><div id="heard"></div></div></div>
           </section>
           <section class="panel">
-            <div class="tb"><span class="led amb"></span><span class="n">Defense Grid</span><span class="sp"></span>
-              <button class="btn" id="restartBtn" style="padding:2px 8px;font-size:10px">↻ NEW ROUND</button></div>
-            <div class="bd" style="padding:4px"><div class="game-bd"><canvas id="game"></canvas>
-              <div id="hsEntry">
-                <div class="big">NEW HIGH SCORE</div>
-                <div>ENTER YOUR INITIALS</div>
-                <input id="hsName" maxlength="3" placeholder="ABC" autocomplete="off" />
-                <button class="btn" id="hsSave">SAVE ▸</button>
-              </div>
-            </div></div>
+            <div class="tb"><span class="led amb"></span><span class="n">Sniper Scope · Overwatch</span><span class="sp"></span>
+              <button class="btn" id="sniperBtn" style="padding:2px 8px;font-size:10px">▶ DEPLOY ⛶</button></div>
+            <div class="bd" style="padding:4px"><div class="game-bd"><canvas id="game"></canvas></div></div>
           </section>
         </div>
       </div>
@@ -219,7 +219,9 @@
   <!-- geo libs for the globe -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
-  <!-- Mission Control interactive layer (globe, voice scope, HAL, game) -->
+  <!-- Sniper Scope // Overwatch — the fullscreen game (window.SniperGame); loads before mission.js so the launcher can see it -->
+  <script defer src="js/sniper.js"></script>
+  <!-- Mission Control interactive layer (globe, voice scope, HAL, sniper launcher) -->
   <script defer src="js/mission.js"></script>
   <!-- visual flourishes (heartbeat, HAL eye, boot, ambient, weather, haptics, fullscreen) -->
   <script defer src="js/effects.js"></script>

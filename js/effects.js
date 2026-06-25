@@ -41,7 +41,7 @@
     function refit() { cans.forEach(function (c) { var x = fitC(c.cv); if (x) c.ctx = x; }); }
     refit();
     window.addEventListener("resize", refit);
-    var BPM = 65, T = 60 / BPM;                  // one heartbeat per ~0.92s
+    var BPM = 18, T = 60 / BPM;                  // slow, calm monitor sweep (~3.3s across) — was 43, was 65
     function frame(now) {
       var t = now / 1000;
       var phase = (t % T) / T;                    // 0..1 sweep position (stationary trace)
@@ -125,6 +125,9 @@
     var btn = document.getElementById("amb-btn");
     if (!btn) return;
     var ac = null, nodes = [], beepTimer = null, on = false;
+    // user-controllable volume (0..1 slider). 0.5 maps to the old 0.05 "perfect" default; 1.0 is really loud.
+    var vol = 0.5; try { var sv = parseFloat(localStorage.getItem("cc_ambient_vol")); if (!isNaN(sv)) vol = Math.max(0, Math.min(1, sv)); } catch (e) {}
+    function gainFor() { return vol * vol * 0.2; }
     function build() {
       ac = new (window.AudioContext || window.webkitAudioContext)();
       var master = ac.createGain(); master.gain.value = 0.0; master.connect(ac.destination);
@@ -137,7 +140,7 @@
       var lfo = ac.createOscillator(); lfo.frequency.value = 0.07;
       var lg = ac.createGain(); lg.gain.value = 0.012;
       lfo.connect(lg); lg.connect(master.gain); lfo.start();
-      master.gain.setTargetAtTime(0.05, ac.currentTime, 1.2);
+      master.gain.setTargetAtTime(gainFor(), ac.currentTime, 1.2);
       nodes = [master];
       function blip() {
         if (!on) return;
@@ -157,11 +160,23 @@
       btn.textContent = on ? "♪ HUM ●" : "♪ HUM";
       try { localStorage.setItem("cc_ambient", on ? "1" : "0"); } catch (e) {}
       try {
-        if (on) { if (!ac) build(); else { ac.resume(); nodes[0] && nodes[0].gain.setTargetAtTime(0.05, ac.currentTime, 1.0); } }
+        if (on) { if (!ac) build(); else { ac.resume(); nodes[0] && nodes[0].gain.setTargetAtTime(gainFor(), ac.currentTime, 1.0); } }
         else if (ac && nodes[0]) { nodes[0].gain.setTargetAtTime(0.0, ac.currentTime, 0.4); }
       } catch (e) {}
     }
     btn.addEventListener("click", function () { set(!on); });
+    // volume slider — live, persisted, works whether the hum is on or off
+    var slider = document.getElementById("amb-vol");
+    if (slider) {
+      slider.value = vol;
+      var apply = function () {
+        vol = Math.max(0, Math.min(1, parseFloat(slider.value) || 0));
+        try { localStorage.setItem("cc_ambient_vol", String(vol)); } catch (e) {}
+        if (on && ac && nodes[0]) nodes[0].gain.setTargetAtTime(gainFor(), ac.currentTime, 0.12);
+      };
+      slider.addEventListener("input", apply);
+      slider.addEventListener("change", apply);
+    }
     // if the user had it on before, arm it and resume on first interaction (autoplay policy)
     try {
       if (localStorage.getItem("cc_ambient") === "1") {
@@ -211,10 +226,18 @@
     var root = document.documentElement;
     var canFS = !!(root.requestFullscreen || root.webkitRequestFullscreen);
     function inFS() { return document.fullscreenElement || document.webkitFullscreenElement; }
+    function doEnter() { try { (root.requestFullscreen || root.webkitRequestFullscreen).call(root); } catch (e) {} }
+    function doExit() { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {} }
     function sync() {
       var f = inFS();
-      if (enter) enter.style.display = (!canFS || f) ? "none" : "";
-      if (exit) exit.style.display = (canFS && f) ? "" : "none";
+      // ONE button that never disappears — it just flips to a clear EXIT while fullscreen
+      if (enter) {
+        enter.style.display = canFS ? "" : "none";
+        enter.textContent = f ? "⤡ EXIT FULL SCREEN" : "⤢ FULLSCREEN";
+        enter.title = f ? "Exit fullscreen" : "Enter fullscreen";
+        enter.classList.toggle("fs-on", !!f);   // amber "you are in fullscreen" styling
+      }
+      if (exit) exit.style.display = "none";     // single persistent toggle; keep the legacy 2nd button hidden
     }
     if (!canFS) {
       // iPhone Safari has no Fullscreen API — hide both; install-to-home-screen gives full screen
@@ -222,12 +245,10 @@
       if (exit) exit.style.display = "none";
       return;
     }
-    if (enter) enter.addEventListener("click", function () {
-      try { (root.requestFullscreen || root.webkitRequestFullscreen).call(root); } catch (e) {}
-    });
-    if (exit) exit.addEventListener("click", function () {
-      try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {}
-    });
+    if (enter) enter.addEventListener("click", function () { inFS() ? doExit() : doEnter(); });
+    if (exit) exit.addEventListener("click", doExit);
+    // Esc always exits (covers cases where the native hint is missed)
+    document.addEventListener("keydown", function (e) { if ((e.key === "Escape" || e.key === "Esc") && inFS()) doExit(); });
     document.addEventListener("fullscreenchange", sync);
     document.addEventListener("webkitfullscreenchange", sync);
     sync();
@@ -244,6 +265,60 @@
     });
   }
 
+  /* ============================================================
+     9 · LIVE PANEL TICKERS  (gentle motion so the deck breathes)
+     ------------------------------------------------------------
+     The Markets panel is DEMO data, but a frozen quote board reads
+     as dead. We random-walk the four percentages + the sparkline on
+     a slow cadence — purely cosmetic, recolors up/down, flashes on
+     change. Everything else (LEDs, globe, heartbeat) already moves.
+     ============================================================ */
+  function startTickers() {
+    function panelByName(name) {
+      var ps = [].slice.call(document.querySelectorAll("#hub .panel"));
+      for (var i = 0; i < ps.length; i++) {
+        var n = ps[i].querySelector(".tb .n");
+        if (n && n.textContent.toLowerCase().indexOf(name) >= 0) return ps[i];
+      }
+      return null;
+    }
+    var mk = panelByName("market");
+    if (!mk) return;
+    var cells = [].slice.call(mk.querySelectorAll(".bd .row .v"));
+    var poly = mk.querySelector("svg.spark polyline");
+    if (!cells.length) return;
+    // seed from whatever the markup currently shows (markup uses a Unicode
+    // minus "−" — normalize it to ASCII so negative quotes don't flip positive)
+    var vals = cells.map(function (c) {
+      return parseFloat(c.textContent.replace(/[−–—]/g, "-").replace(/[^\-0-9.]/g, "")) || 0;
+    });
+    var seed = vals.slice();   // each quote drifts but is pulled back toward its starting value
+    var hist = (poly ? (poly.getAttribute("points") || "").trim().split(/\s+/)
+      .map(function (p) { return parseFloat(p.split(",")[1]); }).filter(function (v) { return !isNaN(v); }) : []);
+    if (hist.length < 2) hist = [24, 18, 21, 12, 16, 8, 12, 5, 9, 3];
+    function fmt(v) { return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "%"; }
+    function step() {
+      for (var i = 0; i < cells.length; i++) {
+        // gentle random walk + mean-reversion toward the seed so it never drifts off to the rails
+        vals[i] = Math.max(-9, Math.min(9, vals[i] + (seed[i] - vals[i]) * 0.05 + (Math.random() - 0.5) * 0.4));
+        var c = cells[i];
+        c.textContent = fmt(vals[i]);
+        c.classList.toggle("up", vals[i] >= 0);
+        c.classList.toggle("down", vals[i] < 0);
+        c.classList.remove("tick"); void c.offsetWidth; c.classList.add("tick");      // re-trigger flash
+      }
+      if (poly) {
+        hist.push(Math.max(2, Math.min(28, hist[hist.length - 1] + (Math.random() - 0.5) * 6)));
+        hist.shift();
+        var n = hist.length, pts = hist.map(function (y, i) {
+          return Math.round(i * (200 / (n - 1))) + "," + y.toFixed(0);
+        }).join(" ");
+        poly.setAttribute("points", pts);
+      }
+    }
+    setInterval(step, 2600);
+  }
+
   /* ---------- boot ---------- */
   startEKG();
   startHalEye();
@@ -251,6 +326,7 @@
   startAmbient();
   startFullscreen();
   startHaptics();
+  startTickers();
   loadWeather();
   setInterval(loadWeather, 15 * 60 * 1000);
 })();
