@@ -188,9 +188,10 @@
     this.W = 800; this.H = 450; this.dpr = 1;
     this.cx = 400; this.cy = 225; this.lensR = 200;
 
-    /* ----- camera / aim (world pans under fixed reticle) ----- */
-    this.camX = 0; this.camY = 0;       // world offset
-    this.panVX = 0; this.panVY = 0;     // joystick-driven pan velocity input
+    /* ----- aim (reticle slews over a FIXED scene) ----- */
+    this.camX = 0; this.camY = 0;       // kept at 0 — the background is a fixed backdrop
+    this.aimX = 400; this.aimY = 225;   // reticle position (set to scene center in fit/reset)
+    this.panVX = 0; this.panVY = 0;     // keyboard-driven aim velocity input
     this.zoom = 6.0; this.zoomTarget = 6.0;
 
     /* ----- scope motion ----- */
@@ -420,6 +421,12 @@
     this.cy = H * 0.48;
     this.lensR = Math.max(58, Math.min(W, H) * 0.17);   // small scope overlay — the scene fills the whole screen
 
+    // Aim reticle: default to scene center, keep it inside the playfield on resize
+    if (!isFinite(this.aimX)) this.aimX = this.cx;
+    if (!isFinite(this.aimY)) this.aimY = this.cy;
+    this.aimX = clamp(this.aimX, W * 0.05, W * 0.95);
+    this.aimY = clamp(this.aimY, H * 0.06, H * 0.86);
+
     // Control geometry (landscape, two thumbs)
     var pad = Math.max(18, Math.min(W, H) * 0.05);
     // Joystick bottom-left
@@ -538,6 +545,7 @@
     this.rings.length = 0; this.callout = null;
     this.focus = 0; this.focusActive = false; this.focusT = 0; this.focusDur = 0; this.focusFlash = 0;
     this.camX = 0; this.camY = 0; this.zoom = 6; this.zoomTarget = 6;
+    this.aimX = this.cx; this.aimY = this.cy;
     this.recoil = 0; this.vibe = 0; this.shake = 0; this.flash = 0; this.hitMarker = 0;
     this.heat = 0; this.overheated = false; this.spin = 0;
     this.setGun('rifle');
@@ -568,11 +576,13 @@
     else if (r < 0.58) type = 'runner';
     else type = 'popup';
 
-    // World X chosen relative to current camera so they appear near view sometimes.
-    var screenX = rand(-W * 0.3, W * 1.3);
+    // Fixed scene: pop-up targets (popups/depots) appear within view; runners enter from a side and cross.
+    var screenX = (type === 'popup' || type === 'depot')
+      ? rand(W * 0.10, W * 0.90)
+      : (Math.random() < 0.5 ? rand(-W * 0.12, W * 0.05) : rand(W * 0.95, W * 1.12));
     var a = {
       type: type,
-      // sx is a screen-space anchor that scrolls as the camera pans
+      // sx is a fixed screen-space anchor (no camera scroll)
       sx: screenX,
       baseScreenX: screenX,
       layer: this.playLayer,
@@ -591,8 +601,9 @@
     if (type === 'runner') {
       a.state = 'run';
       a.h = 1;
-      a.vx = rand(28, 52) * a.dir * (0.8 + diff * 0.05);
-      a.peek = rand(2.5, 5);
+      a.dir = a.sx < W * 0.5 ? 1 : -1;            // run inward from whichever side they entered
+      a.vx = rand(46, 78) * a.dir * (0.85 + diff * 0.05);
+      a.peek = rand(3.5, 7);
     }
     if (type === 'depot') { a.peek = 99; a.h = 1; a.state = 'up'; }
     if (type === 'drone') {
@@ -696,15 +707,15 @@
       if (this.heat >= 1) { this.overheated = true; this.firing = false; Audio2.overheat(); this.shake = Math.max(this.shake, 0.5); }
     }
 
-    // Bullet direction = reticle center + spread + recoil jitter.
+    // Bullet direction = aim reticle + spread + recoil jitter.
     var sp = g.spread * (1 + this.recoil * 0.4);
     var ang = rand(-sp, sp);
-    var jitterX = Math.sin(ang) * this.cx;
-    var jitterY = rand(-sp, sp) * this.cy;
-    var tx = fin(this.cx + jitterX, this.cx);
-    var ty = fin(this.cy + jitterY, this.cy);
+    var jitterX = Math.sin(ang) * (this.lensR * 1.2);
+    var jitterY = rand(-sp, sp) * (this.lensR * 1.2);
+    var tx = fin(this.aimX + jitterX, this.aimX);
+    var ty = fin(this.aimY + jitterY, this.aimY);
 
-    // Tracer originates lower-center (the barrel) and reaches toward aim point.
+    // Tracer originates lower-center (the barrel) and reaches toward the aim point.
     var ox = this.cx + rand(-4, 4);
     var oy = this.H + 30;
     this.tracers.push({
@@ -889,13 +900,12 @@
    * Agent → screen position. Returns {x,y,r} or null if non-finite.
    * ------------------------------------------------------------------ */
   Game.prototype.agentScreen = function (a) {
-    // Agents store a screen-space X that scrolls as the camera pans.
+    // Agents roam in fixed screen space (the scene no longer pans).
     var x = a.sx;
     var z = fin(this.zoom, 6);
     if (a.fly) {
-      // FLYING drone: lives high in the sky; you aim UP to bring it to the crosshair.
-      var hor = fin(this.cy + this.camY * 0.85, this.cy);
-      var fy = hor - this.H * (0.16 + (a.skyY || 0.5) * 0.34) + (a.bob || 0);
+      // FLYING drone: cruises the upper sky (kept on-screen so the reticle can always reach it).
+      var fy = this.cy - this.H * (0.10 + (a.skyY || 0.5) * 0.28) + (a.bob || 0);
       var fH = 26 * a.size * (0.5 + z * 0.12);
       if (!isFinite(x) || !isFinite(fy) || !isFinite(fH)) return null;
       return { x: x, y: fy, top: fy - fH * 0.5, ridge: fy, r: fH * 0.72, figH: fH, pop: a.h };
@@ -1027,10 +1037,9 @@
     if (p.role === 'drag') {
       var dx = x - p.lastX, dy = y - p.lastY;
       p.lastX = x; p.lastY = y;
-      var z = Math.max(0.5, fin(this.zoom, 6));
-      // direct world drag (slower at high zoom)
-      this.camX -= dx / (z * 1.4);
-      this.camY -= dy / (z * 1.4);
+      // drag the reticle directly across the fixed scene
+      this.aimX = clamp(fin(this.aimX + dx, this.aimX), this.W * 0.05, this.W * 0.95);
+      this.aimY = clamp(fin(this.aimY + dy, this.aimY), this.H * 0.06, this.H * 0.86);
       return;
     }
   };
@@ -1093,20 +1102,18 @@
     this.zoom += (this.zoomTarget - this.zoom) * Math.min(1, rdt * 9);
     this.zoom = clamp(fin(this.zoom, 6), 2, 12);
 
-    // Joystick pan: world scrolls under fixed reticle. Aim stays full-speed even in focus.
-    var panSpeedBase = 560 / Math.max(2, this.zoom); // less pan at high mag
-    var sx = this.stick.active ? this.stick.dx : (this.panVX || 0);
-    var sy = this.stick.active ? this.stick.dy : (this.panVY || 0);
-    // response: fine control near center, full speed toward the edge
-    var resp = function (v) { var s = Math.sign(v), a = Math.min(1, Math.abs(v)); return s * a * (0.4 + 0.6 * a); };
-    var panDX = resp(sx) * panSpeedBase * rdt;
-    var panDY = resp(sy) * panSpeedBase * rdt;                // full vertical speed
-    this.camX = fin(this.camX + panDX, this.camX || 0);
-    this.camY = fin(this.camY - panDY, this.camY || 0);       // stick up = look up (non-inverted)
-    this.camY = clamp(this.camY, -H * 0.45, H * 0.7);          // look down (foreground) limited; look up (sky) generous
-    // decay keyboard pan
-    this.panVX *= (1 - Math.min(1, rdt * 6));
-    this.panVY *= (1 - Math.min(1, rdt * 6));
+    // Joystick slews the AIM RETICLE across the FIXED scene. Snappy; eases off a touch at high zoom.
+    var aimSpeed = Math.max(W, H) * (1.85 - clamp(this.zoom, 2, 12) * 0.06);
+    var ix = this.stick.active ? this.stick.dx : (this.panVX || 0);
+    var iy = this.stick.active ? this.stick.dy : (this.panVY || 0);
+    // mild curve: a little fine control near center, quick toward the edge (not the old sluggish floor)
+    var resp = function (v) { var s = Math.sign(v), a = Math.min(1, Math.abs(v)); return s * Math.pow(a, 1.25); };
+    this.aimX = clamp(fin(this.aimX + resp(ix) * aimSpeed * rdt, this.aimX), W * 0.05, W * 0.95);
+    this.aimY = clamp(fin(this.aimY + resp(iy) * aimSpeed * rdt, this.aimY), H * 0.06, H * 0.86);
+    // decay keyboard aim
+    this.panVX *= (1 - Math.min(1, rdt * 8));
+    this.panVY *= (1 - Math.min(1, rdt * 8));
+    this.camX = 0; this.camY = 0;   // background never pans — the mountains are a fixed backdrop
 
     // Scope sway (slow lissajous), amplified by gun & zoom; settles recoil.
     this.swayT += dt;
@@ -1163,8 +1170,6 @@
       var a = this.agents[i];
       a.t += dt;
       a.flash = Math.max(0, a.flash - dt * 5);
-      // pan agents with the camera horizontally (so panning aims onto them)
-      a.sx -= panDX;
 
       if (a.dead) {
         a.deadT = (a.deadT || 0) + dt;
@@ -1262,29 +1267,15 @@
 
     ctx.clearRect(0, 0, W, H);
 
-    // scope sway offset (applied to WORLD, reticle stays centered)
-    var swA = 6 / Math.max(2, this.zoom) + this.zoom * 0.25;
-    var swayX = Math.sin(this.swayT * 0.7) * swA + Math.sin(this.swayT * 1.9) * swA * 0.4;
-    var swayY = Math.cos(this.swayT * 0.53) * swA * 0.7 + Math.cos(this.swayT * 2.3) * swA * 0.3;
-    // recoil kick (mostly vertical) + vibe + shake
-    var recK = this.recoil * 6;
-    var vib = this.vibe * (3 + Math.sin(this.swayT * 90) * 3);
-    var shk = this.shake * 10;
-    var ox = swayX + (Math.random() - 0.5) * shk + (Math.random() - 0.5) * vib;
-    var oy = swayY + recK + (Math.random() - 0.5) * shk + (Math.random() - 0.5) * vib;
-    ox = fin(ox, 0); oy = fin(oy, 0);
-
+    // Background is a FIXED backdrop — no pan, no sway. The scope and targets move; the mountains don't.
     try {
-      ctx.save();
-      ctx.translate(ox, oy);
       this.drawWorld(ctx, W, H);
-      ctx.restore();
-    } catch (e) { try { ctx.restore(); } catch (e2) {} }
+    } catch (e) { /* keep the frame alive */ }
 
-    // Lens mask vignette (outside circle darkened) — draw after world.
+    // Scope body (vignette is screen-centered; the lens rides the aim point)
     this.drawScopeBody(ctx, W, H);
 
-    // Reticle (centered, stays put)
+    // Reticle at the moving aim point
     this.drawReticle(ctx);
 
     // Muzzle flash overlay
@@ -1655,7 +1646,7 @@
 
   /* --- Scope body: dark vignette outside the lens + glowing rim + ticks --- */
   Game.prototype.drawScopeBody = function (ctx, W, H) {
-    var cx = this.cx, cy = this.cy, R = this.lensR;
+    var cx = this.aimX, cy = this.aimY, R = this.lensR;   // lens rides the moving aim point
     if (!isFinite(cx) || !isFinite(cy) || !isFinite(R) || R <= 0) return;
 
     // Gentle full-screen edge vignette — NOT a hard mask; the whole scene stays visible.
@@ -1706,9 +1697,9 @@
     ctx.restore();
   };
 
-  /* --- MIL-DOT reticle, always centered --- */
+  /* --- MIL-DOT reticle, drawn at the moving aim point --- */
   Game.prototype.drawReticle = function (ctx) {
-    var cx = this.cx, cy = this.cy, R = this.lensR;
+    var cx = this.aimX, cy = this.aimY, R = this.lensR;
     if (!isFinite(cx) || !isFinite(cy) || !isFinite(R) || R <= 0) return;
     ctx.save();
     ctx.beginPath(); ctx.arc(cx, cy, Math.max(0, R - 2), 0, Math.PI * 2); ctx.clip();
@@ -1770,7 +1761,7 @@
   };
 
   Game.prototype.drawMuzzleFlash = function (ctx) {
-    var cx = this.cx, cy = this.cy, R = this.lensR;
+    var cx = this.aimX, cy = this.aimY, R = this.lensR;
     if (!isFinite(cx) || !isFinite(cy) || !isFinite(R) || R <= 0) return;
     var f = clamp(this.flash, 0, 2.4);
     ctx.save();
@@ -2416,7 +2407,7 @@
       return { agents: g.agents.length, up: g.agents.filter(function(a){return a.h>0.2&&!a.dead;}).length,
         drones: g.agents.filter(function(a){return a.fly&&!a.dead;}).length,
         dead: g.agents.filter(function(a){return a.dead;}).length,
-        camX: Math.round(g.camX), camY: Math.round(g.camY), wave: g.wave, score: g.score, combo: g.combo,
+        camX: Math.round(g.camX), camY: Math.round(g.camY), aimX: Math.round(g.aimX), aimY: Math.round(g.aimY), wave: g.wave, score: g.score, combo: g.combo,
         focus: +g.focus.toFixed(2), focusActive: g.focusActive, rings: g.rings.length, callout: g.callout ? g.callout.text : null,
         banner: +(g.waveBanner||0).toFixed(2),
         sample: g.agents.slice(0,4).map(function(a){var p=g.agentScreen(a);return {type:a.fly?'drone':a.type,h:+a.h.toFixed(2),sx:Math.round(a.sx),sy:p?Math.round(p.y):null};}) }; }
