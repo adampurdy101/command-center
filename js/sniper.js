@@ -602,8 +602,8 @@
       a.state = 'run';
       a.h = 1;
       a.dir = a.sx < W * 0.5 ? 1 : -1;            // run inward from whichever side they entered
-      a.vx = rand(46, 78) * a.dir * (0.85 + diff * 0.05);
-      a.peek = rand(3.5, 7);
+      a.vx = rand(26, 46) * a.dir * (0.8 + diff * 0.04);
+      a.peek = rand(4, 8);
     }
     if (type === 'depot') { a.peek = 99; a.h = 1; a.state = 'up'; }
     if (type === 'drone') {
@@ -1103,7 +1103,7 @@
     this.zoom = clamp(fin(this.zoom, 6), 2, 12);
 
     // Joystick slews the AIM RETICLE across the FIXED scene. Snappy; eases off a touch at high zoom.
-    var aimSpeed = Math.max(W, H) * (1.85 - clamp(this.zoom, 2, 12) * 0.06);
+    var aimSpeed = Math.max(W, H) * (2.45 - clamp(this.zoom, 2, 12) * 0.07);
     var ix = this.stick.active ? this.stick.dx : (this.panVX || 0);
     var iy = this.stick.active ? this.stick.dy : (this.panVY || 0);
     // mild curve: a little fine control near center, quick toward the edge (not the old sluggish floor)
@@ -1321,7 +1321,7 @@
       var sxp = ((((s * 149.3 - aCamX * 0.04) % (W + 60)) + W + 60) % (W + 60)) - 30;
       var syp = ((s * 71.7) % Math.max(40, horizon)) * 0.78 + aCamY * 0.25;
       if (syp > horizon - 18 || !isFinite(sxp) || !isFinite(syp)) continue;
-      var tw = 0.3 + 0.6 * (0.5 + 0.5 * Math.sin(T * 1.5 + s));
+      var tw = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(s * 1.7));   // static per-star brightness (no twinkle)
       ctx.globalAlpha = (s % 9 === 0 ? 0.85 : 0.38) * tw;
       ctx.fillStyle = (s % 11 === 0) ? C.cyan : C.faint;
       var ss = (s % 13 === 0) ? 1.8 : 1.1;
@@ -1349,24 +1349,24 @@
       ctx.restore();
     }
 
-    // AURORA shimmer bands near the horizon
+    // AURORA bands near the horizon — STATIC (no shimmer/drift)
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     for (var au = 0; au < 3; au++) {
-      var ay = horizon - H * (0.30 + au * 0.07) + Math.sin(T * 0.4 + au) * 8;
+      var ay = horizon - H * (0.30 + au * 0.07);
       if (!isFinite(ay)) continue;
       ctx.globalAlpha = 0.055 - au * 0.012; ctx.fillStyle = au === 1 ? C.cyan : C.green;
       ctx.beginPath(); ctx.moveTo(-20, ay);
-      for (var ax = 0; ax <= W + 20; ax += 26) ctx.lineTo(ax, ay + Math.sin(ax * 0.012 + T * 0.6 + au * 2) * 14);
+      for (var ax = 0; ax <= W + 20; ax += 26) ctx.lineTo(ax, ay + Math.sin(ax * 0.012 + au * 2) * 14);
       ctx.lineTo(W + 20, ay + 70); ctx.lineTo(-20, ay + 70); ctx.closePath(); ctx.fill();
     }
     ctx.restore();
 
-    // drifting MIST bands (slow, low alpha)
+    // MIST bands — STATIC (fixed positions; no longer drift)
     ctx.save();
     for (var cl = 0; cl < 4; cl++) {
-      var cyB = horizon - H * (0.04 + cl * 0.06) + aCamY * (0.55 - cl * 0.08);
+      var cyB = horizon - H * (0.04 + cl * 0.06);
       var cw = W * (0.5 + cl * 0.12), ch = H * (0.045 + cl * 0.014);
-      var cxB = ((((T * (7 + cl * 2) + aCamX * 0.06) - 200) % (W + 400)) + W + 400) % (W + 400) - 200;
+      var cxB = W * (0.16 + cl * 0.23);
       if (!isFinite(cxB) || !isFinite(cyB)) continue;
       ctx.globalAlpha = 0.05 + cl * 0.008; ctx.fillStyle = '#0b2616';
       ctx.beginPath(); ctx.ellipse(cxB, cyB, cw, ch, 0, 0, Math.PI * 2); ctx.fill();
