@@ -2454,11 +2454,12 @@
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,6,3,0.34)');
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H); ctx.restore();
 
-    // tablet + iPhone (coarse pointer): ease the overall brightness down a touch.
-    // desktop/web (fine pointer) keeps the full-bright look. multiply scales every
-    // pixel ~0.82 so glows soften but blacks stay black (no muddying).
+    // ease the overall brightness: a GENTLE correction on web/desktop (keeps it glammed),
+    // a stronger one on tablet/iPhone. multiply scales every pixel so glows soften but
+    // blacks stay black (no muddying).
     if (this._pvCoarse === undefined) this._pvCoarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-    if (this._pvCoarse) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(185,185,185)'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    var _dim = this._pvCoarse ? 185 : 225;   // web ~12% softer (still glam) · mobile ~27.5%
+    ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(' + _dim + ',' + _dim + ',' + _dim + ')'; ctx.fillRect(0, 0, W, H); ctx.restore();
   };
 
   /* ==================================================================== *
