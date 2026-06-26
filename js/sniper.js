@@ -2446,6 +2446,12 @@
     var vg = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.3, W / 2, H / 2, W * 0.72);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,6,3,0.34)');
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H); ctx.restore();
+
+    // tablet + iPhone (coarse pointer): ease the overall brightness down a touch.
+    // desktop/web (fine pointer) keeps the full-bright look. multiply scales every
+    // pixel ~0.82 so glows soften but blacks stay black (no muddying).
+    if (this._pvCoarse === undefined) this._pvCoarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    if (this._pvCoarse) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(210,210,210)'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
   };
 
   /* ==================================================================== *
