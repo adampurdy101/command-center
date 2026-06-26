@@ -124,5 +124,11 @@
     padding-right: max(6px, env(safe-area-inset-right));
     padding-bottom: max(6px, env(safe-area-inset-bottom));
   }
+}
+/* Hide the fullscreen button ONLY for an installed standalone PWA (already
+   chrome-less, nothing to exit). Do NOT hide it for display-mode:fullscreen —
+   the JS Fullscreen API sets that mode, and the button must stay visible there
+   so it can flip to "⤡ EXIT FULLSCREEN". (This rule was the exit-button bug.) */
+@media (display-mode: standalone) {
   #fs-btn { display: none !important; }
 }
