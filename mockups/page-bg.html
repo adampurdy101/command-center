@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command Center — page background renditions</title>
+<style>
+  :root{ --g:#41ff7e; --hi:#7dffb0; --dim:#2bd964; --faint:#1c8f46; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:#04080a; color:var(--dim); font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; padding:24px 22px 50px; }
+  h1{ color:var(--hi); font-size:16px; letter-spacing:3px; margin:0 0 4px; }
+  .sub{ color:var(--faint); font-size:11px; letter-spacing:1px; margin-bottom:22px; }
+  .row{ margin-bottom:26px; }
+  .tag{ display:flex; align-items:baseline; gap:10px; margin:0 0 8px; }
+  .tag .k{ color:var(--g); font-size:13px; letter-spacing:2px; }
+  .tag .d{ color:var(--faint); font-size:11px; }
+  .frame{ border:1px solid #163e26; border-radius:9px; overflow:hidden; display:block; max-width:1120px;
+    box-shadow:0 0 0 1px rgba(65,255,126,.05), 0 16px 36px rgba(0,0,0,.55); background:#020705; }
+  canvas{ display:block; width:100%; height:auto; }
+</style>
+</head>
+<body>
+  <h1>COMMAND CENTER — PAGE BACKGROUND RENDITIONS</h1>
+  <div class="sub">Background only. Panels shown as translucent frames so you can read how the page feels. Pick one.</div>
+
+  <div class="row">
+    <div class="tag"><span class="k">A · GRID CHAMBER</span><span class="d">a glowing 3D grid chamber (floor + ceiling) receding to a bright horizon, embers rising</span></div>
+    <div class="frame"><canvas id="cA" width="1120" height="500"></canvas></div>
+  </div>
+  <div class="row">
+    <div class="tag"><span class="k">B · AURORA NEBULA</span><span class="d">deep space — parallax starfield + drifting aurora glow clouds with bloom. dreamy and very glowy</span></div>
+    <div class="frame"><canvas id="cB" width="1120" height="500"></canvas></div>
+  </div>
+  <div class="row">
+    <div class="tag"><span class="k">C · DATA CORE</span><span class="d">a 3D grid with data pulses streaming up out of the horizon + glowing nodes. techy and alive</span></div>
+    <div class="frame"><canvas id="cC" width="1120" height="500"></canvas></div>
+  </div>
+
+<script>
+const C={ g:'#41ff7e', hi:'#7dffb0', dim:'#2bd964', faint:'#1c8f46', red:'#ff6b5a', cyan:'#7df7ff', amb:'#ffd24a' };
+const TAU=Math.PI*2;
+function rnd(a,b){ return a+Math.random()*(b-a); }
+function hexA(h,a){ return 'rgba('+parseInt(h.slice(1,3),16)+','+parseInt(h.slice(3,5),16)+','+parseInt(h.slice(5,7),16)+','+a+')'; }
+function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function vignette(ctx,w,h){ const v=ctx.createRadialGradient(w/2,h/2,h*0.36,w/2,h/2,w*0.62); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.30)'); ctx.fillStyle=v; ctx.fillRect(0,0,w,h); }
+function glowPools(ctx,w,h,t,strength){ strength=strength||0.16; ctx.save(); ctx.globalCompositeOperation='lighter';
+  const ps=[[C.g,0],[C.cyan,2.2],[C.g,4.4]];
+  for(let i=0;i<ps.length;i++){ const px=(0.5+0.42*Math.sin(t*0.12+ps[i][1]))*w, py=(0.42+0.26*Math.cos(t*0.1+ps[i][1]*1.5))*h, r=w*0.28;
+    const g=ctx.createRadialGradient(px,py,0,px,py,r); g.addColorStop(0,hexA(ps[i][0],strength)); g.addColorStop(1,hexA(ps[i][0],0)); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); }
+  ctx.restore(); }
+function pgrid(ctx,w,h,t,HOR,ceiling){
+  const vpx=w/2; ctx.save(); ctx.strokeStyle=C.g; ctx.lineWidth=1.1;
+  for(let i=-17;i<=17;i++){ ctx.globalAlpha=Math.max(0,0.20-Math.abs(i)*0.004); const bx=vpx+i*(w*0.08);
+    ctx.beginPath(); ctx.moveTo(vpx,HOR); ctx.lineTo(bx,h); ctx.stroke();
+    if(ceiling){ ctx.beginPath(); ctx.moveTo(vpx,HOR); ctx.lineTo(bx,0); ctx.stroke(); } }
+  const sc=(t*0.22)%1;
+  for(let k=0;k<16;k++){ const p=(k+sc)/16;
+    const yf=HOR+(h-HOR)*Math.pow(p,1.9); ctx.globalAlpha=0.26*(1-p*0.35); ctx.beginPath(); ctx.moveTo(0,yf); ctx.lineTo(w,yf); ctx.stroke();
+    if(ceiling){ const yc=HOR-HOR*Math.pow(p,1.9); ctx.globalAlpha=0.18*(1-p*0.35); ctx.beginPath(); ctx.moveTo(0,yc); ctx.lineTo(w,yc); ctx.stroke(); } }
+  ctx.restore();
+  ctx.save(); const hb=ctx.createLinearGradient(0,HOR-44,0,HOR+44); hb.addColorStop(0,'rgba(65,255,126,0)'); hb.addColorStop(0.5,'rgba(125,255,176,0.26)'); hb.addColorStop(1,'rgba(65,255,126,0)'); ctx.fillStyle=hb; ctx.fillRect(0,HOR-44,w,88);
+  ctx.strokeStyle=C.hi; ctx.globalAlpha=0.7; ctx.shadowColor=C.g; ctx.shadowBlur=18; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(0,HOR); ctx.lineTo(w,HOR); ctx.stroke(); ctx.restore();
+}
+function panels(ctx,w,h){ ctx.save();
+  const pad=Math.round(w*0.014), gap=pad, fill='rgba(4,13,9,0.34)', stroke='rgba(65,255,126,0.42)';
+  function P(x,y,pw,ph){ ctx.fillStyle=fill; rr(ctx,x,y,pw,ph,6); ctx.fill();
+    ctx.strokeStyle=stroke; ctx.lineWidth=1.3; ctx.shadowColor='rgba(65,255,126,0.5)'; ctx.shadowBlur=5; ctx.stroke(); ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(65,255,126,0.10)'; rr(ctx,x,y,pw,Math.min(16,ph*0.16),6); ctx.fill(); }
+  const hH=Math.round(h*0.085); P(pad,pad,w-2*pad,hH);
+  const top=pad+hH+gap, rowBottom=Math.round(h*0.73), mainH=rowBottom-top;
+  const inner=w-2*pad-2*gap, lw=inner*0.24, cw=inner*0.50, rw=inner*0.24;
+  let ly=top; const lph=(mainH-2*gap)/3; for(let i=0;i<3;i++){ P(pad,ly,lw,lph); ly+=lph+gap; }
+  const cx=pad+lw+gap; P(cx,top,cw,mainH);
+  const rx=cx+cw+gap; let ry=top; const rph=(mainH-gap)/2; for(let i=0;i<2;i++){ P(rx,ry,rw,rph); ry+=rph+gap; }
+  const by=rowBottom+gap, bh=h-by-pad, bw1=(w-2*pad-gap)*0.56, bw2=(w-2*pad-gap)*0.44;
+  P(pad,by,bw1,bh); P(pad+bw1+gap,by,bw2,bh);
+  ctx.restore(); }
+
+/* A · GRID CHAMBER */
+const PA={emb:[]};
+function renderA(ctx,w,h,t){
+  const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#03150f'); g.addColorStop(0.5,'#051a0f'); g.addColorStop(1,'#082a15'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  glowPools(ctx,w,h,t,0.16);
+  pgrid(ctx,w,h,t,h*0.45,true);
+  if(PA.emb.length<90 && Math.random()<0.7) PA.emb.push({x:Math.random()*w,y:h+5,vy:-rnd(10,30),vx:rnd(-7,7),ph:Math.random()*6,life:rnd(4,8),age:0});
+  ctx.save(); for(let i=PA.emb.length-1;i>=0;i--){ const e=PA.emb[i]; e.age+=0.016; e.y+=e.vy*0.016; e.x+=e.vx*0.016; if(e.y<-6||e.age>e.life){PA.emb.splice(i,1);continue;}
+    ctx.globalAlpha=Math.max(0,1-e.age/e.life)*0.8*(0.5+0.5*Math.sin(t*3+e.ph)); ctx.fillStyle=C.hi; ctx.shadowColor=C.g; ctx.shadowBlur=6; ctx.fillRect(e.x,e.y,1.8,1.8); } ctx.restore();
+  vignette(ctx,w,h);
+}
+
+/* B · AURORA NEBULA */
+const PB={stars:null};
+function renderB(ctx,w,h,t){
+  const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#020f0c'); g.addColorStop(0.6,'#04140e'); g.addColorStop(1,'#02110b'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  if(!PB.stars){PB.stars=[];for(let i=0;i<170;i++)PB.stars.push([Math.random(),Math.random(),Math.random()]);}
+  ctx.save(); for(const s of PB.stars){ const x=s[0]*w,y=s[1]*h; const tw=0.35+0.65*(0.5+0.5*Math.sin(t*1.2+s[2]*9)); ctx.globalAlpha=tw*0.9; ctx.fillStyle=s[2]>0.9?C.cyan:(s[2]>0.6?C.hi:C.faint); const sz=s[2]>0.85?1.8:1.1; ctx.shadowColor=C.g; ctx.shadowBlur=s[2]>0.85?4:0; ctx.fillRect(x,y,sz,sz);} ctx.restore();
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for(let a=0;a<4;a++){ const cy=h*(0.22+a*0.16)+Math.sin(t*0.18+a)*22; const col=a%2?C.cyan:C.g;
+    const grd=ctx.createLinearGradient(0,cy-75,0,cy+75); grd.addColorStop(0,hexA(col,0)); grd.addColorStop(0.5,hexA(col,0.14)); grd.addColorStop(1,hexA(col,0));
+    ctx.fillStyle=grd; ctx.beginPath(); ctx.moveTo(0,cy-75);
+    for(let x=0;x<=w;x+=22) ctx.lineTo(x, cy+Math.sin(x*0.005+t*0.4+a*2)*30+Math.sin(x*0.012-t*0.25)*14);
+    ctx.lineTo(w,cy+95); ctx.lineTo(0,cy+95); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+  glowPools(ctx,w,h,t,0.20);
+  vignette(ctx,w,h);
+}
+
+/* C · DATA CORE */
+const PC={pulses:null};
+function renderC(ctx,w,h,t){
+  const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#03130d'); g.addColorStop(1,'#06200f'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  glowPools(ctx,w,h,t,0.14);
+  const HOR=h*0.42, vpx=w/2;
+  pgrid(ctx,w,h,t,HOR,false);
+  if(!PC.pulses){PC.pulses=[]; for(let n=0;n<46;n++) PC.pulses.push({i:Math.round(rnd(-15,15)),ph:Math.random(),sp:rnd(0.10,0.26)});}
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for(const pu of PC.pulses){ const p=((t*pu.sp+pu.ph)%1); const pe=Math.pow(p,1.6); const bx=vpx+pu.i*(w*0.08);
+    const x=vpx+(bx-vpx)*pe, y=HOR+(h-HOR)*pe, sz=1+pe*3;
+    ctx.globalAlpha=Math.min(1,0.25+pe*0.9); ctx.fillStyle='#eaffee'; ctx.shadowColor=C.g; ctx.shadowBlur=9; ctx.beginPath(); ctx.arc(x,y,sz,0,TAU); ctx.fill(); }
+  ctx.restore();
+  ctx.save(); for(let n=0;n<16;n++){ const nx=(n+0.5)/16*w, pl=0.5+0.5*Math.sin(t*2.2+n*0.9); ctx.globalAlpha=0.25+pl*0.5; ctx.fillStyle=C.hi; ctx.shadowColor=C.g; ctx.shadowBlur=7*pl; ctx.beginPath(); ctx.arc(nx,HOR,1.4+pl*1.6,0,TAU); ctx.fill(); } ctx.restore();
+  vignette(ctx,w,h);
+}
+
+function mk(id,fn){ const cv=document.getElementById(id); return {ctx:cv.getContext('2d'),fn,w:1120,h:500}; }
+const S=[mk('cA',renderA),mk('cB',renderB),mk('cC',renderC)];
+function loop(ms){ const t=ms/1000;
+  for(const s of S){ s.ctx.clearRect(0,0,s.w,s.h); s.fn(s.ctx,s.w,s.h,t); panels(s.ctx,s.w,s.h);
+    s.ctx.save(); s.ctx.globalAlpha=0.04; s.ctx.fillStyle='#000'; for(let y=0;y<s.h;y+=3)s.ctx.fillRect(0,y,s.w,1); s.ctx.restore(); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

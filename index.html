@@ -62,6 +62,9 @@
     <!-- ============ HUB · MISSION CONTROL ============ -->
     <div id="hub" class="hidden">
 
+      <!-- living page backdrop (Grid Chamber) — sits behind the opaque panels, glows in the gutters -->
+      <canvas id="page-bg" aria-hidden="true"></canvas>
+
       <header class="hdr">
         <div class="title">ADAM // COMMAND CENTER<canvas id="ekg-title" class="ekg ekg-inline" width="74" height="22"></canvas><small id="callsign-sub">RENTON · WA — MISSION CONTROL</small></div>
         <div class="cities" id="cities"></div>
@@ -225,6 +228,8 @@
   <script defer src="js/mission.js"></script>
   <!-- visual flourishes (heartbeat, HAL eye, boot, ambient, weather, haptics, fullscreen) -->
   <script defer src="js/effects.js"></script>
+  <!-- living page backdrop (Grid Chamber 3D background behind the panels) -->
+  <script defer src="js/backdrop.js"></script>
   <!-- clickable panel detail views -->
   <script defer src="js/panels.js"></script>
   <!-- auth + live data wiring -->

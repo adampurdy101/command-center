@@ -20,6 +20,13 @@
   font-family:var(--mono); color:var(--g);
 }
 
+/* ---------- LIVING BACKDROP (Grid Chamber) ---------- */
+/* a slow 3D grid-chamber canvas behind the panels; z-index:-1 keeps it
+   inside #hub's stacking context but below the in-flow header + deck, so
+   it shows only through the gutters + behind the header. Panels are opaque,
+   so it never washes over data. Driven by js/backdrop.js. */
+#hub #page-bg{position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
+
 /* ---------- HEADER ---------- */
 #hub .hdr{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--faint);
   padding-bottom:8px;margin-bottom:0;flex:none;z-index:10}
