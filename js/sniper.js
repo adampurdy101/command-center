@@ -2394,13 +2394,18 @@
       ctx.beginPath(); ctx.moveTo(tr.x0, tr.y0); ctx.lineTo(tr.x1, tr.y1); ctx.stroke(); ctx.restore();
     }
 
-    // TITLE — additive bloom pass under crisp text
+    // dark backing so the title reads clearly over the glow (knock back the bg behind the words)
+    ctx.save();
+    var tbg = ctx.createRadialGradient(W * 0.5, H * 0.46, 0, W * 0.5, H * 0.46, W * 0.46);
+    tbg.addColorStop(0, 'rgba(1,8,5,0.82)'); tbg.addColorStop(0.5, 'rgba(1,8,5,0.55)'); tbg.addColorStop(1, 'rgba(1,8,5,0)');
+    ctx.fillStyle = tbg; ctx.fillRect(0, 0, W, H); ctx.restore();
+    // TITLE — soft halo then CRISP text (no additive blow-out, so the letters stay readable)
     ctx.save(); ctx.textAlign = 'center';
-    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5; ctx.fillStyle = C.green; ctx.shadowColor = C.green; ctx.shadowBlur = 22;
+    ctx.globalAlpha = 0.28; ctx.fillStyle = C.green; ctx.shadowColor = C.green; ctx.shadowBlur = 8;
     ctx.font = '800 ' + Math.round(23 * sc) + 'px ' + FONT; ctx.fillText('SNIPER SCOPE', W * 0.5, H * 0.47);
-    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.98; ctx.fillStyle = C.hi; ctx.shadowBlur = 14;
+    ctx.globalAlpha = 1; ctx.fillStyle = C.hi; ctx.shadowColor = C.green; ctx.shadowBlur = 4;
     ctx.fillText('SNIPER SCOPE', W * 0.5, H * 0.47);
-    ctx.font = '700 ' + Math.round(10 * sc) + 'px ' + FONT; ctx.fillStyle = C.hi; ctx.shadowBlur = 7; ctx.globalAlpha = 0.95;
+    ctx.font = '700 ' + Math.round(10 * sc) + 'px ' + FONT; ctx.fillStyle = C.hi; ctx.shadowBlur = 3; ctx.globalAlpha = 1;
     ctx.fillText('/ /   O V E R W A T C H', W * 0.5, H * 0.47 + 16 * sc); ctx.restore();
 
     // hunting reticle
@@ -2428,10 +2433,12 @@
 
     // DEPLOY button (throbbing)
     var dp = 0.5 + 0.5 * Math.sin(t * 2.4), bw = 108 * sc, bh = 22 * sc, bx = W * 0.5 - bw / 2, by = H - bh - 8 * sc;
-    ctx.save(); ctx.shadowColor = C.green; ctx.shadowBlur = 14 + dp * 20; ctx.strokeStyle = C.hi; ctx.lineWidth = 2;
-    ctx.fillStyle = 'rgba(65,255,126,' + (0.16 + dp * 0.20) + ')'; this.roundRect(ctx, bx, by, bw, bh, 6 * sc); ctx.fill(); ctx.stroke();
+    ctx.save();
+    // dark button body so the label is crisp; throb lives in the glowing border, not the fill
+    ctx.fillStyle = 'rgba(2,12,7,0.72)'; this.roundRect(ctx, bx, by, bw, bh, 6 * sc); ctx.fill();
+    ctx.shadowColor = C.green; ctx.shadowBlur = 9 + dp * 15; ctx.strokeStyle = C.green; ctx.lineWidth = 2; ctx.stroke();
     ctx.shadowBlur = 0; ctx.fillStyle = C.hi; ctx.font = '700 ' + Math.round(12 * sc) + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowColor = C.green; ctx.shadowBlur = 6; ctx.fillText('▶  DEPLOY', W * 0.5, by + bh / 2 + 1); ctx.restore();
+    ctx.fillText('▶  DEPLOY', W * 0.5, by + bh / 2 + 1); ctx.restore();
 
     // sweeping scope scan beam (additive, subtle life)
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -2451,7 +2458,7 @@
     // desktop/web (fine pointer) keeps the full-bright look. multiply scales every
     // pixel ~0.82 so glows soften but blacks stay black (no muddying).
     if (this._pvCoarse === undefined) this._pvCoarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-    if (this._pvCoarse) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(195,195,195)'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    if (this._pvCoarse) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(185,185,185)'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
   };
 
   /* ==================================================================== *
