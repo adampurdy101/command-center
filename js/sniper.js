@@ -2315,16 +2315,27 @@
     function rg(x, seed, baseY, amp) { var n = Math.sin(x * 0.0075 + seed) * 0.55 + Math.sin(x * 0.019 + seed * 1.7) * 0.3 + Math.sin(x * 0.045 + seed * 2.6) * 0.15; return baseY * H - n * amp * H; }
     function ridge(seed, baseY, amp, fill, alpha) { ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(0, H); for (var x = 0; x <= W; x += 4) ctx.lineTo(x, rg(x, seed, baseY, amp)); ctx.lineTo(W, H); ctx.closePath(); ctx.fill(); ctx.restore(); }
 
-    // sky + stars
+    // sky — lifted lit-night green so the whole scene reads (was near-black)
     var skg = ctx.createLinearGradient(0, 0, 0, H);
-    skg.addColorStop(0, '#02100b'); skg.addColorStop(0.55, '#04160e'); skg.addColorStop(0.82, '#0a2615'); skg.addColorStop(1, '#0e3019');
+    skg.addColorStop(0, '#03241a'); skg.addColorStop(0.5, '#06381f'); skg.addColorStop(0.8, '#0a5030'); skg.addColorStop(1, '#0c5e38');
     ctx.fillStyle = skg; ctx.fillRect(0, 0, W, H);
-    if (!this._pvStars) { this._pvStars = []; for (var s2 = 0; s2 < 40; s2++) this._pvStars.push([Math.random(), Math.random() * 0.7, Math.random()]); }
-    ctx.save();
-    for (var si = 0; si < this._pvStars.length; si++) { var st = this._pvStars[si]; var stx = st[0] * W, sty = st[1] * horizon; if (sty > horizon - 5) continue; var tw = 0.35 + 0.45 * (0.5 + 0.5 * Math.sin(t * 1.4 + st[2] * 9)); ctx.globalAlpha = tw * 0.7; ctx.fillStyle = st[2] > 0.9 ? C.cyan : C.faint; ctx.fillRect(stx, sty, 1.2, 1.2); }
+    // ambient phosphor glow rising from the horizon (additive)
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    var skglow = ctx.createRadialGradient(W * 0.5, horizon, 0, W * 0.5, horizon, Math.max(W, H) * 0.85);
+    skglow.addColorStop(0, 'rgba(65,255,126,0.16)'); skglow.addColorStop(0.6, 'rgba(65,255,126,0.05)'); skglow.addColorStop(1, 'rgba(65,255,126,0)');
+    ctx.fillStyle = skglow; ctx.fillRect(0, 0, W, H); ctx.restore();
+    // stars — brighter + bloom, a few bright cyan
+    if (!this._pvStars) { this._pvStars = []; for (var s2 = 0; s2 < 46; s2++) this._pvStars.push([Math.random(), Math.random() * 0.7, Math.random()]); }
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (var si = 0; si < this._pvStars.length; si++) { var st = this._pvStars[si]; var stx = st[0] * W, sty = st[1] * horizon; if (sty > horizon - 5) continue; var tw = 0.5 + 0.5 * (0.5 + 0.5 * Math.sin(t * 1.4 + st[2] * 9)); var big = st[2] > 0.85; ctx.globalAlpha = tw * (big ? 1 : 0.85); ctx.fillStyle = st[2] > 0.9 ? C.cyan : (st[2] > 0.6 ? C.hi : C.green); ctx.shadowColor = big ? C.cyan : C.green; ctx.shadowBlur = big ? 5 : 2; ctx.fillRect(stx, sty, big ? 1.8 : 1.2, big ? 1.8 : 1.2); }
     ctx.restore();
+    // glowing horizon band (the Voice-Scope move)
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    var hbnd = ctx.createLinearGradient(0, horizon - 18 * sc, 0, horizon + 12 * sc);
+    hbnd.addColorStop(0, 'rgba(65,255,126,0)'); hbnd.addColorStop(0.5, 'rgba(125,255,176,0.32)'); hbnd.addColorStop(1, 'rgba(65,255,126,0)');
+    ctx.fillStyle = hbnd; ctx.fillRect(0, horizon - 18 * sc, W, 30 * sc); ctx.restore();
 
-    ridge(17, 0.68, 0.12, '#0a2414', 0.8);
+    ridge(17, 0.68, 0.12, '#0e4226', 0.9);
 
     // respawn killed targets + pick the next one
     for (var sj = 0; sj < pv.swarm.length; sj++) { var sw = pv.swarm[sj]; if (!sw.alive) { sw.dead += dt; if (sw.dead > 0.7) { sw.alive = true; sw.dead = 0; sw.x = rand(0, W); sw.y = rand(H * 0.15, H * 0.46); sw.fly = Math.random() < 0.6; } } }
@@ -2342,21 +2353,27 @@
     }
     pv.fire = Math.max(0, pv.fire - dt);
 
-    // swarm (drones / runners)
+    // swarm (drones / runners) — bright + glowing so they clearly read
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
     for (var sk = 0; sk < pv.swarm.length; sk++) {
       var a = pv.swarm[sk]; if (!a.alive) continue;
       a.x += a.dr * 9 * dt * (a.s / sc); if (a.x < -12) a.x = W + 12; if (a.x > W + 12) a.x = -12;
       var yy = a.y + Math.sin(t * 2 + a.ph) * 3;
-      ctx.save(); ctx.translate(a.x, yy); ctx.fillStyle = '#0d3a20'; ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.globalAlpha = 0.9;
+      var isTgt = (pv.tgt === a);
+      ctx.save(); ctx.translate(a.x, yy); ctx.fillStyle = isTgt ? C.hi : C.green; ctx.strokeStyle = C.hi; ctx.lineWidth = 1.1; ctx.globalAlpha = 0.95; ctx.shadowColor = C.green; ctx.shadowBlur = isTgt ? 12 : 7;
       if (a.fly) {
         ctx.beginPath(); ctx.moveTo(0, -2 * a.s); ctx.lineTo(4 * a.s, 0); ctx.lineTo(0, 2 * a.s); ctx.lineTo(-4 * a.s, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(-6 * a.s, -1); ctx.lineTo(-3 * a.s, 0); ctx.moveTo(6 * a.s, -1); ctx.lineTo(3 * a.s, 0); ctx.stroke();
       } else {
-        ctx.beginPath(); ctx.arc(0, -3 * a.s, 1.6 * a.s, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, -1.4 * a.s); ctx.lineTo(0, 3 * a.s); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, -3 * a.s, 1.7 * a.s, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, -1.4 * a.s); ctx.lineTo(0, 3 * a.s); ctx.stroke();
       }
       ctx.restore();
     }
-    ridge(17, 0.68, 0.12, '#06140c', 1);
+    ctx.restore();
+    // near ridge silhouette (occludes drone feet), then a glowing rim on top
+    ridge(17, 0.68, 0.12, '#08260f', 1);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.75; ctx.strokeStyle = C.green; ctx.lineWidth = 1.3; ctx.shadowColor = C.green; ctx.shadowBlur = 9;
+    ctx.beginPath(); for (var rrx = 0; rrx <= W; rrx += 4) { var rry = rg(rrx, 17, 0.68, 0.12); if (rrx === 0) ctx.moveTo(rrx, rry); else ctx.lineTo(rrx, rry); } ctx.stroke(); ctx.restore();
 
     // explosions (localized — NO full-box flash)
     for (var ri = pv.rings.length - 1; ri >= 0; ri--) {
@@ -2369,7 +2386,7 @@
     }
     for (var ei = pv.emb.length - 1; ei >= 0; ei--) {
       var em = pv.emb[ei]; em.age += dt; if (em.age > em.life) { pv.emb.splice(ei, 1); continue; }
-      em.x += em.vx * dt; em.y += em.vy * dt; em.vy += 60 * dt * sc; ctx.save(); ctx.globalAlpha = Math.max(0, 1 - em.age / em.life); ctx.fillStyle = Math.random() < 0.4 ? C.amber : C.green; ctx.fillRect(em.x, em.y, 1.7 * sc, 1.7 * sc); ctx.restore();
+      em.x += em.vx * dt; em.y += em.vy * dt; em.vy += 60 * dt * sc; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.max(0, 1 - em.age / em.life); ctx.fillStyle = Math.random() < 0.4 ? C.amber : C.hi; ctx.shadowColor = C.green; ctx.shadowBlur = 5; ctx.fillRect(em.x, em.y, 1.9 * sc, 1.9 * sc); ctx.restore();
     }
     for (var ti = pv.streak.length - 1; ti >= 0; ti--) {
       var tr = pv.streak[ti]; tr.age += dt; if (tr.age > 0.12) { pv.streak.splice(ti, 1); continue; }
@@ -2377,14 +2394,17 @@
       ctx.beginPath(); ctx.moveTo(tr.x0, tr.y0); ctx.lineTo(tr.x1, tr.y1); ctx.stroke(); ctx.restore();
     }
 
-    // TITLE
-    ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = 0.96; ctx.fillStyle = C.hi; ctx.shadowColor = C.green; ctx.shadowBlur = 13;
+    // TITLE — additive bloom pass under crisp text
+    ctx.save(); ctx.textAlign = 'center';
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5; ctx.fillStyle = C.green; ctx.shadowColor = C.green; ctx.shadowBlur = 22;
     ctx.font = '800 ' + Math.round(23 * sc) + 'px ' + FONT; ctx.fillText('SNIPER SCOPE', W * 0.5, H * 0.47);
-    ctx.font = '700 ' + Math.round(10 * sc) + 'px ' + FONT; ctx.fillStyle = C.green; ctx.shadowBlur = 6; ctx.globalAlpha = 0.9;
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.98; ctx.fillStyle = C.hi; ctx.shadowBlur = 14;
+    ctx.fillText('SNIPER SCOPE', W * 0.5, H * 0.47);
+    ctx.font = '700 ' + Math.round(10 * sc) + 'px ' + FONT; ctx.fillStyle = C.hi; ctx.shadowBlur = 7; ctx.globalAlpha = 0.95;
     ctx.fillText('/ /   O V E R W A T C H', W * 0.5, H * 0.47 + 16 * sc); ctx.restore();
 
     // hunting reticle
-    ctx.save(); ctx.translate(fin(pv.retX, W * 0.5), fin(pv.retY, H * 0.3)); var rcol = pv.acq > 0.6 ? C.red : C.green; ctx.strokeStyle = rcol; ctx.lineWidth = 1.4; ctx.shadowColor = rcol; ctx.shadowBlur = 6; ctx.globalAlpha = 0.95;
+    ctx.save(); ctx.translate(fin(pv.retX, W * 0.5), fin(pv.retY, H * 0.3)); var rcol = pv.acq > 0.6 ? C.red : C.green; ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = rcol; ctx.lineWidth = 1.7; ctx.shadowColor = rcol; ctx.shadowBlur = 11; ctx.globalAlpha = 1;
     var RR = 12 * sc; ctx.beginPath(); ctx.arc(0, 0, RR, 0, TAU); ctx.stroke();
     var angs = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
     for (var qi = 0; qi < 4; qi++) { var aa = angs[qi]; ctx.beginPath(); ctx.moveTo(Math.cos(aa) * RR * 0.42, Math.sin(aa) * RR * 0.42); ctx.lineTo(Math.cos(aa) * RR * 1.5, Math.sin(aa) * RR * 1.5); ctx.stroke(); }
@@ -2398,24 +2418,33 @@
     if (pv.acq > 0.6) { ctx.save(); var pp = 0.6 + 0.4 * Math.sin(t * 9); ctx.globalAlpha = pp; ctx.fillStyle = C.red; ctx.shadowColor = C.red; ctx.shadowBlur = 7; ctx.font = '700 ' + Math.round(9 * sc) + 'px ' + FONT; ctx.textAlign = 'left'; ctx.fillText('● TARGET ACQUIRED', 10 * sc, 14 * sc); ctx.restore(); }
 
     // radar (upper-right)
-    pv.radar += dt * 2.2; ctx.save(); ctx.translate(W - 22 * sc, 20 * sc); var RAD = 11 * sc; ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.globalAlpha = 0.75;
+    pv.radar += dt * 2.2; ctx.save(); ctx.translate(W - 22 * sc, 20 * sc); var RAD = 11 * sc;
+    ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = C.dim; ctx.lineWidth = 1.1; ctx.globalAlpha = 0.85; ctx.shadowColor = C.green; ctx.shadowBlur = 4;
     ctx.beginPath(); ctx.arc(0, 0, RAD, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, RAD * 0.55, 0, TAU); ctx.stroke();
-    ctx.strokeStyle = C.green; ctx.shadowColor = C.green; ctx.shadowBlur = 6; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(pv.radar) * RAD, Math.sin(pv.radar) * RAD); ctx.stroke();
-    ctx.fillStyle = C.red; for (var bi = 0; bi < 2; bi++) { var bang = pv.radar * 0.6 + bi * 2.3, brr = RAD * (0.4 + bi * 0.3); ctx.beginPath(); ctx.arc(Math.cos(bang) * brr, Math.sin(bang) * brr, 1.4 * sc, 0, TAU); ctx.fill(); } ctx.restore();
+    var sweepG = ctx.createRadialGradient(0, 0, 0, 0, 0, RAD); sweepG.addColorStop(0, 'rgba(65,255,126,0.45)'); sweepG.addColorStop(1, 'rgba(65,255,126,0)');
+    ctx.fillStyle = sweepG; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, RAD, pv.radar - 0.5, pv.radar); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = C.hi; ctx.shadowColor = C.green; ctx.shadowBlur = 8; ctx.lineWidth = 1.4; ctx.globalAlpha = 1; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(pv.radar) * RAD, Math.sin(pv.radar) * RAD); ctx.stroke();
+    ctx.fillStyle = C.red; ctx.shadowColor = C.red; ctx.shadowBlur = 6; for (var bi = 0; bi < 2; bi++) { var bang = pv.radar * 0.6 + bi * 2.3, brr = RAD * (0.4 + bi * 0.3); ctx.beginPath(); ctx.arc(Math.cos(bang) * brr, Math.sin(bang) * brr, 1.6 * sc, 0, TAU); ctx.fill(); } ctx.restore();
 
     // DEPLOY button (throbbing)
     var dp = 0.5 + 0.5 * Math.sin(t * 2.4), bw = 108 * sc, bh = 22 * sc, bx = W * 0.5 - bw / 2, by = H - bh - 8 * sc;
-    ctx.save(); ctx.shadowColor = C.green; ctx.shadowBlur = 8 + dp * 15; ctx.strokeStyle = C.green; ctx.lineWidth = 2;
-    ctx.fillStyle = 'rgba(65,255,126,' + (0.10 + dp * 0.15) + ')'; this.roundRect(ctx, bx, by, bw, bh, 6 * sc); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.shadowColor = C.green; ctx.shadowBlur = 14 + dp * 20; ctx.strokeStyle = C.hi; ctx.lineWidth = 2;
+    ctx.fillStyle = 'rgba(65,255,126,' + (0.16 + dp * 0.20) + ')'; this.roundRect(ctx, bx, by, bw, bh, 6 * sc); ctx.fill(); ctx.stroke();
     ctx.shadowBlur = 0; ctx.fillStyle = C.hi; ctx.font = '700 ' + Math.round(12 * sc) + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('▶  DEPLOY', W * 0.5, by + bh / 2 + 1); ctx.restore();
+    ctx.shadowColor = C.green; ctx.shadowBlur = 6; ctx.fillText('▶  DEPLOY', W * 0.5, by + bh / 2 + 1); ctx.restore();
 
-    // CRT scanlines + vignette
-    ctx.save(); ctx.globalAlpha = 0.05; ctx.fillStyle = '#000';
+    // sweeping scope scan beam (additive, subtle life)
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    var beamX = ((t * 0.16) % 1) * (W + 80) - 40, bwd = 46 * sc;
+    var beam = ctx.createLinearGradient(beamX - bwd, 0, beamX + bwd, 0);
+    beam.addColorStop(0, 'rgba(65,255,126,0)'); beam.addColorStop(0.5, 'rgba(125,255,176,0.10)'); beam.addColorStop(1, 'rgba(65,255,126,0)');
+    ctx.fillStyle = beam; ctx.fillRect(beamX - bwd, 0, bwd * 2, H); ctx.restore();
+    // CRT scanlines (lighter) + soft green-tinted vignette (no longer crushes the image)
+    ctx.save(); ctx.globalAlpha = 0.035; ctx.fillStyle = '#000';
     for (var ly = 0; ly < H; ly += 3) ctx.fillRect(0, ly, W, 1);
     ctx.globalAlpha = 1;
-    var vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, W * 0.62);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)');
+    var vg = ctx.createRadialGradient(W / 2, H * 0.46, H * 0.3, W / 2, H / 2, W * 0.72);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,6,3,0.34)');
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H); ctx.restore();
   };
 
