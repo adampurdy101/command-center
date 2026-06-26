@@ -2451,7 +2451,7 @@
     // desktop/web (fine pointer) keeps the full-bright look. multiply scales every
     // pixel ~0.82 so glows soften but blacks stay black (no muddying).
     if (this._pvCoarse === undefined) this._pvCoarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-    if (this._pvCoarse) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(210,210,210)'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    if (this._pvCoarse) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(195,195,195)'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
   };
 
   /* ==================================================================== *
