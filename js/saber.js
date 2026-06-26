@@ -36,10 +36,13 @@
   function saveNum(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
 
   /* hum characters — warm + movie-ish; CLASSIC is the steady Jedi hum */
+  /* Tuned to the documented Ben Burtt recipe: projector-motor drone (baseF + saws),
+     CRT-TV interference buzz (buzz osc, octave up), electrical fizz (hi-passed noise),
+     soft-clip grit (drive), a slow mechanical waver (trem/vib), and Doppler on swing. */
   var TYPES = {
-    classic: { name: 'CLASSIC', baseF: 110, lp: 2100, subMix: 0.30, tremHz: 6.5, tremDepth: 0.13, vibHz: 5, vibCents: 5,  crackle: 0.00, formant: 320 },
-    vader:   { name: 'VADER',   baseF: 74,  lp: 1450, subMix: 0.46, tremHz: 5.0, tremDepth: 0.18, vibHz: 4, vibCents: 8,  crackle: 0.00, formant: 240 },
-    kylo:    { name: 'KYLO',    baseF: 104, lp: 2400, subMix: 0.24, tremHz: 8.0, tremDepth: 0.17, vibHz: 7, vibCents: 13, crackle: 0.45, formant: 360 }
+    classic: { name: 'CLASSIC', baseF: 110, lp: 2100, subMix: 0.30, tremHz: 6.5, tremDepth: 0.13, vibHz: 5, vibCents: 5,  crackle: 0.00, formant: 320, buzz: 0.06, fizz: 0.010, drive: 0.28 },
+    vader:   { name: 'VADER',   baseF: 74,  lp: 1450, subMix: 0.46, tremHz: 5.0, tremDepth: 0.18, vibHz: 4, vibCents: 8,  crackle: 0.00, formant: 240, buzz: 0.08, fizz: 0.010, drive: 0.55 },
+    kylo:    { name: 'KYLO',    baseF: 104, lp: 2400, subMix: 0.24, tremHz: 8.0, tremDepth: 0.17, vibHz: 7, vibCents: 13, crackle: 0.45, formant: 360, buzz: 0.10, fizz: 0.035, drive: 0.45 }
   };
   var ORDER = ['classic', 'vader', 'kylo'];
   var curType = 'classic', cur = TYPES.classic;
@@ -58,10 +61,18 @@
   /* ============================================================
      AUDIO
      ============================================================ */
-  var master, comp, humLevel, flare, humLP, humFormant, humMix, osc1, osc2, sub, subGain;
+  var master, comp, humLevel, flare, humLP, humFormant, humMix, shaper, osc1, osc2, sub, subGain;
+  var buzz, buzzG, fizz, fizzHP, fizzG, swReson, swResonG;
   var tremLFO, tremDepth, vibLFO, vibDepth, vibDepth2;
   var swNoise, swooshBP, swooshGain, crNoise, crackleBP, crackleGain;
   var clashBufs = null, noisePink, silentEl;
+
+  /* soft-clip curve for the "electrical" grit Burtt's layered tone has */
+  function makeCurve(amount) {
+    var n = 1024, c = new Float32Array(n), k = amount * 5;
+    for (var i = 0; i < n; i++) { var x = i / (n - 1) * 2 - 1; c[i] = (1 + k) * x / (1 + k * Math.abs(x)); }
+    return c;
+  }
 
   function makeNoise(seconds, white) {
     var len = Math.floor(ctx.sampleRate * seconds), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0), b0 = 0, b1 = 0, b2 = 0;
@@ -85,14 +96,27 @@
     humLevel = ctx.createGain(); humLevel.gain.value = 0; humLevel.connect(flare);
     humLP = ctx.createBiquadFilter(); humLP.type = 'lowpass'; humLP.frequency.value = cur.lp; humLP.Q.value = 0.7; humLP.connect(humLevel);
     humFormant = ctx.createBiquadFilter(); humFormant.type = 'peaking'; humFormant.frequency.value = cur.formant; humFormant.Q.value = 4; humFormant.gain.value = 7; humFormant.connect(humLP);
-    humMix = ctx.createGain(); humMix.gain.value = 1; humMix.connect(humFormant);
+    shaper = ctx.createWaveShaper(); shaper.oversample = '2x'; shaper.curve = makeCurve(cur.drive); shaper.connect(humFormant);
+    humMix = ctx.createGain(); humMix.gain.value = 1; humMix.connect(shaper);
 
+    /* projector-motor drone: two detuned saws + a sub */
     osc1 = ctx.createOscillator(); osc1.type = 'sawtooth'; osc1.frequency.value = baseF;
     osc2 = ctx.createOscillator(); osc2.type = 'sawtooth'; osc2.frequency.value = baseF; osc2.detune.value = 8;
     sub  = ctx.createOscillator(); sub.type  = 'sine';     sub.frequency.value  = baseF * 0.5;
     var g1 = ctx.createGain(); g1.gain.value = 0.5; osc1.connect(g1); g1.connect(humMix);
     var g2 = ctx.createGain(); g2.gain.value = 0.5; osc2.connect(g2); g2.connect(humMix);
     subGain = ctx.createGain(); subGain.gain.value = cur.subMix; sub.connect(subGain); subGain.connect(humMix);
+    /* CRT-TV interference buzz: an octave-up saw, low level (rides Doppler with the rest) */
+    buzz = ctx.createOscillator(); buzz.type = 'sawtooth'; buzz.frequency.value = baseF * 2;
+    buzzG = ctx.createGain(); buzzG.gain.value = cur.buzz; buzz.connect(buzzG); buzzG.connect(humMix);
+    /* electrical fizz: hi-passed noise into the level node (fades with on/off + waver) */
+    fizz = ctx.createBufferSource(); fizz.buffer = makeNoise(2, true); fizz.loop = true;
+    fizzHP = ctx.createBiquadFilter(); fizzHP.type = 'highpass'; fizzHP.frequency.value = 2200;
+    fizzG = ctx.createGain(); fizzG.gain.value = 0; fizz.connect(fizzHP); fizzHP.connect(fizzG); fizzG.connect(humLevel);
+    /* the authentic swing: a resonant Doppler "whoosh" taken from the hum itself */
+    swReson = ctx.createBiquadFilter(); swReson.type = 'bandpass'; swReson.frequency.value = 500; swReson.Q.value = 6;
+    swResonG = ctx.createGain(); swResonG.gain.value = 0;
+    humLevel.connect(swReson); swReson.connect(swResonG); swResonG.connect(master);
 
     /* the waver */
     tremLFO = ctx.createOscillator(); tremLFO.type = 'sine'; tremLFO.frequency.value = cur.tremHz;
@@ -116,7 +140,7 @@
 
     clashBufs = [makeNoise(0.4, true), makeNoise(0.4, true), makeNoise(0.4, true)];
 
-    osc1.start(); osc2.start(); sub.start(); tremLFO.start(); vibLFO.start(); swNoise.start(); crNoise.start();
+    osc1.start(); osc2.start(); sub.start(); buzz.start(); tremLFO.start(); vibLFO.start(); swNoise.start(); crNoise.start(); fizz.start();
     applyTypeParams();
   }
 
@@ -142,20 +166,31 @@
     vibLFO.frequency.setTargetAtTime(t.vibHz, now, 0.08);
     vibDepth.gain.setTargetAtTime(t.vibCents, now, 0.08);
     vibDepth2.gain.setTargetAtTime(t.vibCents, now, 0.08);
-    if (on) { tremDepth.gain.setTargetAtTime(t.tremDepth * baseHum, now, 0.1); crackleGain.gain.setTargetAtTime(t.crackle * 0.08, now, 0.12); }
+    if (buzz) buzz.frequency.setTargetAtTime(baseF * 2 * pitchMul, now, 0.06);
+    if (buzzG) buzzG.gain.setTargetAtTime(t.buzz, now, 0.08);
+    if (shaper) shaper.curve = makeCurve(t.drive);
+    if (on) {
+      tremDepth.gain.setTargetAtTime(t.tremDepth * baseHum, now, 0.1);
+      crackleGain.gain.setTargetAtTime(t.crackle * 0.08, now, 0.12);
+      if (fizzG) fizzG.gain.setTargetAtTime(t.fizz, now, 0.12);
+    }
   }
 
   /* THE swing mapping: speed -> hum pitch + bright + a loud rising whoosh */
   function applyMotion(sw) {
     if (!ctx || !on) return;
     var s = Math.min(1, sw / swingScale), now = ctx.currentTime;
-    pitchMul = 1 + 0.6 * s;                                   // hum bends up clearly
-    osc1.frequency.setTargetAtTime(baseF * pitchMul, now, 0.025);
-    osc2.frequency.setTargetAtTime(baseF * pitchMul, now, 0.025);
-    sub.frequency.setTargetAtTime(baseF * 0.5 * pitchMul, now, 0.025);
-    humLP.frequency.setTargetAtTime(cur.lp + s * 1500, now, 0.03);   // tone opens up on a swing
-    swooshGain.gain.setTargetAtTime(Math.min(1.1, s * s * 1.5), now, 0.025);  // prominent whoosh
-    swooshBP.frequency.setTargetAtTime(220 + s * 2600, now, 0.025);          // Doppler sweep
+    pitchMul = 1 + 0.85 * s;                                  // strong Doppler bend of the whole tone
+    osc1.frequency.setTargetAtTime(baseF * pitchMul, now, 0.022);
+    osc2.frequency.setTargetAtTime(baseF * pitchMul, now, 0.022);
+    sub.frequency.setTargetAtTime(baseF * 0.5 * pitchMul, now, 0.022);
+    if (buzz) buzz.frequency.setTargetAtTime(baseF * 2 * pitchMul, now, 0.022);
+    humLP.frequency.setTargetAtTime(cur.lp + s * 1800, now, 0.03);            // tone opens up on a swing
+    /* tonal Doppler whoosh derived from the hum itself — the authentic moving-mic effect */
+    if (swResonG) { swResonG.gain.setTargetAtTime(s * s * 0.7, now, 0.022); swReson.frequency.setTargetAtTime(300 + s * 2600, now, 0.022); }
+    /* a lighter airy layer on top */
+    swooshGain.gain.setTargetAtTime(Math.min(0.5, s * s * 0.8), now, 0.025);
+    swooshBP.frequency.setTargetAtTime(300 + s * 2400, now, 0.025);
     if (performance.now() - igniteT > 240) humLevel.gain.setTargetAtTime(baseHum * (1 + 0.18 * s), now, 0.05);
   }
 
@@ -173,6 +208,7 @@
     humLP.frequency.setValueAtTime(600, now); humLP.frequency.setTargetAtTime(cur.lp, now, 0.10);
     tremDepth.gain.setTargetAtTime(cur.tremDepth * baseHum, now, 0.1);
     crackleGain.gain.setTargetAtTime(cur.crackle * 0.08, now, 0.15);
+    if (fizzG) fizzG.gain.setTargetAtTime(cur.fizz, now, 0.15);
     /* snap-hiss */
     var nb = ctx.createBufferSource(); nb.buffer = makeNoise(0.6, true);
     var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.9;
@@ -189,7 +225,10 @@
     var now = ctx.currentTime;
     humLevel.gain.cancelScheduledValues(now); humLevel.gain.setTargetAtTime(0.0001, now, 0.12);
     tremDepth.gain.setTargetAtTime(0, now, 0.1); crackleGain.gain.setTargetAtTime(0, now, 0.1); swooshGain.gain.setTargetAtTime(0, now, 0.08);
+    if (fizzG) fizzG.gain.setTargetAtTime(0, now, 0.1);
+    if (swResonG) swResonG.gain.setTargetAtTime(0, now, 0.08);
     osc1.frequency.setTargetAtTime(baseF * 0.6, now, 0.08); osc2.frequency.setTargetAtTime(baseF * 0.6, now, 0.08);
+    if (buzz) buzz.frequency.setTargetAtTime(baseF * 1.2, now, 0.08);
     var nb = ctx.createBufferSource(); nb.buffer = makeNoise(0.6, true);
     var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.9;
     bp.frequency.setValueAtTime(2600, now); bp.frequency.exponentialRampToValueAtTime(280, now + 0.3);
@@ -359,6 +398,11 @@
 
   function motionLive() { return motionOK && performance.now() - lastMotionT < 400; }
 
+  /* vertical-only: lock to portrait where allowed, and gate behind a "rotate" prompt otherwise */
+  function isLandscape() { return (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) || (window.innerWidth > window.innerHeight); }
+  function checkOrient() { var g = document.getElementById('saber-rotate'); if (g) g.style.display = (opened && isLandscape()) ? 'flex' : 'none'; }
+  function lockPortrait() { try { if (screen.orientation && screen.orientation.lock) { var p = screen.orientation.lock('portrait'); if (p && p.catch) p.catch(function () {}); } } catch (e) {} }
+
   /* wake lock + iOS audio warm-up */
   function acquireWake() { try { if (navigator.wakeLock && !wakeLock) navigator.wakeLock.request('screen').then(function (wl) { wakeLock = wl; wl.addEventListener('release', function () { wakeLock = null; }); }).catch(function () {}); } catch (e) {} }
   function releaseWake() { try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeLock = null; }
@@ -387,7 +431,10 @@
       '#saber.hidden{display:none}#saber canvas{position:absolute;inset:0;width:100%;height:100%;display:block}' +
       '#saber .sb-btn{position:absolute;z-index:2;background:rgba(4,13,9,.55);color:' + GREEN + ';border:1px solid ' + hexA(GREEN, 0.5) + ';border-radius:8px;font:600 13px/1 ui-monospace,Menlo,monospace;letter-spacing:1px;padding:11px 13px;min-width:44px;min-height:44px;cursor:pointer;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);text-shadow:0 0 6px ' + hexA(GREEN, 0.7) + '}' +
       '#saber .sb-btn:active{background:' + hexA(GREEN, 0.18) + '}' +
-      '#saber #saber-exit{top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));font-size:18px}' +
+      '#saber #saber-exit{top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));font-size:18px;z-index:6}' +
+      '#saber #saber-rotate{position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;text-align:center;background:#02060a;color:' + hexA(GREEN, 0.92) + ';font:600 15px/1.7 ui-monospace,Menlo,monospace;letter-spacing:3px;text-shadow:0 0 12px ' + hexA(GREEN, 0.7) + '}' +
+      '#saber #saber-rotate .rg-ico{font-size:42px;display:block;margin-bottom:10px}' +
+      '#saber #saber-rotate .rg-sub{font-size:11px;letter-spacing:1px;opacity:.6;display:block;margin-top:6px}' +
       '#saber #saber-type{top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right))}' +
       '#saber #saber-dev{bottom:max(12px,env(safe-area-inset-bottom));right:max(12px,env(safe-area-inset-right));opacity:.6;font-size:11px;min-height:38px;padding:8px 10px}' +
       '#saber #saber-status{position:absolute;z-index:2;left:0;right:0;top:max(14px,env(safe-area-inset-top));text-align:center;font:600 11px/1.4 ui-monospace,Menlo,monospace;letter-spacing:2px;pointer-events:none}' +
@@ -410,7 +457,8 @@
       '<button id="saber-type" class="sb-btn" type="button" aria-label="Change saber type">CLASSIC ▸</button>' +
       '<div id="saber-hint"><span id="saber-main">TAP TO IGNITE</span><span id="saber-sub">SILENT SWITCH OFF · VOLUME UP</span></div>' +
       '<button id="saber-dev" class="sb-btn" type="button" aria-hidden="true">DEV</button>' +
-      '<div id="saber-dbg" class="hidden"></div>';
+      '<div id="saber-dbg" class="hidden"></div>' +
+      '<div id="saber-rotate"><div><span class="rg-ico">⟳</span>ROTATE TO PORTRAIT<span class="rg-sub">VERTICAL ONLY</span></div></div>';
     document.body.appendChild(wrap);
     cv = document.getElementById('saber-cv'); g2 = cv.getContext('2d');
 
@@ -421,9 +469,9 @@
     cv.addEventListener('pointermove', onPointer, { passive: true });
     cv.addEventListener('pointerup', function () { lastPt = null; prevPv = 0; }, { passive: true });
 
-    window.addEventListener('resize', resize, { passive: true });
-    window.addEventListener('orientationchange', function () { setTimeout(resize, 80); }, { passive: true });
-    if (window.visualViewport) window.visualViewport.addEventListener('resize', resize, { passive: true });
+    window.addEventListener('resize', function () { resize(); checkOrient(); }, { passive: true });
+    window.addEventListener('orientationchange', function () { setTimeout(function () { resize(); checkOrient(); }, 80); }, { passive: true });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', function () { resize(); checkOrient(); }, { passive: true });
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) { if (ctx && ctx.state === 'running') ctx.suspend(); if (silentEl) { try { silentEl.pause(); } catch (e) {} } }
       else if (opened) { if (ctx && ctx.state === 'suspended') { var p = ctx.resume(); if (p && p.then) p.then(nudgeSession); else nudgeSession(); } acquireWake(); }
@@ -479,7 +527,7 @@
      ============================================================ */
   function open() {
     buildOverlay(); wrap.classList.remove('hidden'); opened = true; dirty = true;
-    ensureAudio(); acquireWake(); resize();
+    ensureAudio(); acquireWake(); lockPortrait(); resize(); checkOrient();
     var b = document.getElementById('saber-type'); if (b) b.textContent = cur.name + ' ▸';
     setHint(); updateStatus();
     lastT = 0; if (!raf) raf = requestAnimationFrame(draw);
