@@ -97,6 +97,57 @@
     html[data-fx="3"] #hub .panel::before, html[data-fx="3"] #hub .panel::after{opacity:.7 !important;border-color:#aeffe6 !important;width:18px;height:18px}
     html[data-fx="3"] #hub .hdr .title, html[data-fx="3"] #hub .clock .time, html[data-fx="3"] #hub .row .v.big{text-shadow:0 0 10px rgba(194,255,240,.85), 0 0 24px rgba(77,255,208,.45) !important}
     html[data-fx="3"] #hub .globe-wrap .fx-haze{background:radial-gradient(circle at 50% 52%, rgba(77,255,208,.22), rgba(125,247,255,.08) 42%, transparent 66%) !important}
+
+    /* ===================================================================
+       PANEL INTERIOR TEXTURE — a ghostly, semi-transparent 3D layer that
+       sits behind each panel's data (z0) while content rides above (z1).
+       Three switchable treatments, all on the Neon Noir coloring.
+       =================================================================== */
+    html[data-fx] #hub .panel > .tb, html[data-fx] #hub .panel > .bd{position:relative;z-index:1}
+    html[data-fx] #hub .panel .fx-tex{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;border-radius:inherit}
+    html[data-fx] #hub .panel .fx-tex::before, html[data-fx] #hub .panel .fx-tex::after{content:'';position:absolute}
+
+    /* --- A · HOLO MESH : a perspective grid floor receding into the panel --- */
+    html[data-tex="A"] #hub .panel .fx-tex{perspective:260px}
+    html[data-tex="A"] #hub .panel .fx-tex::before{
+      left:-30%;right:-30%;bottom:-20%;height:155%;
+      background:
+        linear-gradient(rgba(125,255,205,.17) 1px, transparent 1px) 0 0/100% 15px,
+        linear-gradient(90deg, rgba(125,255,205,.12) 1px, transparent 1px) 0 0/22px 100%;
+      transform:rotateX(64deg);transform-origin:50% 100%;
+      -webkit-mask-image:linear-gradient(to top, #000 5%, rgba(0,0,0,.32) 50%, transparent 82%);
+              mask-image:linear-gradient(to top, #000 5%, rgba(0,0,0,.32) 50%, transparent 82%);
+      animation:fxAgrid 5s linear infinite}
+    @keyframes fxAgrid{from{background-position:0 0,0 0}to{background-position:0 15px,0 0}}
+    html[data-tex="A"] #hub .panel .fx-tex::after{inset:0;background:radial-gradient(120% 70% at 50% 8%, rgba(125,247,255,.13), transparent 62%)}
+
+    /* --- B · GHOST VOLUME : frosted layered fog + drifting shafts + motes --- */
+    html[data-tex="B"] #hub .panel .fx-tex{
+      background:
+        radial-gradient(130% 120% at 18% -10%, rgba(125,247,255,.13), transparent 55%),
+        radial-gradient(120% 120% at 95% 115%, rgba(60,255,150,.12), transparent 55%),
+        linear-gradient(180deg, rgba(10,28,22,0), rgba(2,10,8,.4))}
+    html[data-tex="B"] #hub .panel .fx-tex::before{
+      inset:-30%;background:repeating-linear-gradient(118deg, rgba(180,255,220,.06) 0 2px, transparent 2px 26px);
+      animation:fxBshaft 13s linear infinite}
+    @keyframes fxBshaft{from{transform:translateX(-10%)}to{transform:translateX(10%)}}
+    html[data-tex="B"] #hub .panel .fx-tex::after{
+      inset:0;background-image:radial-gradient(circle, rgba(190,255,230,.6) 1px, transparent 1.6px);
+      background-size:30px 30px;opacity:.12;animation:fxBmote 11s linear infinite}
+    @keyframes fxBmote{from{background-position:0 0}to{background-position:16px -30px}}
+
+    /* --- C · TACTICAL WEAVE : triangular tech-mesh + holographic sheen sweep --- */
+    html[data-tex="C"] #hub .panel .fx-tex{
+      background:
+        linear-gradient(0deg, rgba(125,255,205,.09) 1px, transparent 1px) 0 0/100% 18px,
+        linear-gradient(60deg, rgba(125,255,205,.075) 1px, transparent 1px) 0 0/21px 18px,
+        linear-gradient(120deg, rgba(125,255,205,.075) 1px, transparent 1px) 0 0/21px 18px}
+    html[data-tex="C"] #hub .panel .fx-tex::before{
+      top:-50%;left:-70%;width:55%;height:200%;
+      background:linear-gradient(100deg, transparent, rgba(190,255,235,.16), transparent);
+      transform:skewX(-16deg);animation:fxCsheen 6s ease-in-out infinite}
+    @keyframes fxCsheen{0%{left:-70%}55%,100%{left:150%}}
+    html[data-tex="C"] #hub .panel .fx-tex::after{inset:0;background:radial-gradient(130% 90% at 50% 110%, rgba(60,255,150,.10), transparent 60%)}
   </style>
 </head>
 <body>
@@ -227,11 +278,11 @@
   </main>
 
   <!-- rendition switcher -->
-  <div id="fxbar" role="group" aria-label="Visual rendition">
-    <span class="fxlab">RENDITION</span>
-    <button type="button" data-r="1">1 · DEEP PHOSPHOR</button>
-    <button type="button" data-r="2">2 · NEON NOIR</button>
-    <button type="button" data-r="3">3 · HOLO-TACTICAL</button>
+  <div id="fxbar" role="group" aria-label="Panel texture">
+    <span class="fxlab">PANEL TEXTURE · NEON NOIR</span>
+    <button type="button" data-tex="A">1 · HOLO MESH</button>
+    <button type="button" data-tex="B">2 · GHOST VOLUME</button>
+    <button type="button" data-tex="C">3 · TACTICAL WEAVE</button>
     <span class="fxhint">keys 1 / 2 / 3</span>
   </div>
 
@@ -246,6 +297,7 @@
     (function () {
       function init() {
         var ROOT = document.documentElement;
+        ROOT.setAttribute('data-fx', '2');           /* lock the Neon Noir coloring */
         /* accent discipline: amber for DEMO, cyan-green for LIVE */
         document.querySelectorAll('#hub .panel .tb .s').forEach(function (s) {
           var t = (s.textContent || '').toUpperCase();
@@ -257,18 +309,24 @@
         if (gw && !gw.querySelector('.fx-haze')) {
           var hz = document.createElement('div'); hz.className = 'fx-haze'; gw.insertBefore(hz, gw.firstChild);
         }
-        /* switcher + hotkeys */
+        /* inject the interior texture layer into every panel (behind its content) */
+        document.querySelectorAll('#hub .panel').forEach(function (p) {
+          if (p.firstElementChild && p.firstElementChild.classList.contains('fx-tex')) return;
+          var d = document.createElement('div'); d.className = 'fx-tex'; p.insertBefore(d, p.firstChild);
+        });
+        /* texture switcher + hotkeys (1/2/3 -> A/B/C) */
         var btns = Array.prototype.slice.call(document.querySelectorAll('#fxbar button'));
-        function setRend(r) {
-          r = String(r); if (r !== '1' && r !== '2' && r !== '3') return;
-          ROOT.setAttribute('data-fx', r);
-          try { localStorage.setItem('cc.studio.rend', r); } catch (e) {}
-          btns.forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-r') === r); });
+        function setTex(t) {
+          t = String(t).toUpperCase(); if (t !== 'A' && t !== 'B' && t !== 'C') return;
+          ROOT.setAttribute('data-tex', t);
+          try { localStorage.setItem('cc.studio.tex', t); } catch (e) {}
+          btns.forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tex') === t); });
         }
-        btns.forEach(function (b) { b.addEventListener('click', function () { setRend(b.getAttribute('data-r')); }); });
-        window.addEventListener('keydown', function (e) { if (e.key === '1' || e.key === '2' || e.key === '3') setRend(e.key); });
-        var start = '2'; try { start = localStorage.getItem('cc.studio.rend') || '2'; } catch (e) {}
-        setRend(start);
+        btns.forEach(function (b) { b.addEventListener('click', function () { setTex(b.getAttribute('data-tex')); }); });
+        var keymap = { '1': 'A', '2': 'B', '3': 'C' };
+        window.addEventListener('keydown', function (e) { if (keymap[e.key]) setTex(keymap[e.key]); });
+        var start = 'A'; try { start = localStorage.getItem('cc.studio.tex') || 'A'; } catch (e) {}
+        setTex(start);
         /* wake the dashboard's interactive layer (globe / voice / sniper) — auth normally fires this */
         document.dispatchEvent(new CustomEvent('hub:ready', { detail: { studio: true } }));
         setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 120);
