@@ -1,0 +1,36 @@
+/* ============================================================
+   ENHANCE  ·  tasteful polish on the original look (always on).
+   Bloom on hero readouts, panel hover-glow + animated corner
+   brackets, a glowing progress edge, a touch more depth. This
+   refines the green-phosphor motif — it does not change it.
+   ============================================================ */
+
+/* hero bloom — make the important numbers feel important */
+#hub .hdr .title{ text-shadow:0 0 7px rgba(125,255,176,.55), 0 0 18px rgba(65,255,126,.25); }
+#hub .clock .time{ text-shadow:0 0 8px rgba(125,255,176,.6); }
+#hub .row .v.big{ text-shadow:0 0 9px currentColor, 0 0 18px rgba(65,255,126,.25); }
+
+/* panels — a touch more depth, hover-glow, and corner brackets that light up */
+#hub .panel{ transition:box-shadow .25s ease, border-color .25s ease; }
+#hub .panel:hover{ border-color:rgba(65,255,126,.55) !important;
+  box-shadow:0 10px 28px rgba(0,0,0,.5), 0 0 18px rgba(65,255,126,.10), inset 0 1px 0 rgba(125,255,176,.10); }
+#hub .panel::before, #hub .panel::after{ content:''; position:absolute; width:12px; height:12px; pointer-events:none;
+  opacity:.26; transition:opacity .25s ease, width .25s ease, height .25s ease; z-index:4; }
+#hub .panel::before{ top:4px; left:4px; border-top:1.5px solid var(--hi); border-left:1.5px solid var(--hi); }
+#hub .panel::after{ bottom:4px; right:4px; border-bottom:1.5px solid var(--hi); border-right:1.5px solid var(--hi); }
+#hub .panel:hover::before, #hub .panel:hover::after{ opacity:.9; width:16px; height:16px; }
+
+/* progress bar — glowing leading edge */
+#hub .bar span{ position:relative; box-shadow:0 0 8px rgba(65,255,126,.5); }
+#hub .bar span::after{ content:''; position:absolute; top:-1px; bottom:-1px; right:-1px; width:4px;
+  background:var(--hi); box-shadow:0 0 9px 1px var(--g); border-radius:2px; }
+
+/* a brief phosphor flash when a readout "updates" (driven by js/enhance.js, reuses mc-tick) */
+#hub .ag .st.tick{ animation:mc-tick .55s ease-out; }
+
+/* satisfying button press */
+#hub .tools button:active, #hub .btn:active, #hub .panel .tb .btn:active{ transform:translateY(1px); }
+
+@media (prefers-reduced-motion: reduce){
+  #hub .panel::before, #hub .panel::after{ transition:none; }
+}

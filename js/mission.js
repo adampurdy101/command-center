@@ -156,9 +156,22 @@ tick();setInterval(tick,1000);
     ARCS.forEach(a=>{ctx.beginPath();path({type:'LineString',coordinates:a});
       ctx.strokeStyle='rgba(125,255,176,.8)';ctx.lineWidth=1.3;ctx.shadowColor='#7dffb0';ctx.shadowBlur=5;ctx.stroke();ctx.shadowBlur=0;});
 
+    // ---- data packets streaming along the arcs (life on the routes) ----
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    ARCS.forEach((a,ai)=>{ const lerp=d3.geoInterpolate(a[0],a[a.length-1]);
+      for(let k=0;k<2;k++){ const frac=((t*0.17)+ai*0.41+k*0.5)%1; const p=lerp(frac); if(!vis(p))continue;
+        const xy=proj(p); const fade=Math.sin(frac*Math.PI);             // bright mid-route, fade at the ends
+        ctx.fillStyle='rgba(190,255,225,'+(0.85*fade).toFixed(3)+')';
+        ctx.shadowColor='#7df7ff';ctx.shadowBlur=9;
+        ctx.beginPath();ctx.arc(xy[0],xy[1],1.7+1.3*fade,0,7);ctx.fill(); } });
+    ctx.restore();ctx.shadowBlur=0;
+
     // ---- city markers (brighter as city-lights on the night side) ----
     Object.entries(DESTS).forEach(([k,p])=>{if(!vis(p))return;const xy=proj(p);
       const dark=d3.geoDistance(p,ss)>Math.PI/2;
+      const pls=(t*0.9+xy[0]*0.03)%1;                                    // expanding sonar ping, staggered per node
+      ctx.save();ctx.globalAlpha=0.3*(1-pls);ctx.strokeStyle=dark?'#ffe7a0':'#7dffb0';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(xy[0],xy[1],(dark?3.3:2.8)+1.5+pls*7,0,7);ctx.stroke();ctx.restore();
       ctx.beginPath();ctx.arc(xy[0],xy[1],dark?3.3:2.8,0,7);
       ctx.fillStyle=dark?'#fff4cf':'#7dffb0';
       if(dark){ctx.shadowColor='#ffe7a0';ctx.shadowBlur=9;}ctx.fill();ctx.shadowBlur=0;
@@ -205,7 +218,7 @@ tick();setInterval(tick,1000);
   const cv=document.getElementById('voice');let ctx=fit(cv);
   const VC={g:'#41ff7e',hi:'#7dffb0',dim:'#2bd964',faint:'#1c8f46',red:'#ff6b5a',cyan:'#7df7ff',amb:'#ffd24a'};
   const VTAU=Math.PI*2; const vrnd=(a,b)=>a+Math.random()*(b-a);
-  const SC={hh:null,peak:null,spd:null,phase:null,lv:0,parts:[],rings:[],spawn:0};
+  const SC={hh:null,peak:null,spd:null,phase:null,lv:0,parts:[],rings:[],spawn:0,prevSpk:false,wake:0};
   let vpLast=0;
   window.addEventListener('resize',()=>{ctx=fit(cv);});
   let micTried=false;
@@ -229,16 +242,17 @@ tick();setInterval(tick,1000);
     try{stream.getTracks().forEach(t=>t.stop());}catch(e){}   // release; recognition re-acquires the mic
     if(led)led.className='led amb';
     const started=window.halStart&&window.halStart();
+    try{window.HAL.listening=!!started;}catch(e){}   // drives the state-aware orb (cyan = listening)
     btn.textContent=started?'LISTENING ● SAY “DADDY’S HOME”':'VOICE N/A · OPEN IN CHROME';
   });
   const VFONT='ui-monospace,"SF Mono",Menlo,monospace';
-  function vEye(c,x,y,r,lv,t){ c.save(); c.translate(x,y); const rr=r*(0.92+0.08*Math.sin(t*2.2));
-    const halo=c.createRadialGradient(0,0,0,0,0,rr*2.6); halo.addColorStop(0,'rgba(255,107,90,'+(0.4+lv*0.4)+')'); halo.addColorStop(0.5,'rgba(255,140,90,0.10)'); halo.addColorStop(1,'rgba(255,107,90,0)');
+  function vEye(c,x,y,r,lv,t,col){ c.save(); c.translate(x,y); const rr=r*(0.9+0.1*Math.sin(t*(col.breath||2.2)));
+    const halo=c.createRadialGradient(0,0,0,0,0,rr*2.6); halo.addColorStop(0,'rgba('+col.halo+','+(0.38+lv*0.42)+')'); halo.addColorStop(0.5,'rgba('+col.halo+',0.10)'); halo.addColorStop(1,'rgba('+col.halo+',0)');
     c.fillStyle=halo; c.beginPath(); c.arc(0,0,rr*2.6,0,VTAU); c.fill();
-    const g=c.createRadialGradient(-rr*0.2,-rr*0.2,0,0,0,rr); g.addColorStop(0,'rgba(255,255,255,'+(0.85*(0.45+0.55*lv))+')'); g.addColorStop(0.4,'#ff6b5a'); g.addColorStop(1,'#1a0705');
-    c.shadowColor=VC.red; c.shadowBlur=7+15*lv; c.fillStyle=g; c.beginPath(); c.arc(0,0,rr,0,VTAU); c.fill();
-    c.shadowBlur=0; c.strokeStyle='rgba(255,180,160,0.5)'; c.lineWidth=1; c.beginPath(); c.arc(0,0,rr,0,VTAU); c.stroke();
-    c.fillStyle='#ffe6df'; c.beginPath(); c.arc(-rr*0.3,-rr*0.3,rr*0.16,0,VTAU); c.fill(); c.restore(); }
+    const g=c.createRadialGradient(-rr*0.2,-rr*0.2,0,0,0,rr); g.addColorStop(0,'rgba(255,255,255,'+(0.85*(0.45+0.55*lv))+')'); g.addColorStop(0.4,col.core); g.addColorStop(1,col.deep);
+    c.shadowColor=col.core; c.shadowBlur=7+15*lv; c.fillStyle=g; c.beginPath(); c.arc(0,0,rr,0,VTAU); c.fill();
+    c.shadowBlur=0; c.strokeStyle='rgba(255,255,255,0.45)'; c.lineWidth=1; c.beginPath(); c.arc(0,0,rr,0,VTAU); c.stroke();
+    c.fillStyle='rgba(255,255,255,0.85)'; c.beginPath(); c.arc(-rr*0.3,-rr*0.3,rr*0.16,0,VTAU); c.fill(); c.restore(); }
   function vMeter(c,x,y,w,h,lv){ c.save(); c.strokeStyle='rgba(65,255,126,.3)'; c.lineWidth=1; c.strokeRect(x,y,w,h);
     const seg=14; for(let s=0;s<seg;s++){ const on=(s/seg)<lv; c.fillStyle=on?(s/seg>0.78?VC.amb:VC.g):'rgba(65,255,126,.10)'; c.fillRect(x+2+s*(w-4)/seg,y+2,(w-4)/seg-1.5,h-4); } c.restore(); }
   function vBg(c,w,h,t,HOR){
@@ -265,6 +279,13 @@ tick();setInterval(tick,1000);
     ctx.save();ctx.scale(DPR,DPR);ctx.clearRect(0,0,w,h);
     const HAL=window.HAL||{speaking:false,level:0};
     const target=HAL.speaking?Math.max(0.4,HAL.level||0):0; SC.lv+=(target-SC.lv)*0.2; const lv=SC.lv;
+    const listening=!!(window.HAL&&window.HAL.listening);
+    const state=HAL.speaking?'speak':(listening?'listen':'standby');
+    const EYE = state==='speak'  ? {core:'#41ff7e',deep:'#062012',halo:'65,255,126',breath:3.4}
+              : state==='listen' ? {core:'#7df7ff',deep:'#04222a',halo:'125,247,255',breath:2.0}
+              :                     {core:'#ff6b5a',deep:'#1a0705',halo:'255,107,90',breath:1.4};
+    if(HAL.speaking&&!SC.prevSpk){SC.wake=1;}        // a wake-ripple fires the instant Hal speaks
+    SC.prevSpk=HAL.speaking; SC.wake=Math.max(0,SC.wake-dt*1.0);
     const X0=92,X1=w-8,BASE=h-13,WH=Math.max(20,BASE-14),COLW=(X1-X0)/22,BARW=Math.min(16,COLW*0.62),SEGH=6,UNIT=8,MAXSEG=Math.max(4,Math.floor(WH/UNIT));
     vBg(ctx,w,h,t,BASE);
     vVU(SC,t,lv,WH);
@@ -279,13 +300,20 @@ tick();setInterval(tick,1000);
       const py=BASE-SC.peak[b]; ctx.save();ctx.fillStyle=SC.peak[b]>WH*0.9?VC.cyan:VC.amb;ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=10;ctx.fillRect(cx-BARW/2,py-2.4,BARW,2.6);ctx.restore(); }
     for(let i=SC.parts.length-1;i>=0;i--){ const p=SC.parts[i]; p.age+=dt; if(p.age>p.life){SC.parts.splice(i,1);continue;} p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=55*dt;
       ctx.save();ctx.globalAlpha=Math.max(0,1-p.age/p.life);ctx.fillStyle=Math.random()<0.4?VC.amb:VC.hi;ctx.shadowColor=VC.amb;ctx.shadowBlur=4;ctx.fillRect(p.x,p.y,1.7,1.7);ctx.restore(); }
-    vEye(ctx,40,36,11,lv,t);
-    ctx.save();ctx.textAlign='center';ctx.font='700 9px '+VFONT;ctx.fillStyle=HAL.speaking?VC.red:VC.hi;ctx.shadowColor=HAL.speaking?VC.red:'rgba(0,0,0,0)';ctx.shadowBlur=HAL.speaking?5:0;
-    ctx.fillText(HAL.speaking?'SPEAKING':'STANDBY',40,73);ctx.restore();
+    vEye(ctx,40,36,11,lv,t,EYE);
+    const lbl=state==='speak'?'SPEAKING':(state==='listen'?'LISTENING':'STANDBY');
+    const lcol=state==='speak'?'#7dffb0':(state==='listen'?VC.cyan:VC.hi);
+    ctx.save();ctx.textAlign='center';ctx.font='700 9px '+VFONT;ctx.fillStyle=lcol;ctx.shadowColor=lcol;ctx.shadowBlur=state==='standby'?0:5;
+    ctx.fillText(lbl,40,73);ctx.restore();
     vMeter(ctx,8,83,72,6,lv);
     ctx.save();ctx.fillStyle=VC.faint;ctx.font='7px '+VFONT;ctx.textAlign='center';ctx.fillText('LVL '+lv.toFixed(2),40,100);ctx.restore();
     ctx.save();ctx.strokeStyle='rgba(65,255,126,0.2)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(86,10);ctx.lineTo(86,h-10);ctx.stroke();ctx.restore();
     if(!HAL.speaking){ ctx.save();ctx.globalAlpha=0.5;ctx.fillStyle=VC.hi;ctx.font='9px '+VFONT;ctx.textAlign='center';ctx.fillText('TAP “WAKE HAL”, THEN SAY “DADDY’S HOME”',(X0+X1)/2,22);ctx.restore(); }
+    if(SC.wake>0){ ctx.save();ctx.globalCompositeOperation='lighter';
+      const wr=(1-SC.wake)*Math.max(w,h)*0.98;
+      ctx.globalAlpha=SC.wake*0.5;ctx.strokeStyle=VC.hi;ctx.lineWidth=2.5;ctx.shadowColor=VC.g;ctx.shadowBlur=12;
+      ctx.beginPath();ctx.arc(40,36,wr,0,VTAU);ctx.stroke();
+      ctx.globalAlpha=SC.wake*0.10;ctx.fillStyle=VC.g;ctx.fillRect(0,0,w,h); ctx.restore(); }
     ctx.save();ctx.globalAlpha=0.05;ctx.fillStyle='#000';for(let y=0;y<h;y+=3)ctx.fillRect(0,y,w,1);ctx.restore();
     ctx.restore();requestAnimationFrame(draw);
   }
