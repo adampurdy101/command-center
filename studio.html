@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#0a1409" />
+  <title>COMMAND CENTER // STUDIO — 3 renditions</title>
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/mission.css" />
+  <link rel="stylesheet" href="css/mobile.css" />
+  <style>
+    /* ===================================================================
+       STUDIO FX LAYER — three switchable cinematic renditions over the
+       real dashboard. Scoped under html[data-fx="N"]; the base "pop"
+       pass applies to all. Toggle with the bottom switcher or keys 1/2/3.
+       =================================================================== */
+
+    /* ---- switcher ---- */
+    #fxbar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:99999;
+      display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:12px;
+      background:rgba(3,12,8,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+      border:1px solid rgba(65,255,126,.35);box-shadow:0 12px 34px rgba(0,0,0,.6),inset 0 0 0 1px rgba(125,255,176,.08);
+      font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace}
+    #fxbar .fxlab{color:#1c8f46;font-size:10px;letter-spacing:2px;padding:0 8px 0 4px}
+    #fxbar button{background:transparent;color:#2bd964;border:1px solid rgba(65,255,126,.3);
+      border-radius:8px;font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:1px;
+      padding:8px 11px;cursor:pointer;transition:all .18s ease;white-space:nowrap}
+    #fxbar button:hover{color:#9effc0;border-color:rgba(125,255,176,.6)}
+    #fxbar button.on{color:#06120c;background:#41ff7e;border-color:#7dffb0;
+      box-shadow:0 0 14px rgba(65,255,126,.6),0 0 0 1px rgba(125,255,176,.4)}
+    #fxbar .fxhint{color:#1c8f46;font-size:9px;letter-spacing:1px;padding:0 6px}
+
+    /* ===== BASE "make it pop" (all renditions) ===== */
+    html[data-fx] #hub .panel{
+      background:
+        radial-gradient(150% 130% at 0% -10%, rgba(65,255,126,.12), rgba(65,255,126,0) 55%),
+        linear-gradient(180deg, rgba(7,20,13,.52), rgba(4,12,8,.6)) !important;
+      -webkit-backdrop-filter: blur(9px) saturate(1.15); backdrop-filter: blur(9px) saturate(1.15);
+      border:1px solid rgba(65,255,126,.30) !important; border-radius:10px !important;
+      box-shadow: 0 14px 34px rgba(0,0,0,.55), inset 0 1px 0 rgba(125,255,176,.12), inset 0 0 26px rgba(65,255,126,.05) !important;
+      position:relative;
+    }
+    html[data-fx] #hub .panel::before, html[data-fx] #hub .panel::after{content:'';position:absolute;width:14px;height:14px;pointer-events:none;opacity:.32;transition:opacity .25s;z-index:5}
+    html[data-fx] #hub .panel::before{top:5px;left:5px;border-top:1.5px solid var(--hi);border-left:1.5px solid var(--hi)}
+    html[data-fx] #hub .panel::after{bottom:5px;right:5px;border-bottom:1.5px solid var(--hi);border-right:1.5px solid var(--hi)}
+    html[data-fx] #hub .panel:hover::before, html[data-fx] #hub .panel:hover::after{opacity:.95}
+    html[data-fx] #hub .panel .tb{background:linear-gradient(180deg, rgba(65,255,126,.11), rgba(65,255,126,.02)) !important}
+    html[data-fx] #hub .hdr .title{text-shadow:0 0 12px rgba(125,255,176,.7), 0 0 30px rgba(65,255,126,.35) !important}
+    html[data-fx] #hub .clock .time{text-shadow:0 0 12px rgba(125,255,176,.7) !important}
+    html[data-fx] #hub .row .v.big{text-shadow:0 0 10px currentColor !important}
+    html[data-fx] #hub .panel .tb .s.fx-demo{color:#ffc24a !important;text-shadow:0 0 7px rgba(255,194,74,.55)}
+    html[data-fx] #hub .panel .tb .s.fx-live{color:#8af6ff !important;text-shadow:0 0 8px rgba(125,247,255,.6)}
+    html[data-fx] #hub .globe-wrap{position:relative}
+    html[data-fx] #hub .globe-wrap .fx-haze{position:absolute;inset:-6%;z-index:0;pointer-events:none;
+      background:radial-gradient(circle at 50% 52%, rgba(65,255,126,.16), rgba(65,255,126,.05) 42%, transparent 66%);filter:blur(10px)}
+    html[data-fx] #hub .globe-wrap > canvas, html[data-fx] #hub .globe-wrap > .lab, html[data-fx] #hub .globe-wrap > .lab2,
+    html[data-fx] #hub .globe-wrap > .readout, html[data-fx] #hub .globe-wrap > .continent{position:relative;z-index:1}
+
+    /* HERO — Voice Scope gets extra depth: a recessed grid backplane behind the bars */
+    html[data-fx] #hub .bottom .panel:first-child .scope-bd{position:relative;border-radius:8px;overflow:hidden;
+      box-shadow:inset 0 0 0 1px rgba(65,255,126,.14), inset 0 8px 26px rgba(0,0,0,.5)}
+    html[data-fx] #hub .bottom .panel:first-child .scope-bd::before{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+      background:
+        linear-gradient(rgba(65,255,126,.06) 1px, transparent 1px) 0 0/100% 13px,
+        linear-gradient(90deg, rgba(65,255,126,.06) 1px, transparent 1px) 0 0/18px 100%,
+        radial-gradient(120% 90% at 50% 120%, rgba(65,255,126,.12), transparent 60%)}
+    html[data-fx] #hub .bottom .panel:first-child .scope-bd > canvas{position:relative;z-index:1}
+    html[data-fx] #hub .bottom .panel:first-child{box-shadow:0 16px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(125,255,176,.16), 0 0 26px rgba(65,255,126,.10) !important}
+
+    /* ===== 1 · DEEP PHOSPHOR ===== */
+    html[data-fx="1"] #hub{--g:#46ff86;--hi:#9effc0;--dim:#34d96e}
+    html[data-fx="1"] .crt{filter:saturate(.9) brightness(1.05)}
+    html[data-fx="1"] .crt::before{background:repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 1px, rgba(0,0,0,.32) 2px, rgba(0,0,0,0) 3px) !important}
+    html[data-fx="1"] .crt::after{background:radial-gradient(120% 120% at 50% 50%, transparent 40%, rgba(0,0,0,.74) 100%) !important}
+    html[data-fx="1"] #hub .panel{-webkit-backdrop-filter:blur(5px) saturate(1)!important;backdrop-filter:blur(5px) saturate(1)!important}
+    html[data-fx="1"] #hub .hdr .title, html[data-fx="1"] #hub .clock .time, html[data-fx="1"] #hub .row .v.big{text-shadow:0 0 14px rgba(150,255,190,.9), 0 0 36px rgba(70,255,134,.55) !important}
+    html[data-fx="1"] #hub .panel .tb .s.fx-live{color:#ffc24a !important;text-shadow:0 0 7px rgba(255,194,74,.55) !important}
+    html[data-fx="1"] #hub .globe-wrap .fx-haze{background:radial-gradient(circle at 50% 52%, rgba(70,255,134,.22), rgba(70,255,134,.06) 42%, transparent 66%) !important}
+
+    /* ===== 2 · NEON NOIR ===== */
+    html[data-fx="2"] #hub{--g:#3df58a;--hi:#aeffd0;--dim:#2bd07a}
+    html[data-fx="2"] .crt{background:radial-gradient(130% 130% at 50% 8%, #061410, #02080a 72%) !important;filter:contrast(1.08) saturate(1.06)}
+    html[data-fx="2"] .crt::before{opacity:.5}
+    html[data-fx="2"] .crt::after{background:radial-gradient(120% 120% at 50% 46%, transparent 36%, rgba(0,2,4,.84) 100%) !important}
+    html[data-fx="2"] #hub .panel{background:linear-gradient(180deg, rgba(6,18,14,.44), rgba(3,9,8,.56)) !important;-webkit-backdrop-filter:blur(15px) saturate(1.2)!important;backdrop-filter:blur(15px) saturate(1.2)!important;border:1px solid rgba(90,255,170,.22)!important;box-shadow:0 24px 50px rgba(0,0,0,.72), inset 0 1px 0 rgba(140,255,200,.10), inset 0 0 44px rgba(0,0,0,.34)!important}
+    html[data-fx="2"] #hub .globe-wrap .fx-haze{inset:-13% !important;filter:blur(18px)!important;background:radial-gradient(circle at 50% 54%, rgba(125,247,255,.2), rgba(60,255,138,.10) 38%, transparent 64%) !important}
+    html[data-fx="2"] #hub .hdr .title, html[data-fx="2"] #hub .clock .time{text-shadow:-1.4px 0 rgba(255,80,80,.55), 1.4px 0 rgba(80,200,255,.55), 0 0 16px rgba(125,255,200,.5) !important}
+
+    /* ===== 3 · HOLO-TACTICAL ===== */
+    html[data-fx="3"] #hub{--g:#4dffd0;--hi:#c2fff0;--dim:#46e6c0;--faint:#1f9c86}
+    html[data-fx="3"] .crt{filter:brightness(1.12) saturate(1.12)}
+    html[data-fx="3"] .crt::before{opacity:.32}
+    html[data-fx="3"] .crt::after{background:radial-gradient(120% 120% at 50% 50%, transparent 56%, rgba(0,0,0,.42) 100%) !important}
+    html[data-fx="3"] #hub .panel{background:linear-gradient(180deg, rgba(10,30,28,.4), rgba(6,18,18,.46)) !important;-webkit-backdrop-filter:blur(7px) saturate(1.25)!important;backdrop-filter:blur(7px) saturate(1.25)!important;border:1px solid rgba(90,255,220,.5)!important;border-radius:7px !important;box-shadow:0 10px 28px rgba(0,0,0,.45), inset 0 0 0 1px rgba(120,255,235,.14), 0 0 20px rgba(77,255,208,.12)!important}
+    html[data-fx="3"] #hub .panel::before, html[data-fx="3"] #hub .panel::after{opacity:.7 !important;border-color:#aeffe6 !important;width:18px;height:18px}
+    html[data-fx="3"] #hub .hdr .title, html[data-fx="3"] #hub .clock .time, html[data-fx="3"] #hub .row .v.big{text-shadow:0 0 10px rgba(194,255,240,.85), 0 0 24px rgba(77,255,208,.45) !important}
+    html[data-fx="3"] #hub .globe-wrap .fx-haze{background:radial-gradient(circle at 50% 52%, rgba(77,255,208,.22), rgba(125,247,255,.08) 42%, transparent 66%) !important}
+  </style>
+</head>
+<body>
+  <span class="bolt tl"></span><span class="bolt tr"></span>
+  <span class="bolt bl"></span><span class="bolt br"></span>
+
+  <main class="crt">
+    <!-- ============ HUB · MISSION CONTROL (shown directly — no login in the studio preview) ============ -->
+    <div id="hub">
+      <canvas id="page-bg" aria-hidden="true"></canvas>
+
+      <header class="hdr">
+        <div class="title">ADAM // COMMAND CENTER<canvas id="ekg-title" class="ekg ekg-inline" width="74" height="22"></canvas><small id="callsign-sub">RENTON · WA — MISSION CONTROL</small></div>
+        <div class="cities" id="cities"></div>
+        <div class="spacer"></div>
+        <div class="clock">
+          <div class="times"><span class="time" id="clk">--:--:--</span><span class="time12" id="clk12">--:-- --</span></div>
+          <div class="date" id="dt">—</div>
+        </div>
+        <div class="master">
+          <span class="led on"></span>
+          <span class="lab">SYSTEM<br>ONLINE</span>
+          <canvas id="ekg-sys" class="ekg" width="92" height="30"></canvas>
+        </div>
+        <div class="tools">
+          <span class="amb-wrap">
+            <button id="amb-btn" type="button" title="Ambient sound — hover for volume">♪ HUM</button>
+            <span class="amb-pop">
+              <span class="amb-ico">▁</span>
+              <input id="amb-vol" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Ambient hum volume" />
+              <span class="amb-ico">▆</span>
+            </span>
+          </span>
+          <button id="fs-btn" type="button" title="Enter fullscreen">⤢ FULLSCREEN</button>
+          <button id="fs-exit" type="button" title="Exit fullscreen">⤡ EXIT FULLSCREEN</button>
+          <button id="logout-btn" class="logout">LOG OUT</button>
+        </div>
+      </header>
+
+      <div class="deck">
+        <div class="col">
+          <section class="panel" id="panel-brief" style="flex:1.1">
+            <div class="tb"><span class="led on"></span><span class="n">01 Daily Brief</span><span class="sp"></span><span class="s" id="brief-stat">LIVE</span></div>
+            <div class="bd" id="brief-bd">
+              <div class="row"><span class="k">UNREAD MAIL</span><span class="v big" id="brief-unread">201</span></div>
+              <div class="row"><span class="k">FLAGGED</span><span class="v warn" id="brief-flagged">3</span></div>
+              <div class="row"><span class="k">NEXT EVENT</span><span class="v" id="brief-next" style="font-size:11px">CLEAR · nothing scheduled</span></div>
+              <div class="row"><span class="k">TASKS</span><span class="v" id="brief-tasks">0</span></div>
+              <div class="row"><span class="k" style="font-size:10px">MORNING DIGEST · 06:00</span><button class="btn" id="brief-report" style="padding:2px 8px;font-size:10px">READY ▸</button></div>
+            </div>
+          </section>
+          <section class="panel" style="flex:1">
+            <div class="tb"><span class="led amb"></span><span class="n">02 Markets</span><span class="sp"></span><span class="s">DEMO</span></div>
+            <div class="bd">
+              <div class="row"><span class="k">NVDA</span><span class="v up">+2.4%</span></div>
+              <div class="row"><span class="k">VRT</span><span class="v up">+1.1%</span></div>
+              <div class="row"><span class="k">NBIS</span><span class="v down">−3.2%</span></div>
+              <div class="row"><span class="k">AMD</span><span class="v up">+0.6%</span></div>
+              <svg class="spark" viewBox="0 0 200 30" preserveAspectRatio="none"><polyline fill="none" stroke="#41ff7e" stroke-width="1.4" points="0,24 22,18 44,21 66,12 88,16 110,8 132,12 154,5 176,9 200,3"/></svg>
+            </div>
+          </section>
+          <section class="panel" style="flex:1">
+            <div class="tb"><span class="led amb"></span><span class="n">05 Life Admin</span><span class="sp"></span><span class="s">DEMO</span></div>
+            <div class="bd" style="gap:4px">
+              <div class="row"><span class="k">Tesla lemon-law</span><span class="v warn">OPEN</span></div>
+              <div class="row"><span class="k">Skin routine</span><span class="v">DONE</span></div>
+              <div class="row"><span class="k">Mom · POA</span><span class="v warn">WAIT</span></div>
+              <div class="row"><span class="k">Dog walk</span><span class="v">17:00</span></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="center">
+          <div class="globe-wrap">
+            <span class="lab">GLOBAL TRACK SYS · ORBIT 4471</span>
+            <span class="lab2">DRAG TO ROTATE · SCROLL TO ZOOM</span>
+            <canvas id="globe"></canvas>
+            <div class="continent" id="continent"></div>
+            <div class="readout">
+              <span id="zoomr">ZOOM 1.0×</span>
+              <span id="wx-home" class="wx">RENTON —</span>
+              <span id="wx-bkk" class="wx">PATTAYA —</span>
+              <span>HOME · RENTON</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col">
+          <section class="panel" style="flex:1">
+            <div class="tb"><span class="led on"></span><span class="n">03 Projects</span><span class="sp"></span><span class="s">DEMO</span></div>
+            <div class="bd">
+              <div class="row"><span class="k" style="font-size:11px">WESTERN STATE HOSPITAL</span></div>
+              <div class="row"><span class="k" style="font-size:11px">Wall Shops</span><span class="v">62%</span></div>
+              <div class="bar"><span style="width:62%"></span></div>
+              <div class="row"><span class="k">DEADLINE</span><span class="v warn">T−38d</span></div>
+            </div>
+          </section>
+          <section class="panel" style="flex:1.1">
+            <div class="tb"><span class="led on"></span><span class="n">04 Agent Ops</span><span class="sp"></span><span class="s">3 LIVE</span></div>
+            <div class="bd" style="gap:6px">
+              <div class="ag"><span class="led on"></span><span class="nm">hal-openclaw</span><span class="st">HEARTBEAT</span></div>
+              <div class="ag"><span class="led on"></span><span class="nm">mail-agent</span><span class="st">IDLE</span></div>
+              <div class="ag"><span class="led amb"></span><span class="nm">market-agent</span><span class="st">RUN</span></div>
+              <div class="row" style="margin-top:auto;font-size:10px"><span class="k">UPTIME</span><span class="v">99.4%</span></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="bottom">
+          <section class="panel">
+            <div class="tb"><span id="hal-eye" title="HAL 9000"></span><span class="n">Voice Scope · HAL</span><span class="sp"></span>
+              <button class="btn" id="stopBtn" style="padding:2px 8px;color:var(--red);border-color:var(--red)" title="stop talking">■ STOP</button>
+              <button class="btn" id="voiceCfgBtn" style="padding:2px 7px;margin-left:6px" title="voice settings">⚙</button>
+              <button class="btn" id="talkBtn" style="margin-left:6px">WAKE HAL ▸</button></div>
+            <div class="bd" style="padding:4px"><div class="scope-bd"><canvas id="voice"></canvas><div id="heard"></div></div></div>
+          </section>
+          <section class="panel">
+            <div class="tb"><span class="led amb"></span><span class="n">Sniper Scope · Overwatch</span><span class="sp"></span>
+              <button class="btn" id="sniperBtn" style="padding:2px 8px;font-size:10px">▶ DEPLOY ⛶</button></div>
+            <div class="bd" style="padding:4px"><div class="game-bd"><canvas id="game"></canvas></div></div>
+          </section>
+        </div>
+      </div>
+
+      <div id="flash"></div>
+      <div id="jarvisBanner"><span id="jarvisText"></span></div>
+    </div>
+  </main>
+
+  <!-- rendition switcher -->
+  <div id="fxbar" role="group" aria-label="Visual rendition">
+    <span class="fxlab">RENDITION</span>
+    <button type="button" data-r="1">1 · DEEP PHOSPHOR</button>
+    <button type="button" data-r="2">2 · NEON NOIR</button>
+    <button type="button" data-r="3">3 · HOLO-TACTICAL</button>
+    <span class="fxhint">keys 1 / 2 / 3</span>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+  <script defer src="js/sniper.js"></script>
+  <script defer src="js/mission.js"></script>
+  <script defer src="js/effects.js"></script>
+  <script defer src="js/backdrop.js"></script>
+  <script defer src="js/panels.js"></script>
+  <script>
+    (function () {
+      function init() {
+        var ROOT = document.documentElement;
+        /* accent discipline: amber for DEMO, cyan-green for LIVE */
+        document.querySelectorAll('#hub .panel .tb .s').forEach(function (s) {
+          var t = (s.textContent || '').toUpperCase();
+          if (t.indexOf('LIVE') >= 0) s.classList.add('fx-live');
+          else if (t.indexOf('DEMO') >= 0) s.classList.add('fx-demo');
+        });
+        /* atmospheric haze behind the globe */
+        var gw = document.querySelector('#hub .globe-wrap');
+        if (gw && !gw.querySelector('.fx-haze')) {
+          var hz = document.createElement('div'); hz.className = 'fx-haze'; gw.insertBefore(hz, gw.firstChild);
+        }
+        /* switcher + hotkeys */
+        var btns = Array.prototype.slice.call(document.querySelectorAll('#fxbar button'));
+        function setRend(r) {
+          r = String(r); if (r !== '1' && r !== '2' && r !== '3') return;
+          ROOT.setAttribute('data-fx', r);
+          try { localStorage.setItem('cc.studio.rend', r); } catch (e) {}
+          btns.forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-r') === r); });
+        }
+        btns.forEach(function (b) { b.addEventListener('click', function () { setRend(b.getAttribute('data-r')); }); });
+        window.addEventListener('keydown', function (e) { if (e.key === '1' || e.key === '2' || e.key === '3') setRend(e.key); });
+        var start = '2'; try { start = localStorage.getItem('cc.studio.rend') || '2'; } catch (e) {}
+        setRend(start);
+        /* wake the dashboard's interactive layer (globe / voice / sniper) — auth normally fires this */
+        document.dispatchEvent(new CustomEvent('hub:ready', { detail: { studio: true } }));
+        setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 120);
+        setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 600);
+      }
+      if (document.readyState === 'complete') init();
+      else window.addEventListener('load', init);
+    })();
+  </script>
+</body>
+</html>
