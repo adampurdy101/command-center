@@ -1,21 +1,21 @@
 /* ============================================================
-   NEON NOIR — now the DEFAULT look for the dashboard.
-   Dresses the live hub in the Neon Noir glass theme
-   (css/noir.css) with the HOLO MESH interior texture.
+   NEON NOIR — optional glass theme (NOT the default).
+   The dashboard's original look is the default again. This only
+   activates on demand:
 
-   • Default (no flag): Noir + Holo Mesh, clean (no switcher).
-   • ?plain  (or ?noir=off): opt out → original look.
-   • ?noir   : same theme PLUS the texture switcher + keys 1/2/3
-               (Holo Mesh / Ghost Volume / Tactical Weave) for tuning.
-   • ?tex=a|b|c : force a specific texture on any load.
+   • ?noir   : Neon Noir glass + Holo Mesh, PLUS the texture switcher
+               + keys 1/2/3 (Holo Mesh / Ghost Volume / Tactical Weave).
+   • ?tex=a|b|c : force a specific texture (no switcher).
+   • anything else (default): inert → original look.
    ============================================================ */
 (function () {
   'use strict';
   var URL = location.href;
-  if (/[?#&]plain\b/i.test(URL) || /[?#&]noir=off\b/i.test(URL)) return;   // opt out
-
-  var EXPLICIT = /[?#&]noir\b/i.test(URL) && !/[?#&]noir=off\b/i.test(URL); // show the switcher
   var texParam = (location.search.match(/[?&]tex=([abc])/i) || [])[1];
+  var WANT = /[?#&]noir\b/i.test(URL) || !!texParam;
+  if (!WANT) return;                          // default = original look
+
+  var EXPLICIT = /[?#&]noir\b/i.test(URL);    // show the switcher
   var DEFAULT_TEX = texParam ? texParam.toUpperCase() : 'A';                // Holo Mesh
 
   var ROOT = document.documentElement, applied = false;
