@@ -108,6 +108,40 @@
 #email-console .nf{text-align:center;color:var(--faint);font-size:11px;padding:14px;border:1px dashed rgba(28,143,70,.4);border-radius:9px;margin-top:6px}
 #email-console .nf b{color:var(--ai)}
 
+/* ============ SPLIT  (3-pane: rail · list · reading pane) ============ */
+#email-console .split{flex:1;display:grid;grid-template-columns:240px minmax(300px,1fr) minmax(360px,1.25fr);grid-template-rows:minmax(0,1fr);min-height:0;width:100%}
+#email-console .split>div{min-height:0;overflow-y:auto;border-right:1px solid rgba(28,143,70,.35);scrollbar-width:thin;scrollbar-color:rgba(65,255,126,.35) transparent}
+#email-console .split>div:last-child{border-right:0}
+/* (the rail re-uses the shared #email-console .rail styles from the cockpit) */
+#email-console .lst{padding:0}
+#email-console .lst .lh{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:9px 10px;font-size:9.5px;letter-spacing:1px;color:var(--dim);background:#03130d;border-bottom:1px solid rgba(28,143,70,.35)}
+#email-console .lst .lh .triage{margin-left:auto;color:var(--ai);border:1px solid rgba(125,247,255,.4);border-radius:6px;padding:5px 8px;background:transparent;font-size:9.5px;min-height:30px}
+#email-console .ldiv{font-size:9px;letter-spacing:2px;padding:9px 10px 4px;color:var(--faint)}
+#email-console .ldiv.red{color:var(--red)} #email-console .ldiv.amb{color:var(--amb)} #email-console .ldiv.ai{color:var(--ai)}
+#email-console .li{padding:9px 10px;border-bottom:1px solid rgba(28,143,70,.22);cursor:pointer;border-left:2px solid transparent}
+#email-console .li:hover{background:rgba(65,255,126,.04)}
+#email-console .li.on{background:rgba(65,255,126,.08);border-left-color:var(--g)}
+#email-console .li .l1{display:flex;align-items:baseline;gap:6px;font-size:12px}
+#email-console .li .l1 .who{color:var(--hi)} #email-console .li .l1 .t{margin-left:auto;color:var(--faint);font-size:10px}
+#email-console .li .ldot{width:7px;height:7px;border-radius:50%;background:var(--ai);box-shadow:0 0 5px var(--ai);flex:none}
+#email-console .li .l2{font-size:11.5px;color:var(--g);margin:3px 0 2px}
+#email-console .li .l3{font-size:10px;color:var(--ai);opacity:.9;line-height:1.35}
+#email-console .read{padding:0;display:flex;flex-direction:column}
+#email-console .read .empty{margin:auto;text-align:center;color:var(--faint);font-size:12px;padding:30px;line-height:1.6}
+#email-console .read .ra{position:sticky;top:0;display:flex;flex-wrap:wrap;gap:6px;padding:9px 11px;background:#03130d;border-bottom:1px solid rgba(28,143,70,.35);z-index:2}
+#email-console .read .back-list{display:none}
+#email-console .read .rbody{padding:12px 14px;overflow-y:auto;flex:1}
+#email-console .read .rh{font-size:15px;color:var(--hi);margin:0 0 4px;line-height:1.3}
+#email-console .read .rmeta{font-size:11px;color:var(--dim);margin-bottom:10px}
+#email-console .read .tbrief{border:1px solid rgba(125,247,255,.35);border-radius:8px;padding:9px 11px;background:rgba(125,247,255,.05);margin-bottom:12px}
+#email-console .read .tbrief .bh{font-size:9px;letter-spacing:1px;color:var(--ai);margin-bottom:5px}
+#email-console .read .tbrief .bt{font-size:11.5px;color:var(--hi);line-height:1.5}
+#email-console .read .tbrief ul{margin:6px 0 0;padding-left:16px;font-size:11.5px;color:var(--hi);line-height:1.5}
+#email-console .read .msgtxt{font-size:12.5px;color:var(--g);line-height:1.6;white-space:pre-wrap}
+#email-console .read .reply{margin-top:auto;border-top:1px solid rgba(28,143,70,.35);padding:10px 12px;background:rgba(0,0,0,.2)}
+#email-console .read .rchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+#email-console .read textarea{width:100%;min-height:64px;background:rgba(0,0,0,.3);border:1px solid var(--faint);border-radius:7px;color:var(--hi);font-family:var(--emono);font-size:12px;padding:8px;resize:vertical;outline:0}
+
 /* ============ COCKPIT ============ */
 #email-console .cockpit{flex:1;display:grid;grid-template-columns:210px 1fr;grid-template-rows:auto 1fr auto;min-height:0;width:100%;
   grid-template-areas:"rail brief" "rail queue" "rail compose"}
@@ -158,7 +192,7 @@
 #email-console .compose input::placeholder{color:var(--faint)}
 #email-console .compose .send{background:rgba(65,255,126,.12);color:var(--hi);border:1px solid var(--g);border-radius:8px;padding:11px 14px;font-size:11px;letter-spacing:1px;box-shadow:0 0 10px rgba(65,255,126,.25)}
 
-/* ===== responsive: cockpit collapses on small screens ===== */
+/* ===== responsive: cockpit + split collapse on small screens ===== */
 @media (max-width:820px){
   #email-console .cockpit{grid-template-columns:1fr;grid-template-areas:"brief" "queue" "compose"}
   #email-console .crail{display:none}
@@ -166,5 +200,18 @@
   #email-console .fc .decide .qr{margin:0}
   #email-console .ec-search{display:none}
   #email-console .acct{display:none}
+}
+/* split: drop the rail, then it's list -> tap a thread -> reading pane (with a ◂ LIST back) */
+@media (max-width:900px){
+  #email-console .split{grid-template-columns:minmax(280px,1fr) minmax(340px,1.2fr)}
+  #email-console .split>.rail{display:none}
+}
+@media (max-width:760px){
+  #email-console .split{grid-template-columns:1fr}
+  #email-console .split>.rail{display:none}
+  #email-console .split>.read{display:none}
+  #email-console .split.show-read>.lst{display:none}
+  #email-console .split.show-read>.read{display:flex}
+  #email-console .read .back-list{display:inline-flex}
 }
 @media (prefers-reduced-motion: reduce){ #email-console.open{animation:none} #email-console .ec-eye,#email-console .fc.red .spine{animation:none} }

@@ -61,8 +61,9 @@
   ];
 
   var BANDMAP = { TIME:{cls:'red',tag:'red'}, REPLY:{cls:'ai',tag:'ai'}, VIP:{cls:'amb',tag:'amb'}, FYI:{cls:'dim',tag:'dim'}, NOISE:{cls:'dim',tag:'dim'} };
-  var NAMES = { stream:'TRIAGE STREAM', cockpit:'HAL COCKPIT' };
+  var NAMES = { stream:'TRIAGE STREAM', split:'COMMAND SPLIT', cockpit:'HAL COCKPIT' };
   var live = T.slice(), cleared = 13, total = 201, layout = 'stream';
+  var sel = 1, splitShowRead = false;   // SPLIT: selected thread + (mobile) reading-pane toggle
   var root = null, built = false, lastRemoved = null, toastTO = null;
 
   function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -136,6 +137,48 @@
     b.innerHTML = '<div class="stream">' + pills + river + '</div>';
   }
 
+  /* ============ SPLIT  (3-pane: rail · thread list · reading pane) ============ */
+  function renderSplit(b){
+    var rail = '<div class="rail">' +
+      '<div class="grp">ACCOUNTS</div><div class="ri on">▸ GMAIL · adampurdy@ <span class="ct">201</span></div><div class="ri">＋ Add account</div>' +
+      '<div class="grp">HAL SMART VIEWS</div>' +
+      '<div class="ri ai on"><span class="tick"></span>◎ NEEDS REPLY <span class="ct">' + byBand('REPLY').length + '</span></div>' +
+      '<div class="ri ai"><span class="tick"></span>★ VIP <span class="ct">' + byBand('VIP').length + '</span></div>' +
+      '<div class="ri ai"><span class="tick"></span>◷ TODAY <span class="ct">4</span></div>' +
+      '<div class="ri ai"><span class="tick"></span>☾ SNOOZED <span class="ct">5</span></div>' +
+      '<div class="ri ai"><span class="tick"></span>✎ DRAFTS <span class="ct">6</span></div>' +
+      '<div class="grp">FOLDERS</div>' +
+      '<div class="ri">⬢ Inbox <span class="ct">201</span></div><div class="ri">● Unread <span class="ct">201</span></div><div class="ri">⚑ Flagged <span class="ct">7</span></div><div class="ri">Sent</div><div class="ri">Archive</div><div class="ri">⊘ Spam <span class="ct">18</span></div>' +
+      '<div class="grp">LABELS</div><div class="ri">Western State Hosp</div><div class="ri">Tesla Legal</div><div class="ri">Newsletters <span class="ct">44</span></div>' +
+      '<div class="grp">&nbsp;</div>' + meterHTML() +
+      '</div>';
+    var order = ['TIME','VIP','REPLY','FYI','NOISE'];
+    var labels = { TIME:['⚑ URGENT · DEADLINE','red'], VIP:['★ VIP','amb'], REPLY:['◎ AWAITING YOUR REPLY','ai'], FYI:['● UNREAD',''], NOISE:['▌ EVERYTHING ELSE',''] };
+    var list = '<div class="lst"><div class="lh">HAL VIEWS › NEEDS REPLY · ' + live.length + ' THREADS <button class="triage" onclick="__ec.note(\'HAL proposes a batch plan: archive 44 newsletters, snooze receipts, draft 6 VIP replies (coming with Gmail).\')">⚡ TRIAGE ALL</button></div>';
+    order.forEach(function(bd){ var items = byBand(bd); if (!items.length) return; var L = labels[bd];
+      list += '<div class="ldiv ' + L[1] + '">' + L[0] + ' · ' + items.length + '</div>';
+      items.forEach(function(t){
+        list += '<div class="li' + (t.id === sel ? ' on' : '') + '" data-id="' + t.id + '" onclick="__ec.sel(' + t.id + ')"><div class="l1"><span class="ldot"></span>' + (t.vip ? '<span class="vip">★ </span>' : '') + '<span class="who">' + esc(t.who) + '</span><span class="t">' + t.age + '</span></div><div class="l2">' + esc(t.subj) + '</div><div class="l3">⟁ HAL: ' + esc(t.sum) + '</div></div>';
+      });
+    });
+    list += '</div>';
+    var t = live.filter(function(x){ return x.id === sel; })[0] || live[0];
+    var read = '<div class="read">';
+    if (t){
+      read += '<div class="ra"><button class="ab back-list" onclick="__ec.unsel()">◂ LIST</button><button class="ab lead" onclick="__ec.note(\'Opens the reply editor with the HAL draft loaded (coming with Gmail).\')">↩ Reply</button><button class="ab">↩↩ All</button><button class="ab">→ Fwd</button><button class="ab" onclick="__ec.act(' + t.id + ',\'archived\')">☷ Archive</button><button class="ab warn" onclick="__ec.act(' + t.id + ',\'snoozed\')">☾ Snooze</button><button class="ab" onclick="__ec.act(' + t.id + ',\'flagged\')">⚑</button><button class="ab" onclick="__ec.act(' + t.id + ',\'trashed\')">⌫</button></div>' +
+        '<div class="rbody"><div class="rh">' + esc(t.subj) + '</div><div class="rmeta">' + (t.vip ? '★ ' : '') + esc(t.who) + ' · ' + esc(t.org || '') + ' · ' + t.age + '</div>' +
+        '<div class="tbrief"><div class="bh">⟁ HAL THREAD BRIEF' + (t.tag ? ' · ' + t.tag : '') + '</div><div class="bt">' + esc(t.sum) + '</div>' +
+        '<ul>' + (t.draft ? '<li>Recommended reply ready below — review and send.</li>' : '<li>HAL needs your steer on this one.</li>') + '</ul></div>' +
+        '<div class="msgtxt">' + esc(t.who) + ' wrote:\n\n' + esc(t.subj) + '.\n\n' + esc(t.sum) + '\n\n— sent from ' + esc(t.org || 'mail') + '</div></div>' +
+        '<div class="reply"><div class="rchips">' + (t.draft ? '<button class="ab go">✓ Use HAL draft</button>' : '<button class="ab lead">✨ Draft with HAL</button>') + '<button class="ab">Shorter</button><button class="ab">Warmer</button><button class="ab">↻ Regenerate</button></div>' +
+        '<textarea spellcheck="false">' + esc(t.draft || '') + '</textarea><div class="ec-actions"><button class="ab go" onclick="__ec.act(' + t.id + ',\'sent\')">▸ Send</button><button class="ab" onclick="__ec.act(' + t.id + ',\'sent + archived\')">⌥ Send + Archive</button></div></div>';
+    } else { read += '<div class="empty">Select a thread.<br><br>HAL is standing by with summaries + drafted replies.</div>'; }
+    read += '</div>';
+    b.innerHTML = '<div class="split' + (splitShowRead ? ' show-read' : '') + '">' + rail + list + read + '</div>';
+  }
+  function selThread(id){ sel = id; splitShowRead = true; render(); }
+  function unsel(){ splitShowRead = false; render(); }
+
   /* ============ COCKPIT ============ */
   function renderCockpit(b){
     var crail = '<div class="crail"><div class="rail">' +
@@ -183,7 +226,7 @@
   /* ---- render + layout ---- */
   function render(){
     var b = $('.ec-body'); if (!b) return;
-    if (layout === 'stream') renderStream(b); else renderCockpit(b);
+    if (layout === 'stream') renderStream(b); else if (layout === 'split') renderSplit(b); else renderCockpit(b);
     $('.ec-name').textContent = '// ' + NAMES[layout];
     root.querySelectorAll('.seg button').forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-l') === layout); });
   }
@@ -200,7 +243,7 @@
         '<span class="acct"><span class="dot"></span>gmail · adampurdy ▾</span>' +
         '<span class="ec-search"><span class="sig">›</span><input placeholder=\'from:marcus   is:unread   "deadline"\' /></span>' +
         '<span class="spacer"></span>' +
-        '<div class="seg"><button data-l="stream">STREAM</button><button data-l="cockpit">COCKPIT</button></div>' +
+        '<div class="seg"><button data-l="stream">STREAM</button><button data-l="split">SPLIT</button><button data-l="cockpit">COCKPIT</button></div>' +
         '<button class="x" aria-label="Close">✕</button>' +
       '</div>' +
       '<div class="ec-sub"><span class="led"></span><span>SYNCED 06:42</span><span>· 201 UNREAD · 6 NEED REPLY · 3 VIP · 2 TIME-SENSITIVE</span><span class="demo">● DEMO DATA · GMAIL NOT YET CONNECTED</span></div>' +
@@ -218,6 +261,7 @@
   function open(){
     build();
     live = T.slice(); cleared = 13; total = 201;        // fresh each open (demo)
+    sel = T[0].id; splitShowRead = false;               // SPLIT starts on the first thread
     layout = (window.innerWidth < 820) ? 'stream' : 'cockpit';   // phone -> STREAM, computer -> COCKPIT
     render();
     root.classList.add('open');
@@ -227,7 +271,7 @@
   function onKey(e){ if (e.key === 'Escape') close(); }
 
   window.EmailConsole = { open: open, close: close };
-  window.__ec = { act: act, undo: undo, note: note, setLayout: setLayout };
+  window.__ec = { act: act, undo: undo, note: note, setLayout: setLayout, sel: selThread, unsel: unsel };
 
   /* ---- wire the Daily Brief "EMAILS" line ---- */
   function wireLauncher(){
