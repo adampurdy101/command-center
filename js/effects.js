@@ -40,14 +40,18 @@
     var cans = nodes.map(function (cv) { return { cv: cv, ctx: null }; });
     function refit() { cans.forEach(function (c) { var x = fitC(c.cv); if (x) c.ctx = x; }); }
     refit();
-    window.addEventListener("resize", refit);
+    window.addEventListener("resize", refit); window.addEventListener("orientationchange", refit);
     var BPM = 18, T = 60 / BPM;                  // slow, calm monitor sweep (~3.3s across) — was 43, was 65
+    var ekgLast = 0;
     function frame(now) {
+      requestAnimationFrame(frame);
+      if (document.hidden) return;                 // pause when tab hidden
+      if (now - ekgLast < 33) return; ekgLast = now; // ~30fps (sweep takes ~3.3s anyway)
       var t = now / 1000;
       var phase = (t % T) / T;                    // 0..1 sweep position (stationary trace)
       var sweepX = phase;
       for (var ci = 0; ci < cans.length; ci++) {
-        var c = cans[ci]; if (!c.ctx) { c.ctx = fitC(c.cv); if (!c.ctx) continue; }
+        var c = cans[ci]; if (!c.ctx) continue;   // no per-frame getBoundingClientRect; refit() handles new canvases
         var ctx = c.ctx, w = c.cv.width / DPR, h = c.cv.height / DPR, mid = h * 0.56, amp = h * 0.44;
         ctx.save(); ctx.scale(DPR, DPR); ctx.clearRect(0, 0, w, h);
         ctx.lineJoin = "round"; ctx.lineCap = "round";
@@ -68,7 +72,6 @@
         ctx.beginPath(); ctx.arc(sx, yh, 1.9, 0, 7); ctx.fill();
         ctx.restore();
       }
-      requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
   }
@@ -79,14 +82,17 @@
   function startHalEye() {
     var eye = document.getElementById("hal-eye");
     if (!eye) return;
+    var eyeLast = 0;
     function frame(now) {
+      requestAnimationFrame(frame);
+      if (document.hidden) return;                 // pause when tab hidden
+      if (now - eyeLast < 50) return; eyeLast = now; // 20fps is ample for a breathing CSS var
       var t = now / 1000;
       var HAL = window.HAL || { speaking: false, level: 0 };
       var base = 0.55 + 0.18 * Math.sin(t * 1.6);           // calm breathing
       var lvl = HAL.speaking ? Math.max(base, 0.7 + 0.3 * (HAL.level || 0)) : base;
       eye.style.setProperty("--eye", lvl.toFixed(3));
       eye.classList.toggle("awake", !!HAL.speaking);
-      requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
   }

@@ -29,6 +29,9 @@
   /* the globe becomes a hero up top */
   #hub .center { order: -1; }
   #hub .globe-wrap { height: 44vh; min-height: 260px; }
+  /* let a vertical swipe that starts on the globe SCROLL the page (JS still spins it on
+     a horizontal drag + pinch-zooms); without this the globe ate the scroll gesture */
+  #hub #globe { touch-action: pan-y; }
   /* avoid the corner caption labels colliding on a narrow globe */
   #hub .globe-wrap .lab2 { display: none; }
   /* drop the redundant "HOME · RENTON" label; keep zoom + the two weather chips */

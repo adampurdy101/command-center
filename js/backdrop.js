@@ -31,11 +31,14 @@
 
   /* ---------- sizing: capped DPR, draw in CSS pixels ---------- */
   var DPR = 1, W = 1, H = 1;
+  var COARSE = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
+  var EMB_MAX = COARSE ? 42 : 90;            // fewer embers on phones/tablets
   function resize() {
-    var r = cv.getBoundingClientRect();
-    var cssW = Math.max(1, Math.round(r.width));
-    var cssH = Math.max(1, Math.round(r.height));
-    DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+    /* the canvas is now position:fixed = viewport-sized, so measure the viewport, not the
+       (possibly multi-thousand-pixel) scroll height. DPR 1 on touch halves the fill cost. */
+    var cssW = Math.max(1, window.innerWidth || Math.round(cv.getBoundingClientRect().width));
+    var cssH = Math.max(1, window.innerHeight || Math.round(cv.getBoundingClientRect().height));
+    DPR = COARSE ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
     cv.width = Math.round(cssW * DPR);
     cv.height = Math.round(cssH * DPR);
     W = cssW; H = cssH;
@@ -96,7 +99,7 @@
     glowPools(t, 0.16);
     pgrid(t, H * 0.45, true);
     /* rising embers */
-    if (emb.length < 90 && Math.random() < 0.7) {
+    if (emb.length < EMB_MAX && Math.random() < 0.7) {
       emb.push({ x: Math.random() * W, y: H + 5, vy: -rnd(10, 30), vx: rnd(-7, 7), ph: Math.random() * 6, life: rnd(4, 8), age: 0 });
     }
     ctx.save();

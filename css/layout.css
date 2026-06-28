@@ -62,6 +62,9 @@ body {
   z-index: 51;
 }
 @keyframes scan { from { background-position-y: 0; } to { background-position-y: 100px; } }
+/* the animated scanline repaints a full-screen overlay forever — kill the animation on
+   touch devices (where scroll jank is worst) + for reduced-motion; static lines remain */
+@media (pointer: coarse), (prefers-reduced-motion: reduce) { .crt::before { animation: none; } }
 
 /* corner bolts on the chassis */
 .bolt {

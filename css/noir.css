@@ -118,7 +118,9 @@ html[data-tex="C"] #hub .panel .fx-tex::after{inset:0;background:radial-gradient
 
 /* ===== graceful degrade — lighter on phones/tablets, calm for reduced-motion ===== */
 @media (pointer:coarse){
-  html[data-fx="2"] #hub .panel{-webkit-backdrop-filter:blur(7px) saturate(1.12)!important;backdrop-filter:blur(7px) saturate(1.12)!important}
+  /* backdrop-filter re-blurs everything behind every panel on every scroll frame — brutal on
+     mobile GPUs. Drop it entirely on touch (panels are already near-opaque) for smooth scrolling. */
+  html[data-fx="2"] #hub .panel{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:linear-gradient(180deg, rgba(6,18,14,.9), rgba(3,9,8,.94))!important}
 }
 @media (prefers-reduced-motion: reduce){
   html[data-fx] #hub .panel .fx-tex::before, html[data-fx] #hub .panel .fx-tex::after{animation:none !important}

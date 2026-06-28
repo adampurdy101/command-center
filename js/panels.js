@@ -203,9 +203,11 @@
 
     document.addEventListener("touchmove", function (e) {
       var t = e.touches[0]; if (!t) return;
-      if (Math.abs(t.clientX - startX) > MOVE_TOL || Math.abs(t.clientY - startY) > MOVE_TOL) moved = true;
+      var dx = Math.abs(t.clientX - startX), dy = Math.abs(t.clientY - startY);
+      if (dx > MOVE_TOL || dy > MOVE_TOL) moved = true;
+      if (moved || dy > dx) return;                    // once it's a scroll / vertical drag, stop hit-testing
       if (onInnerControl(e.target)) return;
-      highlight(t.clientX, t.clientY);                 // follow the finger (page still scrolls)
+      highlight(t.clientX, t.clientY);                 // horizontal scrub still follows the finger
     }, { passive: true });
 
     document.addEventListener("touchend", function (e) {

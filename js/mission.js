@@ -7,7 +7,7 @@
    the DOM from load (hidden until login), so these run immediately
    and re-fit their canvases when the hub is revealed (hub:ready).
    ============================================================ */
-const DPR = Math.min(window.devicePixelRatio || 1, 2);
+const DPR = Math.min(window.devicePixelRatio || 1, (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) ? 1.25 : 1.75);
 window.HAL = {speaking:false, level:0};
 function fit(cv){const r=cv.getBoundingClientRect();cv.width=Math.max(2,r.width*DPR);cv.height=Math.max(2,r.height*DPR);return cv.getContext('2d');}
 
@@ -67,9 +67,9 @@ tick();setInterval(tick,1000);
 
   // ISS live position
   let iss=null;
-  function pollISS(){fetch('https://api.wheretheiss.at/v1/satellites/25544')
+  function pollISS(){if(document.hidden)return;fetch('https://api.wheretheiss.at/v1/satellites/25544')
     .then(r=>r.json()).then(d=>{if(d&&d.latitude!=null)iss=[+d.longitude,+d.latitude];}).catch(()=>{});}
-  pollISS();setInterval(pollISS,5000);
+  pollISS();setInterval(pollISS,20000);   // the marker only creeps over minutes; 20s + paused-when-hidden is plenty
 
   // subsolar point (where the sun is overhead) — drives the day/night terminator
   function subSolar(){const n=new Date();
@@ -101,17 +101,30 @@ tick();setInterval(tick,1000);
   window.addEventListener('mousemove',e=>{if(!drag)return;rotBy(e.clientX-drag.x,e.clientY-drag.y,drag.r0);lastTouch=now();});
   window.addEventListener('mouseup',()=>{if(drag){drag=null;cv.style.cursor='grab';lastTouch=now();}});
   cv.addEventListener('wheel',e=>{e.preventDefault();zoomMul(e.deltaY<0?1.12:0.89);lastTouch=now();},{passive:false});
-  cv.addEventListener('touchstart',e=>{if(e.touches.length===1)tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY,r0:rot.slice()};else if(e.touches.length===2){pinch=tdist(e);tdrag=null;}lastTouch=now();},{passive:false});
-  cv.addEventListener('touchmove',e=>{e.preventDefault();if(e.touches.length===2&&pinch){const d=tdist(e);zoomMul(d/pinch);pinch=d;}else if(e.touches.length===1&&tdrag){rotBy(e.touches[0].clientX-tdrag.x,e.touches[0].clientY-tdrag.y,tdrag.r0);}lastTouch=now();},{passive:false});
+  cv.addEventListener('touchstart',e=>{if(e.touches.length===1)tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY,r0:rot.slice(),axis:0};else if(e.touches.length===2){pinch=tdist(e);tdrag=null;}lastTouch=now();},{passive:true});
+  cv.addEventListener('touchmove',e=>{
+    if(e.touches.length===2&&pinch){e.preventDefault();const d=tdist(e);zoomMul(d/pinch);pinch=d;lastTouch=now();return;}
+    if(e.touches.length===1&&tdrag){
+      const dx=e.touches[0].clientX-tdrag.x,dy=e.touches[0].clientY-tdrag.y;
+      if(!tdrag.axis&&(Math.abs(dx)>6||Math.abs(dy)>6)) tdrag.axis=Math.abs(dx)>=Math.abs(dy)?'h':'v';
+      if(tdrag.axis==='h'){e.preventDefault();rotBy(dx,dy,tdrag.r0);lastTouch=now();}   // horizontal spins the globe
+      // vertical-dominant drag: do nothing so the page scrolls
+    }
+  },{passive:false});
   cv.addEventListener('touchend',e=>{if(e.touches.length===0){tdrag=null;pinch=null;}lastTouch=now();});
   function interacting(){return drag||tdrag||pinch;}
   function vis(p){return d3.geoDistance(p,[-rot[0],-rot[1]])<1.5;}
 
-  function draw(){
+  let gVis=true,gLast=0;
+  try{ if('IntersectionObserver' in window) new IntersectionObserver(function(es){gVis=es[0].isIntersecting;},{rootMargin:'140px'}).observe(cv); }catch(e){}
+  function draw(ms){
+    requestAnimationFrame(draw);
+    if(document.hidden||!gVis) return;                 // pause when tab hidden or globe scrolled offscreen
+    if(ms&&ms-gLast<32) return; gLast=ms||gLast;        // ~30fps — plenty for the globe
     const w=cv.width/DPR,h=cv.height/DPR;
-    if(!window.d3||w<30||h<30){requestAnimationFrame(draw);return;}
+    if(!window.d3||w<30||h<30) return;
     if(!stars)seedStars(w,h);
-    if(!interacting() && zoom<=1.15 && now()-lastTouch>3200) rot[0]+=0.06;
+    if(!interacting() && zoom<=1.15 && now()-lastTouch>3200) rot[0]+=0.11;   // rescaled for 30fps
     const t=now()/1000;
     ctx.save();ctx.scale(DPR,DPR);ctx.clearRect(0,0,w,h);
 
@@ -208,7 +221,6 @@ tick();setInterval(tick,1000);
     const cl=document.getElementById('continent');
     if(cl){if(cName){cl.textContent=cName;cl.style.opacity=Math.min(1,(zoom-1.45)/0.5).toFixed(2);}else cl.style.opacity=0;}
     const zr=document.getElementById('zoomr');if(zr)zr.textContent='ZOOM '+zoom.toFixed(1)+'×';
-    requestAnimationFrame(draw);
   }
   draw();
 })();
@@ -273,8 +285,13 @@ tick();setInterval(tick,1000);
     for(let b=0;b<22;b++){ const shape=(1-0.5*b/21)*(1+0.15*Math.sin(b/21*Math.PI)); const noise=0.5+0.5*Math.sin(t*st.spd[b]+st.phase[b]);
       let tgt=lv*WH*shape*(0.55+0.45*noise); tgt=Math.max(tgt,(1.2+Math.sin(t*1.5+b*0.6))*8);
       st.hh[b]+=(tgt>st.hh[b]?(tgt-st.hh[b])*0.5:(tgt-st.hh[b])*0.12); st.peak[b]=Math.max(st.hh[b],st.peak[b]-0.7); } }
+  let vVis=true,vThrLast=0;
+  try{ if('IntersectionObserver' in window) new IntersectionObserver(function(es){vVis=es[0].isIntersecting;},{rootMargin:'140px'}).observe(cv); }catch(e){}
   function draw(ms){
-    const w=cv.width/DPR,h=cv.height/DPR;
+    requestAnimationFrame(draw);
+    if(document.hidden||!vVis) return;                 // pause when hidden or scrolled offscreen
+    const w=cv.width/DPR,h=cv.height/DPR; if(w<30||h<30) return;   // size guard it lacked
+    if(ms&&ms-vThrLast<32) return; vThrLast=ms||vThrLast;          // ~30fps
     const dt=vpLast?Math.min(0.05,((ms||0)-vpLast)/1000):0.016; vpLast=ms||0; const t=(ms||0)/1000;
     ctx.save();ctx.scale(DPR,DPR);ctx.clearRect(0,0,w,h);
     const HAL=window.HAL||{speaking:false,level:0};
@@ -315,7 +332,7 @@ tick();setInterval(tick,1000);
       ctx.beginPath();ctx.arc(40,36,wr,0,VTAU);ctx.stroke();
       ctx.globalAlpha=SC.wake*0.10;ctx.fillStyle=VC.g;ctx.fillRect(0,0,w,h); ctx.restore(); }
     ctx.save();ctx.globalAlpha=0.05;ctx.fillStyle='#000';for(let y=0;y<h;y+=3)ctx.fillRect(0,y,w,1);ctx.restore();
-    ctx.restore();requestAnimationFrame(draw);
+    ctx.restore();
   }
   requestAnimationFrame(draw);
 })();

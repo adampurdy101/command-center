@@ -2272,24 +2272,31 @@
     if (!this.previewCtx) { this.previewRAF = 0; return; }
     var self = this;
     this.previewT = 0;
-    var last = 0;
+    var last = 0, pvLast = 0;
+    /* cache the canvas size (no per-frame getBoundingClientRect) + a visibility flag */
+    this._pvVis = true;
+    var measure = function () { var r = canvasEl.getBoundingClientRect(); self._pvW = r.width; self._pvH = r.height; };
+    measure();
+    try { if (self._pvRO) self._pvRO.disconnect(); if (window.ResizeObserver) { self._pvRO = new ResizeObserver(measure); self._pvRO.observe(canvasEl); } } catch (e) {}
+    try { if (self._pvIO) self._pvIO.disconnect(); if (window.IntersectionObserver) { self._pvIO = new IntersectionObserver(function (es) { self._pvVis = es[0].isIntersecting; }, { rootMargin: '140px' }); self._pvIO.observe(canvasEl); } } catch (e) {}
     function frame(t) {
       if (self.previewCanvas !== canvasEl) return; // remounted elsewhere
       if (!document.body.contains(canvasEl)) { self.previewRAF = 0; return; }
+      self.previewRAF = requestAnimationFrame(frame);
+      if (document.hidden || self._pvVis === false) { last = t; return; } // pause when hidden / scrolled offscreen
+      if (t - pvLast < 33) return; pvLast = t;     // ~30fps
       if (!last) last = t;
       var dt = Math.min(0.05, Math.max(0, (t - last) / 1000)); last = t;
       if (!isFinite(dt)) dt = 0;
       self.previewT += dt;
       try { self.renderPreview(canvasEl, dt); } catch (e) {}
-      self.previewRAF = requestAnimationFrame(frame);
     }
     this.previewRAF = requestAnimationFrame(frame);
   };
 
   Game.prototype.renderPreview = function (cv, dt) {
-    var rect = cv.getBoundingClientRect();
-    var rw = rect && isFinite(rect.width) ? rect.width : 0;
-    var rh = rect && isFinite(rect.height) ? rect.height : 0;
+    var rw = isFinite(this._pvW) ? this._pvW : 0;   // cached size — no layout read in the loop
+    var rh = isFinite(this._pvH) ? this._pvH : 0;
     var W = Math.max(40, Math.floor(rw || 280));
     var H = Math.max(40, Math.floor(rh || 160));
     var dpr = Math.min(2, window.devicePixelRatio || 1);
