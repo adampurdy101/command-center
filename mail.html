@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>EMAIL CONSOLE // 3 renditions</title>
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <style>
+    :root{ --g:#41ff7e; --hi:#7dffb0; --dim:#2bd964; --faint:#1c8f46; --amb:#ffd24a; --red:#ff6b5a; --ai:#7df7ff; --ink:#06100a;
+      --mono:ui-monospace,"SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace; }
+    *{box-sizing:border-box}
+    body{margin:0;background:#05080a;color:var(--g);font-family:var(--mono);-webkit-font-smoothing:none;height:100vh;overflow:hidden}
+    button{font-family:var(--mono);cursor:pointer}
+
+    /* ===== console frame ===== */
+    #ec{position:fixed;inset:0;display:flex;flex-direction:column;
+      background:radial-gradient(130% 130% at 50% 8%, #061410, #02080a 72%);overflow:hidden}
+    #ec::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;
+      background:radial-gradient(120% 120% at 50% 46%, transparent 40%, rgba(0,2,4,.6) 100%)}
+    .ec-scan{position:fixed;inset:0;pointer-events:none;z-index:91;opacity:.5;
+      background:repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.16) 3px, rgba(0,0,0,0) 4px)}
+
+    /* ===== top bar ===== */
+    .ec-top{flex:none;display:flex;align-items:center;gap:12px;height:50px;padding:0 12px;
+      border-bottom:1px solid var(--faint);background:linear-gradient(180deg, rgba(65,255,126,.06), transparent)}
+    .ec-top .back{color:var(--dim);background:transparent;border:1px solid var(--faint);border-radius:7px;padding:7px 10px;font-size:11px;letter-spacing:1px}
+    .ec-top .ttl{color:var(--hi);font-size:13px;letter-spacing:2px;text-shadow:0 0 8px rgba(125,255,176,.5);white-space:nowrap}
+    .ec-top .ttl small{color:var(--faint);font-size:9px;letter-spacing:1px;margin-left:6px}
+    .ec-eye{width:13px;height:13px;border-radius:50%;display:inline-block;vertical-align:-2px;margin-right:7px;
+      background:radial-gradient(circle at 38% 35%, #d9fff0, var(--ai) 45%, #06343a);box-shadow:0 0 9px var(--ai);animation:eye 3.2s ease-in-out infinite}
+    @keyframes eye{0%,100%{opacity:.85}50%{opacity:1;box-shadow:0 0 13px var(--ai)}}
+    .acct{display:flex;align-items:center;gap:6px;color:var(--dim);border:1px solid var(--faint);border-radius:7px;padding:6px 9px;font-size:11px;background:rgba(65,255,126,.03)}
+    .acct .dot{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 6px var(--g)}
+    .ec-search{flex:1;min-width:80px;display:flex;align-items:center;gap:7px;border:1px solid var(--faint);border-radius:7px;padding:7px 10px;background:rgba(0,0,0,.25);max-width:360px}
+    .ec-search .sig{color:var(--ai)}
+    .ec-search input{flex:1;background:transparent;border:0;outline:0;color:var(--hi);font-family:var(--mono);font-size:12px}
+    .ec-search input::placeholder{color:var(--faint)}
+    .spacer{flex:1}
+    .seg{display:flex;border:1px solid var(--faint);border-radius:8px;overflow:hidden}
+    .seg button{background:transparent;color:var(--dim);border:0;padding:8px 12px;font-size:11px;letter-spacing:1px;border-right:1px solid rgba(28,143,70,.5)}
+    .seg button:last-child{border-right:0}
+    .seg button.on{background:rgba(65,255,126,.16);color:#06120c;background:var(--g);text-shadow:none}
+    .ec-top .x{color:var(--red);background:transparent;border:1px solid rgba(255,107,90,.5);border-radius:7px;padding:7px 10px;font-size:11px}
+    .ec-sub{flex:none;display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:9.5px;letter-spacing:1px;color:var(--dim);border-bottom:1px solid rgba(28,143,70,.35)}
+    .ec-sub .led{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 6px var(--g)}
+    .ec-sub .demo{color:var(--amb);margin-left:auto}
+
+    /* meter */
+    .meter{display:flex;flex-direction:column;gap:3px}
+    .meter .lab{display:flex;justify-content:space-between;font-size:9px;letter-spacing:1px;color:var(--dim)}
+    .meter .lab b{color:var(--amb)} .meter .lab i{color:var(--g);font-style:normal} .meter .lab u{color:var(--faint);text-decoration:none}
+    .meter .track{height:7px;border-radius:4px;background:rgba(65,255,126,.12);overflow:hidden}
+    .meter .fill{height:100%;background:var(--g);box-shadow:0 0 8px var(--g);transition:width .4s ease;position:relative}
+    .meter .fill::after{content:'';position:absolute;right:0;top:0;bottom:0;width:3px;background:var(--hi);box-shadow:0 0 8px 1px var(--g)}
+
+    /* ===== body (per-layout renderer mounts here) ===== */
+    .ec-body{flex:1;min-height:0;position:relative;display:flex;overflow:hidden}
+
+    /* generic card bits */
+    .tag{font-size:9px;letter-spacing:1px;padding:2px 6px;border-radius:4px;border:1px solid currentColor;white-space:nowrap}
+    .hal{color:var(--ai)} .vip{color:var(--amb)}
+    .ec-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+    .ab{display:inline-flex;align-items:center;gap:5px;background:transparent;color:var(--dim);border:1px solid var(--faint);border-radius:6px;padding:7px 9px;font-size:10.5px;letter-spacing:.5px;min-height:34px}
+    .ab:hover{color:var(--hi);border-color:var(--hi)}
+    .ab.lead{color:var(--ai);border-color:rgba(125,247,255,.5)}
+    .ab.go{background:rgba(65,255,126,.12);color:var(--hi);border-color:var(--g);box-shadow:0 0 10px rgba(65,255,126,.25)}
+    .ab.warn{color:var(--amb);border-color:rgba(255,210,74,.4)}
+    .draft{margin-top:8px;border:1px solid rgba(125,247,255,.3);border-radius:7px;padding:8px 9px;background:rgba(125,247,255,.05)}
+    .draft .dh{font-size:9px;letter-spacing:1px;color:var(--ai);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+    .draft .dh .conf{width:8px;height:8px;border-radius:50%}
+    .draft .dh .conf.solid{background:var(--g);box-shadow:0 0 5px var(--g)} .draft .dh .conf.hollow{border:1.5px solid var(--amb)}
+    .draft .dt{font-size:11.5px;line-height:1.45;color:var(--hi)}
+    .leaving{animation:leave .22s ease forwards}
+    @keyframes leave{to{transform:translateX(-40px);opacity:0;height:0;margin:0;padding:0;border-width:0}}
+
+    /* undo toast */
+    #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);z-index:95;opacity:0;transition:.18s;
+      background:rgba(3,12,8,.92);border:1px solid var(--faint);border-radius:9px;padding:9px 14px;font-size:11px;color:var(--dim);letter-spacing:.5px;display:flex;gap:12px;align-items:center}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    #toast button{background:transparent;border:0;color:var(--ai);font-size:11px;letter-spacing:1px}
+
+    /* ============ 1 · STREAM ============ */
+    .stream{flex:1;display:flex;flex-direction:column;align-items:center;overflow:hidden}
+    .stream .pills{flex:none;display:flex;gap:7px;padding:9px 12px;overflow-x:auto;width:100%;max-width:760px;border-bottom:1px solid rgba(28,143,70,.3)}
+    .pill{flex:none;display:flex;align-items:center;gap:6px;border:1px solid var(--faint);border-radius:20px;padding:6px 11px;font-size:10px;letter-spacing:1px;color:var(--dim);background:rgba(0,0,0,.2)}
+    .pill b{font-weight:400}
+    .pill.red{color:var(--red);border-color:rgba(255,107,90,.45)} .pill.amb{color:var(--amb);border-color:rgba(255,210,74,.4)}
+    .pill.ai{color:var(--ai);border-color:rgba(125,247,255,.4)} .pill.on{background:rgba(65,255,126,.14)}
+    .stream .river{flex:1;overflow-y:auto;width:100%;max-width:760px;padding:6px 12px 80px;scrollbar-width:thin;scrollbar-color:rgba(65,255,126,.4) transparent}
+    .band{display:flex;align-items:center;gap:10px;margin:14px 2px 8px;font-size:9.5px;letter-spacing:2px}
+    .band .ln{flex:1;height:1px}
+    .band.red{color:var(--red)} .band.red .ln{background:rgba(255,107,90,.4)}
+    .band.amb{color:var(--amb)} .band.amb .ln{background:rgba(255,210,74,.35)}
+    .band.ai{color:var(--ai)} .band.ai .ln{background:rgba(125,247,255,.35)}
+    .band.dim{color:var(--faint)} .band.dim .ln{background:rgba(28,143,70,.4)}
+    .mc{border:1px solid var(--faint);border-radius:9px;padding:10px 11px;margin-bottom:8px;background:linear-gradient(180deg, rgba(7,20,13,.6), rgba(3,9,8,.7))}
+    .mc.red{border-color:rgba(255,107,90,.45);background:linear-gradient(180deg, rgba(26,8,7,.5), rgba(8,3,3,.6))}
+    .mc.ai{border-color:rgba(125,247,255,.4);background:linear-gradient(180deg, rgba(6,20,24,.5), rgba(3,9,11,.6))}
+    .mc.amb{border-color:rgba(255,210,74,.4)}
+    .mc .r1{display:flex;align-items:baseline;gap:7px;font-size:12.5px}
+    .mc .r1 .who{color:var(--hi)} .mc .r1 .org{color:var(--dim);font-size:10.5px} .mc .r1 .right{margin-left:auto;display:flex;gap:7px;align-items:center}
+    .mc .age{color:var(--faint);font-size:10px}
+    .mc .subj{color:var(--g);font-size:12.5px;margin:5px 0 2px}
+    .mc .sum{color:var(--ai);font-size:11px;line-height:1.4;padding-left:8px;border-left:2px solid rgba(125,247,255,.4);margin-top:3px}
+    .mc.noise{opacity:.78;padding:8px 11px}
+    .mc.noise .subj{margin:3px 0 0}
+    .nf{text-align:center;color:var(--faint);font-size:11px;padding:14px;border:1px dashed rgba(28,143,70,.4);border-radius:9px;margin-top:6px}
+    .nf b{color:var(--ai)}
+
+    /* ============ 2 · SPLIT ============ */
+    .split{flex:1;display:grid;grid-template-columns:240px minmax(320px,1fr) minmax(380px,1.25fr);min-height:0;width:100%}
+    .split>div{min-height:0;overflow-y:auto;border-right:1px solid rgba(28,143,70,.35);scrollbar-width:thin;scrollbar-color:rgba(65,255,126,.35) transparent}
+    .split>div:last-child{border-right:0}
+    .rail{padding:10px 8px}
+    .rail .grp{font-size:9px;letter-spacing:2px;color:var(--faint);margin:12px 6px 5px}
+    .rail .grp:first-child{margin-top:2px}
+    .rail .ri{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;font-size:11.5px;color:var(--dim)}
+    .rail .ri:hover{background:rgba(65,255,126,.06);color:var(--hi)}
+    .rail .ri.on{background:rgba(65,255,126,.1);color:var(--hi)}
+    .rail .ri .ct{margin-left:auto;font-size:10px;color:var(--faint)}
+    .rail .ri.ai{color:var(--ai)} .rail .ri.ai .tick{color:var(--ai)}
+    .rail .ri .tick{width:3px;height:14px;border-radius:2px;background:transparent}
+    .rail .ri.ai .tick{background:var(--ai);box-shadow:0 0 5px var(--ai)}
+    .lst{padding:0}
+    .lst .lh{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:9.5px;letter-spacing:1px;color:var(--dim);background:#03130d;border-bottom:1px solid rgba(28,143,70,.35)}
+    .lst .lh .triage{margin-left:auto;color:var(--ai);border:1px solid rgba(125,247,255,.4);border-radius:6px;padding:4px 8px;background:transparent;font-size:9.5px}
+    .ldiv{font-size:9px;letter-spacing:2px;padding:8px 10px 4px;color:var(--faint)}
+    .ldiv.red{color:var(--red)} .ldiv.amb{color:var(--amb)} .ldiv.ai{color:var(--ai)}
+    .li{padding:9px 10px;border-bottom:1px solid rgba(28,143,70,.22);cursor:pointer;border-left:2px solid transparent}
+    .li:hover{background:rgba(65,255,126,.04)}
+    .li.on{background:rgba(65,255,126,.08);border-left-color:var(--g)}
+    .li .l1{display:flex;align-items:baseline;gap:6px;font-size:12px}
+    .li .l1 .who{color:var(--hi)} .li .l1 .t{margin-left:auto;color:var(--faint);font-size:10px}
+    .li .dot{width:7px;height:7px;border-radius:50%;background:var(--ai);box-shadow:0 0 5px var(--ai);flex:none}
+    .li .l2{font-size:11.5px;color:var(--g);margin:3px 0 2px}
+    .li .l2 span{color:var(--faint)}
+    .li .l3{font-size:10px;color:var(--ai);opacity:.9}
+    .read{padding:0;display:flex;flex-direction:column}
+    .read .empty{margin:auto;text-align:center;color:var(--faint);font-size:12px;padding:30px}
+    .read .ra{position:sticky;top:0;display:flex;flex-wrap:wrap;gap:6px;padding:9px 11px;background:#03130d;border-bottom:1px solid rgba(28,143,70,.35);z-index:2}
+    .read .rbody{padding:12px 14px;overflow-y:auto}
+    .read .rh{font-size:15px;color:var(--hi);margin:0 0 4px}
+    .read .meta{font-size:11px;color:var(--dim);margin-bottom:10px}
+    .read .brief{border:1px solid rgba(125,247,255,.35);border-radius:8px;padding:9px 11px;background:rgba(125,247,255,.05);margin-bottom:12px}
+    .read .brief .bh{font-size:9px;letter-spacing:1px;color:var(--ai);margin-bottom:5px}
+    .read .brief ul{margin:6px 0 0;padding-left:16px;font-size:11.5px;color:var(--hi);line-height:1.5}
+    .read .msgtxt{font-size:12.5px;color:var(--g);line-height:1.6;white-space:pre-wrap}
+    .read .reply{margin-top:auto;border-top:1px solid rgba(28,143,70,.35);padding:10px 12px;background:rgba(0,0,0,.2)}
+    .read .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+    .read textarea{width:100%;min-height:64px;background:rgba(0,0,0,.3);border:1px solid var(--faint);border-radius:7px;color:var(--hi);font-family:var(--mono);font-size:12px;padding:8px;resize:vertical}
+
+    /* ============ 3 · COCKPIT ============ */
+    .cockpit{flex:1;display:grid;grid-template-columns:210px 1fr;grid-template-rows:auto 1fr auto;min-height:0;width:100%;
+      grid-template-areas:"rail brief" "rail queue" "rail compose"}
+    .cockpit .crail{grid-area:rail;overflow-y:auto;border-right:1px solid rgba(28,143,70,.35)}
+    .brief{grid-area:brief;padding:14px 16px;border-bottom:1px solid rgba(28,143,70,.35);background:linear-gradient(180deg, rgba(125,247,255,.05), transparent)}
+    .brief .top{display:flex;gap:12px;align-items:flex-start}
+    .brief .eye{width:34px;height:34px;border-radius:50%;flex:none;margin-top:2px;
+      background:radial-gradient(circle at 38% 35%, #d9fff0, var(--ai) 45%, #06343a);box-shadow:0 0 16px var(--ai)}
+    .brief .say{font-size:13.5px;color:var(--hi);line-height:1.5;min-height:40px}
+    .brief .gauge{margin-left:auto;text-align:right;color:var(--ai);font-size:11px;white-space:nowrap}
+    .brief .gauge b{font-size:20px;display:block;text-shadow:0 0 10px rgba(125,247,255,.5)}
+    .brief .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+    .bchip{border:1px solid var(--faint);border-radius:7px;padding:7px 11px;font-size:10.5px;letter-spacing:.5px;color:var(--dim);background:transparent}
+    .bchip.go{background:rgba(65,255,126,.14);color:var(--hi);border-color:var(--g);box-shadow:0 0 12px rgba(65,255,126,.3)}
+    .bchip.ai{color:var(--ai);border-color:rgba(125,247,255,.4)} .bchip.amb{color:var(--amb);border-color:rgba(255,210,74,.4)} .bchip.red{color:var(--red);border-color:rgba(255,107,90,.4)}
+    .queue{grid-area:queue;overflow-y:auto;padding:12px 16px 16px;scrollbar-width:thin;scrollbar-color:rgba(65,255,126,.35) transparent}
+    .queue .inner{max-width:780px;margin:0 auto}
+    .fc{display:flex;gap:0;border:1px solid var(--faint);border-radius:10px;margin-bottom:11px;overflow:hidden;background:linear-gradient(180deg, rgba(7,20,13,.6), rgba(3,9,8,.7))}
+    .fc .spine{width:4px;flex:none}
+    .fc.red .spine{background:var(--red);box-shadow:0 0 8px var(--red);animation:pulseSpine 1.6s infinite}
+    .fc.ai .spine{background:var(--ai);box-shadow:0 0 8px var(--ai)}
+    .fc.amb .spine{background:var(--amb)} .fc.dim .spine{background:var(--faint)}
+    @keyframes pulseSpine{0%,100%{opacity:1}50%{opacity:.4}}
+    .fc .main{flex:1;padding:11px 13px;min-width:0}
+    .fc .meta{display:flex;align-items:baseline;gap:7px;font-size:12px}
+    .fc .meta .who{color:var(--hi)} .fc .meta .org{color:var(--dim);font-size:10.5px} .fc .meta .t{margin-left:auto;color:var(--faint);font-size:10px}
+    .fc .subj{color:var(--g);font-size:13px;margin:5px 0 3px}
+    .fc .sum{color:var(--ai);font-size:11px;line-height:1.4}
+    .fc .inset{margin-top:8px;border:1px solid rgba(28,143,70,.4);border-radius:7px;padding:8px 9px;background:rgba(0,0,0,.22)}
+    .fc .inset .ih{font-size:9px;letter-spacing:1px;color:var(--ai);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+    .fc .inset .it{font-size:11.5px;color:var(--hi);line-height:1.45}
+    .fc .decide{flex:none;width:128px;border-left:1px solid rgba(28,143,70,.35);padding:11px 10px;display:flex;flex-direction:column;gap:6px}
+    .fc .decide .qr{display:flex;gap:5px;margin-top:auto;padding-top:6px}
+    .fc .decide .qr .ab{padding:6px;min-height:0;flex:1;justify-content:center}
+    .compose{grid-area:compose;display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid rgba(28,143,70,.35);background:rgba(0,0,0,.25)}
+    .compose .eye{width:18px;height:18px;border-radius:50%;flex:none;background:radial-gradient(circle at 38% 35%, #d9fff0, var(--ai) 45%, #06343a);box-shadow:0 0 9px var(--ai)}
+    .compose input{flex:1;background:rgba(0,0,0,.3);border:1px solid var(--faint);border-radius:8px;color:var(--hi);font-family:var(--mono);font-size:12.5px;padding:10px 12px;outline:0}
+    .compose input::placeholder{color:var(--faint)}
+    .compose .send{background:rgba(65,255,126,.12);color:var(--hi);border:1px solid var(--g);border-radius:8px;padding:10px 14px;font-size:11px;letter-spacing:1px;box-shadow:0 0 10px rgba(65,255,126,.25)}
+
+    /* ===== switcher hint ===== */
+    .keyhint{position:fixed;left:14px;bottom:14px;z-index:95;font-size:9px;letter-spacing:1px;color:var(--faint);pointer-events:none}
+
+    /* ===== responsive ===== */
+    @media (max-width:900px){
+      .split{grid-template-columns:1fr}
+      .split>.rail,.split>.read{display:none}
+      .split.show-read>.lst{display:none} .split.show-read>.read{display:flex}
+      .cockpit{grid-template-columns:1fr;grid-template-areas:"brief" "queue" "compose"}
+      .cockpit .crail{display:none}
+      .fc{flex-wrap:wrap} .fc .decide{width:100%;flex-direction:row;border-left:0;border-top:1px solid rgba(28,143,70,.35)}
+      .fc .decide .qr{margin:0}
+      .ec-search{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div id="ec">
+    <div class="ec-top">
+      <button class="back" onclick="alert('In the real app this returns to the dashboard.')">◂ COMMAND</button>
+      <span class="ttl"><span class="ec-eye"></span>EMAIL CONSOLE<small id="layoutName">// TRIAGE STREAM</small></span>
+      <span class="acct"><span class="dot"></span>gmail · adampurdy ▾</span>
+      <span class="ec-search"><span class="sig">›</span><input placeholder='from:marcus   is:unread   "deadline"' /></span>
+      <span class="spacer"></span>
+      <div class="seg" id="seg">
+        <button data-l="stream" class="on">1 · STREAM</button>
+        <button data-l="split">2 · SPLIT</button>
+        <button data-l="cockpit">3 · COCKPIT</button>
+      </div>
+      <button class="x" onclick="alert('Closes back to the dashboard.')">✕</button>
+    </div>
+    <div class="ec-sub">
+      <span class="led"></span><span>SYNCED 06:42</span><span id="subUnread">· 201 UNREAD · 6 NEED REPLY · 3 VIP · 2 TIME-SENSITIVE</span>
+      <span class="demo">● DEMO DATA — pick a layout (1 / 2 / 3)</span>
+    </div>
+    <div class="ec-body" id="body"></div>
+  </div>
+  <div class="ec-scan"></div>
+  <div id="toast"><span id="toastMsg"></span><button onclick="undo()">↶ UNDO</button></div>
+  <div class="keyhint">KEYS  1 · 2 · 3  switch layout</div>
+
+  <script>
+  (function(){
+    "use strict";
+    /* ---------- shared 14-email demo dataset ---------- */
+    var T = [
+      {id:1,who:'Marcus Reyes',org:'Hensel Phelps · GC',vip:1,band:'TIME',tag:'DUE FRI · 5PM',age:'9m',
+        subj:'RFI #214 — Wall Shops sign-off before 5 PM',
+        sum:'GC needs RFI #214 approval before 5pm or Thursday’s pour slips. Approve, or push to Thursday?',
+        draft:'Marcus — approved. RFI #214 is good to proceed; go ahead with Thursday’s pour. Keep the 900mm service clearance on the north row. Loop me if the inspector flags anything. — Adam',conf:'solid'},
+      {id:2,who:'Sarah Chen',org:'DPR Construction',vip:1,band:'REPLY',tag:'WAITING 1d',age:'1h',
+        subj:'Western State — Wall Shops at 60% this week?',
+        sum:'Sarah asks if Wall Shops hits 60% this week; your tracker says 62%. Wants a yes/no + date.',
+        draft:'Yes — Wall Shops is at 62% as of this morning, locking the 60% milestone Thursday. Marked-up set to you by EOD Wednesday.',conf:'solid'},
+      {id:3,who:'Mom (Linda Purdy)',org:'family',vip:1,band:'TIME',tag:'DEADLINE FRI',age:'2h',
+        subj:'POA paperwork — notary Friday?',
+        sum:'Mom needs to know if Friday 2pm works for the notary on the POA docs. Your calendar is clear.',
+        draft:'Friday at 2 works — I’ll meet you at the bank. Want me to bring the printed POA and my ID? Love you.',conf:'hollow'},
+      {id:4,who:'Dana Whitfield',org:'Tesla Legal',vip:0,band:'REPLY',tag:'WAITING 2d',age:'18h',
+        subj:'Re: Lemon-law #44871 — buyback offer',
+        sum:'Tesla countered with a buyback figure; Dana wants accept/decline by Monday. I don’t know your number — tell me.',
+        draft:null,conf:null},
+      {id:5,who:'Priya Nair',org:'Architect of Record',vip:1,band:'REPLY',tag:'REPLY · ⎘',age:'Tue',
+        subj:'Wall shop drawings — markups attached',
+        sum:'Priya sent redlines; waiting on your acceptance. 2 minor RFIs noted.',
+        draft:'Redlines look good — accepted. I’ll fold the 2 RFIs into the next set.',conf:'solid'},
+      {id:6,who:'Priya Nair',org:'Western State PM',vip:0,band:'REPLY',tag:'REPLY',age:'7h',
+        subj:'RFI 212 — fire-rated wall penetration',
+        sum:'Asks which UL detail at the corridor penetration; you used W-L-3404 last job.',
+        draft:'Use UL W-L-3404 at the corridor penetration, same as gridline 7. Flag me if the rating jumps to 2-hour.',conf:'hollow'},
+      {id:7,who:'Devin Park',org:'Microsoft Real Estate',vip:1,band:'VIP',tag:'VIP',age:'Yest',
+        subj:'Coffee next week? Renton campus',
+        sum:'Devin wants coffee near Renton; you’re open Tue/Thu PM.',
+        draft:'Tuesday or Thursday afternoon both work — 2pm at the campus café?',conf:'solid'},
+      {id:8,who:'Jeff Kang',org:'Counsel',vip:0,band:'REPLY',tag:'REPLY',age:'Yest',
+        subj:'Re: Buyback demand — they responded',
+        sum:'Counterparty responded; Jeff outlines 2 options, needs your pick by Monday.',draft:null,conf:null},
+      {id:9,who:'Dr. Osei’s office',org:'Renton Clinic',vip:0,band:'REPLY',tag:'REPLY',age:'Mon',
+        subj:'Confirm follow-up — 2 meds to refill',
+        sum:'Confirm the follow-up + approve 2 refills (matches your 18:00 MEDS reminder).',
+        draft:'Confirmed for the follow-up; please refill both. Thanks.',conf:'solid'},
+      {id:10,who:'Kevin',org:'Dog walker',vip:0,band:'REPLY',tag:'REPLY',age:'Mon',
+        subj:'Switching to 5:30 this week?',
+        sum:'Wants to move the walk to 5:30 — one-tap yes, your calendar’s clear.',
+        draft:'5:30 works all week. Thanks Kev.',conf:'solid'},
+      {id:11,who:'Vertiv Investor Relations',org:'VRT',vip:0,band:'FYI',tag:'FYI · ◷',age:'Wed',
+        subj:'VRT Q2 earnings call — calendar invite',
+        sum:'Earnings call Aug 6. Add to calendar? You hold VRT on your watchlist.',draft:null,conf:null},
+      {id:12,who:'GitHub · Actions',org:'',vip:0,band:'FYI',tag:'FYI',age:'5:40',
+        subj:'[command-center] Pages deploy succeeded ✓',
+        sum:'Dashboard deploy to main went green. No action.',draft:null,conf:null},
+      {id:13,who:'LinkedIn',org:'',vip:0,band:'NOISE',tag:'NOISE',age:'4:12',
+        subj:'9 people viewed your profile',sum:'Noise. Archive?',draft:null,conf:null},
+      {id:14,who:'AIA Washington',org:'',vip:0,band:'NOISE',tag:'SNOOZE?',age:'Yest',
+        subj:'Webinar: Mass timber detailing',
+        sum:'Looks relevant — snooze to Saturday so you actually watch it?',draft:null,conf:null}
+    ];
+    var live = T.slice();
+    var cleared = 13, total = 201;
+
+    var BANDMAP = {TIME:{cls:'red',tag:'red'},REPLY:{cls:'ai',tag:'ai'},VIP:{cls:'amb',tag:'amb'},FYI:{cls:'dim',tag:'dim'},NOISE:{cls:'dim',tag:'dim'}};
+    function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    function byBand(b){return live.filter(function(t){return t.band===b;});}
+
+    /* ---------- demo actions ---------- */
+    var lastRemoved = null;
+    function meterEl(){return document.getElementById('body').querySelector('.meter .fill');}
+    function tick(){ cleared++; total = Math.max(cleared, total); updateMeters(); }
+    function updateMeters(){
+      var pct = Math.round(cleared/total*100);
+      document.querySelectorAll('.meter .fill').forEach(function(f){f.style.width=pct+'%';});
+      document.querySelectorAll('.meter .pctlab').forEach(function(e){e.textContent=cleared+' / '+total+' CLEARED · '+pct+'%';});
+      document.querySelectorAll('.gauge b').forEach(function(e){e.textContent=cleared+' ▸ '+total;});
+    }
+    function act(id, verb){
+      var el = document.querySelector('[data-id="'+id+'"]');
+      if(el){ el.classList.add('leaving'); setTimeout(function(){ if(el&&el.parentNode) el.parentNode.removeChild(el); }, 220); }
+      live = live.filter(function(t){return t.id!==id;});
+      lastRemoved = id; tick();
+      showToast(verb.toUpperCase()+' · '+(T.find(function(t){return t.id===id;})||{}).who);
+    }
+    var toastTO=null;
+    function showToast(m){ var t=document.getElementById('toast'); document.getElementById('toastMsg').textContent=m; t.classList.add('show'); clearTimeout(toastTO); toastTO=setTimeout(function(){t.classList.remove('show');},4000); }
+    window.undo=function(){ live = T.slice().filter(function(t){return live.indexOf(t)>=0 || t.id===lastRemoved;}); cleared=Math.max(13,cleared-1); document.getElementById('toast').classList.remove('show'); render(); };
+
+    /* ---------- shared bits ---------- */
+    function meterHTML(){ var pct=Math.round(cleared/total*100);
+      return '<div class="meter"><div class="lab"><span>INBOX-ZERO PROGRESS</span><span class="pctlab">'+cleared+' / '+total+' CLEARED · '+pct+'%</span></div>'+
+        '<div class="track"><div class="fill" style="width:'+pct+'%"></div></div></div>'; }
+    function actionRow(t){
+      var d='';
+      if(t.draft){ d='<div class="draft"><div class="dh"><span class="conf '+t.conf+'"></span>🤖 HAL DRAFTED REPLY'+(t.conf==='hollow'?' · check this one':'')+'</div><div class="dt">'+esc(t.draft)+'</div>'+
+        '<div class="ec-actions"><button class="ab go" onclick="A('+t.id+',\'approved+sent\')">✓ Approve + send</button><button class="ab" onclick="alert(\'Opens the draft in an inline editor.\')">✎ Edit</button><button class="ab" onclick="A('+t.id+',\'discarded draft\')">✕ Discard</button></div></div>'; }
+      else if(t.band==='REPLY'||t.band==='VIP'){ d='<div class="ec-actions"><button class="ab lead" onclick="alert(\'Inline composer with a ✨ Draft-with-HAL button.\')">↩ Quick reply · ✨ HAL</button></div>'; }
+      return '<div class="ec-actions"><button class="ab" onclick="A('+t.id+',\'archived\')">☷ Archive</button><button class="ab warn" onclick="A('+t.id+',\'snoozed\')">☾ Snooze</button><button class="ab" onclick="A('+t.id+',\'flagged\')">⚑ Flag</button><button class="ab" onclick="A('+t.id+',\'read\')">✓ Read</button></div>'+d;
+    }
+    window.A=act;
+
+    /* ============ STREAM ============ */
+    function renderStream(b){
+      var sections=[['NEEDS REPLY','REPLY','ai'],['VIP','VIP','amb'],['TIME-SENSITIVE','TIME','red'],['EVERYTHING ELSE','__rest','dim']];
+      var pills='<div class="pills">'+
+        '<span class="pill ai on">⚑ NEEDS REPLY <b>'+byBand('REPLY').length+'</b></span>'+
+        '<span class="pill amb">★ VIP <b>'+byBand('VIP').length+'</b></span>'+
+        '<span class="pill red">⏰ TIME-SENSITIVE <b>'+byBand('TIME').length+'</b></span>'+
+        '<span class="pill">EVERYTHING ELSE <b>'+(byBand('FYI').length+byBand('NOISE').length+139)+'</b></span>'+
+        '<span class="pill">⌂ FOLDERS</span></div>';
+      var river='<div class="river">'+meterHTML();
+      sections.forEach(function(s){
+        var items = s[1]==='__rest' ? live.filter(function(t){return t.band==='FYI'||t.band==='NOISE';}) : byBand(s[1]);
+        if(!items.length && s[1]!=='__rest') return;
+        river+='<div class="band '+s[2]+'"><span class="ln"></span>'+s[0]+' · '+items.length+'<span class="ln"></span></div>';
+        items.forEach(function(t){
+          if(s[1]==='__rest'){
+            river+='<div class="mc noise" data-id="'+t.id+'"><div class="r1"><span class="who">'+esc(t.who)+'</span><span class="right"><span class="age">'+t.age+'</span></span></div>'+
+              '<div class="subj">'+esc(t.subj)+'</div><div class="sum">▸ HAL: '+esc(t.sum)+' <button class="ab" style="padding:3px 7px;min-height:0" onclick="A('+t.id+',\'archived\')">archive</button></div></div>';
+          } else {
+            var bm=BANDMAP[t.band];
+            river+='<div class="mc '+bm.cls+'" data-id="'+t.id+'"><div class="r1">'+(t.vip?'<span class="vip">★</span>':'')+'<span class="who">'+esc(t.who)+'</span><span class="org">· '+esc(t.org)+'</span><span class="right"><span class="tag '+bm.tag+'">'+t.tag+'</span><span class="age">'+t.age+'</span></span></div>'+
+              '<div class="subj">'+esc(t.subj)+'</div><div class="sum">▸ HAL: '+esc(t.sum)+'</div>'+actionRow(t)+'</div>';
+          }
+        });
+      });
+      river+='<div class="nf">▸ HAL: I archived <b>140 low-priority items</b> (newsletters, receipts, promos). <button class="ab" style="display:inline-flex;margin-left:6px" onclick="alert(\'Shows the cleared pile with per-item RESTORE.\')">Review plan</button></div>';
+      river+='</div>';
+      b.innerHTML='<div class="stream">'+pills+river+'</div>';
+    }
+
+    /* ============ SPLIT ============ */
+    var sel = 1;
+    function renderSplit(b){
+      var rail='<div class="rail">'+
+        '<div class="grp">ACCOUNTS</div><div class="ri on">▸ GMAIL · adampurdy@ <span class="ct">201</span></div><div class="ri">＋ Add account</div>'+
+        '<div class="grp">HAL SMART VIEWS</div>'+
+        '<div class="ri ai on"><span class="tick"></span>◎ NEEDS REPLY <span class="ct">'+byBand('REPLY').length+'</span></div>'+
+        '<div class="ri ai"><span class="tick"></span>★ VIP <span class="ct">'+byBand('VIP').length+'</span></div>'+
+        '<div class="ri ai"><span class="tick"></span>◷ TODAY <span class="ct">4</span></div>'+
+        '<div class="ri ai"><span class="tick"></span>☾ SNOOZED <span class="ct">5</span></div>'+
+        '<div class="ri ai"><span class="tick"></span>✎ DRAFTS <span class="ct">6</span></div>'+
+        '<div class="grp">FOLDERS</div>'+
+        '<div class="ri">⬢ Inbox <span class="ct">201</span></div><div class="ri">● Unread <span class="ct">201</span></div><div class="ri">⚑ Flagged <span class="ct">7</span></div><div class="ri">Sent</div><div class="ri">Archive</div><div class="ri">⊘ Spam <span class="ct">18</span></div>'+
+        '<div class="grp">LABELS</div><div class="ri">Western State Hosp</div><div class="ri">Tesla Legal</div><div class="ri">Newsletters <span class="ct">44</span></div>'+
+        '</div>';
+      var order=['TIME','VIP','REPLY','FYI','NOISE'], labels={TIME:['⚑ URGENT · DEADLINE','red'],VIP:['★ VIP','amb'],REPLY:['◎ AWAITING YOUR REPLY','ai'],FYI:['● UNREAD',''],NOISE:['▌ EVERYTHING ELSE','']};
+      var list='<div class="lst"><div class="lh">HAL VIEWS › NEEDS REPLY · '+live.length+' THREADS <button class="triage" onclick="alert(\'HAL proposes a batch plan: archive 44 newsletters, snooze receipts, draft 6 VIP replies.\')">⚡ TRIAGE ALL</button></div>';
+      order.forEach(function(bd){ var items=byBand(bd); if(!items.length)return; var L=labels[bd];
+        list+='<div class="ldiv '+L[1]+'">'+L[0]+' · '+items.length+'</div>';
+        items.forEach(function(t){ list+='<div class="li'+(t.id===sel?' on':'')+'" data-id="'+t.id+'" onclick="SEL('+t.id+')"><div class="l1"><span class="dot"></span>'+(t.vip?'<span class="vip">★ </span>':'')+'<span class="who">'+esc(t.who)+'</span><span class="t">'+t.age+'</span></div><div class="l2">'+esc(t.subj)+'</div><div class="l3">⟁ HAL: '+esc(t.sum)+'</div></div>'; });
+      });
+      list+='</div>';
+      var t=live.find(function(x){return x.id===sel;})||live[0];
+      var read='<div class="read">';
+      if(t){
+        read+='<div class="ra"><button class="ab lead">↩ Reply</button><button class="ab">↩↩ All</button><button class="ab">→ Fwd</button><button class="ab" onclick="A('+t.id+',\'archived\')">☷ Archive</button><button class="ab warn" onclick="A('+t.id+',\'snoozed\')">☾ Snooze</button><button class="ab" onclick="A('+t.id+',\'flagged\')">⚑</button><button class="ab" onclick="A('+t.id+',\'trashed\')">⌫</button></div>'+
+          '<div class="rbody"><div class="rh">'+esc(t.subj)+'</div><div class="meta">'+(t.vip?'★ ':'')+esc(t.who)+' · '+esc(t.org||'')+' · '+t.age+'</div>'+
+          '<div class="brief"><div class="bh">⟁ HAL THREAD BRIEF '+(t.tag?'· '+t.tag:'')+'</div><div class="msgtxt" style="color:var(--hi)">'+esc(t.sum)+'</div>'+
+          (t.draft?'<ul><li>Recommended reply ready below — review and send.</li></ul>':'<ul><li>HAL needs your steer on this one.</li></ul>')+'</div>'+
+          '<div class="msgtxt">'+esc(t.who)+' wrote:\n\n'+esc(t.subj)+'.\n\n'+esc(t.sum)+'\n\n— sent from '+esc(t.org||'mail')+'</div></div>'+
+          '<div class="reply"><div class="chips">'+(t.draft?'<button class="ab go">✓ Use HAL draft</button>':'<button class="ab ai">✨ Draft with HAL</button>')+'<button class="ab">Shorter</button><button class="ab">Warmer</button><button class="ab">↻ Regenerate</button></div>'+
+          '<textarea>'+esc(t.draft||'')+'</textarea><div class="ec-actions"><button class="ab go" onclick="A('+t.id+',\'sent\')">▸ Send</button><button class="ab" onclick="A('+t.id+',\'sent+archived\')">⌥ Send + Archive</button></div></div>';
+      } else { read+='<div class="empty">Select a thread.<br><br>HAL is standing by with summaries + drafted replies.</div>'; }
+      read+='</div>';
+      b.innerHTML='<div class="split" id="splitGrid">'+rail+list+read+'</div>';
+    }
+    window.SEL=function(id){ sel=id; var g=document.getElementById('splitGrid'); if(g)g.classList.add('show-read'); renderSplit(document.getElementById('body')); var gg=document.getElementById('splitGrid'); if(gg&&window.innerWidth<=900)gg.classList.add('show-read'); };
+
+    /* ============ COCKPIT ============ */
+    function renderCockpit(b){
+      var crail='<div class="crail"><div class="rail">'+
+        '<div class="grp">ACCOUNTS</div><div class="ri on">● gmail · adampurdy <span class="ct">201</span></div>'+
+        '<div class="grp">HAL SMART-VIEWS</div>'+
+        '<div class="ri ai"><span class="tick"></span>✋ Needs reply <span class="ct">'+byBand('REPLY').length+'</span></div>'+
+        '<div class="ri"><span class="tick"></span>★ VIP <span class="ct">'+byBand('VIP').length+'</span></div>'+
+        '<div class="ri"><span class="tick"></span>⏷ Time-sensitive <span class="ct">'+byBand('TIME').length+'</span></div>'+
+        '<div class="ri"><span class="tick"></span>◔ Snoozed <span class="ct">5</span></div>'+
+        '<div class="ri"><span class="tick"></span>✓ HAL-cleared <span class="ct">140</span></div>'+
+        '<div class="grp">FOLDERS</div><div class="ri">Inbox <span class="ct">201</span></div><div class="ri">Flagged <span class="ct">7</span></div><div class="ri">Sent</div><div class="ri">Spam <span class="ct">18</span></div>'+
+        '<div class="grp">&nbsp;</div>'+meterHTML()+'</div></div>';
+      var brief='<div class="brief"><div class="top"><div class="eye"></div>'+
+        '<div class="say" id="halSay"></div>'+
+        '<div class="gauge">BURN-DOWN<b>'+cleared+' ▸ '+total+'</b>cleared today</div></div>'+
+        '<div class="chips"><button class="bchip go" onclick="alert(\'RUN THE PLAN: focus mode — one card at a time, fly with Approve/Edit/Skip while HAL narrates.\')">▸ RUN THE PLAN</button>'+
+        '<button class="bchip ai">✋ '+byBand('REPLY').length+' NEED REPLY</button><button class="bchip amb">★ '+byBand('VIP').length+' VIP</button><button class="bchip red">⏷ '+byBand('TIME').length+' TIME-SENSITIVE</button>'+
+        '<button class="bchip">🗑 140 NOISE — REVIEW</button><button class="bchip">✓ INBOX ZERO IN ~9 MIN</button></div></div>';
+      var q='<div class="queue"><div class="inner">';
+      var ordered = byBand('TIME').concat(byBand('REPLY')).concat(byBand('VIP')).concat(byBand('FYI')).concat(byBand('NOISE'));
+      ordered.forEach(function(t){ var bm=BANDMAP[t.band];
+        q+='<div class="fc '+bm.cls+'" data-id="'+t.id+'"><div class="spine"></div><div class="main">'+
+          '<div class="meta">'+(t.vip?'<span class="vip">★</span> ':'')+'<span class="who">'+esc(t.who)+'</span><span class="org">· '+esc(t.org||'')+'</span><span class="t"><span class="tag '+bm.tag+'">'+t.tag+'</span> '+t.age+'</span></div>'+
+          '<div class="subj">'+esc(t.subj)+'</div><div class="sum">▸ HAL: '+esc(t.sum)+'</div>'+
+          (t.draft?'<div class="inset"><div class="ih"><span class="conf '+t.conf+'" style="width:8px;height:8px;border-radius:50%;'+(t.conf==='solid'?'background:var(--g)':'border:1.5px solid var(--amb)')+'"></span>HAL DRAFT</div><div class="it">'+esc(t.draft)+'</div></div>'
+            :'<div class="inset"><div class="ih">HAL</div><div class="it" style="color:var(--ai)">▸ I need your steer — what should I say?</div></div>')+
+          '</div><div class="decide">'+
+          (t.draft?'<button class="ab go" onclick="A('+t.id+',\'approved+sent\')">APPROVE ▸</button><button class="ab" onclick="alert(\'Opens the reply drawer with the draft loaded.\')">EDIT</button><button class="ab" onclick="A('+t.id+',\'skipped\')">SKIP</button>'
+            :'<button class="ab lead" onclick="alert(\'Opens compose for your steer.\')">WRITE ▸</button><button class="ab" onclick="A('+t.id+',\'skipped\')">SKIP</button>')+
+          '<div class="qr"><button class="ab" title="archive" onclick="A('+t.id+',\'archived\')">☷</button><button class="ab" title="flag" onclick="A('+t.id+',\'flagged\')">⚑</button><button class="ab" title="snooze" onclick="A('+t.id+',\'snoozed\')">◔</button></div>'+
+          '</div></div>';
+      });
+      q+='</div></div>';
+      var compose='<div class="compose"><div class="eye"></div><input placeholder="☉ Tell HAL what to send…  e.g. “thank Sarah and confirm Thursday”" /><button class="send" onclick="alert(\'HAL drafts the full email, then opens it for your approval.\')">HAL DRAFTS ▸</button></div>';
+      b.innerHTML='<div class="cockpit">'+crail+brief+q+compose+'</div>';
+      typeOut(document.getElementById('halSay'),'Morning, Adam. '+total+' unread overnight. '+byBand('REPLY').length+' need your reply, '+byBand('VIP').length+' from VIPs, '+byBand('TIME').length+' time-sensitive — and I’ve cleared 140 as noise. Drafts are ready. Run the plan?');
+    }
+    function typeOut(el,txt){ if(!el)return; if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=txt;return;} el.textContent=''; var i=0; clearInterval(el._iv); el._iv=setInterval(function(){ el.textContent=txt.slice(0,i++)+(i<txt.length?'▌':''); if(i>txt.length)clearInterval(el._iv); },14); }
+
+    /* ---------- switcher ---------- */
+    var layout='stream', names={stream:'// TRIAGE STREAM',split:'// COMMAND SPLIT',cockpit:'// HAL COCKPIT'};
+    function render(){
+      var b=document.getElementById('body');
+      if(layout==='stream')renderStream(b); else if(layout==='split')renderSplit(b); else renderCockpit(b);
+      document.getElementById('layoutName').textContent=names[layout];
+      document.querySelectorAll('#seg button').forEach(function(x){x.classList.toggle('on',x.getAttribute('data-l')===layout);});
+    }
+    function setLayout(l){ if(l===layout||!names[l])return; layout=l; render(); }
+    document.getElementById('seg').addEventListener('click',function(e){ var btn=e.target.closest('button'); if(btn)setLayout(btn.getAttribute('data-l')); });
+    window.addEventListener('keydown',function(e){ if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return; if(e.key==='1')setLayout('stream'); else if(e.key==='2')setLayout('split'); else if(e.key==='3')setLayout('cockpit'); });
+    render();
+  })();
+  </script>
+</body>
+</html>
