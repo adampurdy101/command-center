@@ -1,7 +1,7 @@
 /* command-center service worker — minimal + safe.
    Network-first so the live site always wins; cache is only a
    last-resort offline fallback. Old caches are cleared on activate. */
-const CACHE = 'cc-shell-v32';
+const CACHE = 'cc-shell-v33';
 const SHELL = [
   '.', 'index.html',
   'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css', 'css/enhance.css', 'css/noir.css',
@@ -14,14 +14,18 @@ self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
 });
 
+// the page posts this when it spots a ready update, so we take over without waiting
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING' || (e.data && e.data.type === 'SKIP_WAITING')) self.skipWaiting();
+});
+
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      // claim controls open pages → fires controllerchange → the page reloads itself once
+      // (cleaner than force-navigating here, which double-reloaded)
       .then(() => self.clients.claim())
-      // a freshly-deployed worker force-reloads any open tab so a stale page can't linger
-      .then(() => self.clients.matchAll({ type: 'window' }))
-      .then((clients) => { clients.forEach((c) => { try { c.navigate(c.url); } catch (err) {} }); })
       .catch(() => {})
   );
 });
