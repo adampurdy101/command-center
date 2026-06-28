@@ -99,7 +99,16 @@
 #hub .panel .tb .n{color:var(--hi);font-size:11px;letter-spacing:1px;text-transform:uppercase}
 #hub .panel .tb .sp{flex:1}
 #hub .panel .tb .s{font-size:9px;color:var(--dim);letter-spacing:1px}
-#hub .panel .bd{padding:8px 9px;flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;overflow:hidden}
+/* panel bodies scroll when content overflows (so nothing gets clipped) — thin themed
+   scrollbar on the right; two-finger / trackpad / wheel / drag all work. Scrollbar only
+   appears on panels that actually overflow; overscroll-behavior keeps it from scrolling the page. */
+#hub .panel .bd{padding:8px 9px;flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;
+  overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:rgba(65,255,126,.45) transparent}
+#hub .panel .bd::-webkit-scrollbar{width:7px;height:7px}
+#hub .panel .bd::-webkit-scrollbar-track{background:transparent}
+#hub .panel .bd::-webkit-scrollbar-thumb{background:rgba(65,255,126,.3);border-radius:4px}
+#hub .panel .bd:hover::-webkit-scrollbar-thumb{background:rgba(65,255,126,.6)}
 #hub .row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;
   padding:3px 7px;margin:0 -7px;border-radius:4px;position:relative;
   transition:transform .18s cubic-bezier(.2,.7,.3,1),background .18s ease,box-shadow .18s ease}
