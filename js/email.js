@@ -64,7 +64,8 @@
   var NAMES = { stream:'TRIAGE STREAM', split:'COMMAND SPLIT', cockpit:'HAL COCKPIT' };
   var live = T.slice(), cleared = 13, total = 201, layout = 'stream';
   var sel = 1, splitShowRead = false;   // SPLIT: selected thread + (mobile) reading-pane toggle
-  var root = null, built = false, lastRemoved = null, toastTO = null;
+  var root = null, built = false, toastTO = null, prevFocus = null, prevOverflow = '';
+  var removedStack = [];                 // undo history: removed item objects, most-recent last
 
   function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function byBand(b){ return live.filter(function(t){ return t.band === b; }); }
@@ -79,19 +80,32 @@
     root.querySelectorAll('.gauge b').forEach(function(e){ e.textContent = cleared + ' ▸ ' + total; });
   }
   function act(id, verb){
+    if (!live.some(function(t){ return t.id === id; })) return;     // already cleared — ignore (no double-count)
+    var item = T.filter(function(t){ return t.id === id; })[0];
+    var reRender = (layout === 'split' && id === sel);              // SPLIT: the reading pane must refresh
     var el = root.querySelector('[data-id="' + id + '"]');
-    if (el){ el.classList.add('leaving'); setTimeout(function(){ if (el && el.parentNode) el.parentNode.removeChild(el); }, 220); }
+    if (el && !reRender){ el.classList.add('leaving'); setTimeout(function(){ if (el && el.parentNode) el.parentNode.removeChild(el); }, 220); }
     live = live.filter(function(t){ return t.id !== id; });
-    lastRemoved = id; tick();
-    var who = (T.filter(function(t){ return t.id === id; })[0] || {}).who || '';
-    note(verb.toUpperCase() + ' · ' + who, true);
+    if (item) removedStack.push(item);
+    tick();
+    note(verb.toUpperCase() + ' · ' + ((item || {}).who || ''), true);
+    if (reRender){ sel = (live[0] || {}).id; render(); }            // advance to the next thread + refresh pane
   }
   function note(msg, undoable){
-    var t = $('.ec-toast'); $('.ec-toast .msg').textContent = msg;
-    $('.ec-toast .undo').style.display = undoable ? '' : 'none';
+    var t = $('.ec-toast'); if (!t) return;
+    t.querySelector('.msg').textContent = msg;
+    t.querySelector('.undo').style.display = undoable ? '' : 'none';
     t.classList.add('show'); clearTimeout(toastTO); toastTO = setTimeout(function(){ t.classList.remove('show'); }, 4000);
   }
-  function undo(){ live = T.slice(); cleared = Math.max(13, cleared - 1); $('.ec-toast').classList.remove('show'); render(); }
+  function undo(){
+    if (!removedStack.length){ var tt = $('.ec-toast'); if (tt) tt.classList.remove('show'); return; }
+    var item = removedStack.pop();
+    live.push(item);
+    live.sort(function(a, b){ return T.indexOf(a) - T.indexOf(b); });   // back into inbox order
+    cleared = Math.max(13, cleared - 1);
+    if (layout === 'split') sel = item.id;                              // reopen the restored thread
+    $('.ec-toast').classList.remove('show'); render();
+  }
 
   /* ---- shared HTML bits ---- */
   function meterHTML(){ var pct = Math.round(cleared / total * 100);
@@ -125,7 +139,7 @@
       items.forEach(function(t){
         if (s[1] === '__rest'){
           river += '<div class="mc noise" data-id="' + t.id + '"><div class="r1"><span class="who">' + esc(t.who) + '</span><span class="right"><span class="age">' + t.age + '</span></span></div>' +
-            '<div class="subj">' + esc(t.subj) + '</div><div class="sum">▸ HAL: ' + esc(t.sum) + ' <button class="ab" style="padding:3px 7px;min-height:0" onclick="__ec.act(' + t.id + ',\'archived\')">archive</button></div></div>';
+            '<div class="subj">' + esc(t.subj) + '</div><div class="sum">▸ HAL: ' + esc(t.sum) + ' <button class="ab" style="padding:6px 10px" onclick="__ec.act(' + t.id + ',\'archived\')">archive</button></div></div>';
         } else {
           var bm = BANDMAP[t.band];
           river += '<div class="mc ' + bm.cls + '" data-id="' + t.id + '"><div class="r1">' + (t.vip ? '<span class="vip">★</span>' : '') + '<span class="who">' + esc(t.who) + '</span><span class="org">· ' + esc(t.org) + '</span><span class="right"><span class="tag ' + bm.tag + '">' + t.tag + '</span><span class="age">' + t.age + '</span></span></div>' +
@@ -165,12 +179,12 @@
     var t = live.filter(function(x){ return x.id === sel; })[0] || live[0];
     var read = '<div class="read">';
     if (t){
-      read += '<div class="ra"><button class="ab back-list" onclick="__ec.unsel()">◂ LIST</button><button class="ab lead" onclick="__ec.note(\'Opens the reply editor with the HAL draft loaded (coming with Gmail).\')">↩ Reply</button><button class="ab">↩↩ All</button><button class="ab">→ Fwd</button><button class="ab" onclick="__ec.act(' + t.id + ',\'archived\')">☷ Archive</button><button class="ab warn" onclick="__ec.act(' + t.id + ',\'snoozed\')">☾ Snooze</button><button class="ab" onclick="__ec.act(' + t.id + ',\'flagged\')">⚑</button><button class="ab" onclick="__ec.act(' + t.id + ',\'trashed\')">⌫</button></div>' +
+      read += '<div class="ra"><button class="ab back-list" onclick="__ec.unsel()">◂ LIST</button><button class="ab lead" onclick="__ec.note(\'Opens the reply editor with the HAL draft loaded (coming with Gmail).\')">↩ Reply</button><button class="ab" onclick="__ec.note(\'Reply-all composer (coming with Gmail).\')">↩↩ All</button><button class="ab" onclick="__ec.note(\'Forward composer (coming with Gmail).\')">→ Fwd</button><button class="ab" onclick="__ec.act(' + t.id + ',\'archived\')">☷ Archive</button><button class="ab warn" onclick="__ec.act(' + t.id + ',\'snoozed\')">☾ Snooze</button><button class="ab" onclick="__ec.act(' + t.id + ',\'flagged\')">⚑</button><button class="ab" onclick="__ec.act(' + t.id + ',\'trashed\')">⌫</button></div>' +
         '<div class="rbody"><div class="rh">' + esc(t.subj) + '</div><div class="rmeta">' + (t.vip ? '★ ' : '') + esc(t.who) + ' · ' + esc(t.org || '') + ' · ' + t.age + '</div>' +
         '<div class="tbrief"><div class="bh">⟁ HAL THREAD BRIEF' + (t.tag ? ' · ' + t.tag : '') + '</div><div class="bt">' + esc(t.sum) + '</div>' +
         '<ul>' + (t.draft ? '<li>Recommended reply ready below — review and send.</li>' : '<li>HAL needs your steer on this one.</li>') + '</ul></div>' +
         '<div class="msgtxt">' + esc(t.who) + ' wrote:\n\n' + esc(t.subj) + '.\n\n' + esc(t.sum) + '\n\n— sent from ' + esc(t.org || 'mail') + '</div></div>' +
-        '<div class="reply"><div class="rchips">' + (t.draft ? '<button class="ab go">✓ Use HAL draft</button>' : '<button class="ab lead">✨ Draft with HAL</button>') + '<button class="ab">Shorter</button><button class="ab">Warmer</button><button class="ab">↻ Regenerate</button></div>' +
+        '<div class="reply"><div class="rchips">' + (t.draft ? '<button class="ab go" onclick="__ec.note(\'The HAL draft is already loaded in the box below — edit then Send.\')">✓ Use HAL draft</button>' : '<button class="ab lead" onclick="__ec.note(\'HAL will draft a reply here once Gmail is connected.\')">✨ Draft with HAL</button>') + '<button class="ab" onclick="__ec.note(\'Tone control — shortens the draft (coming with Gmail).\')">Shorter</button><button class="ab" onclick="__ec.note(\'Tone control — warmer phrasing (coming with Gmail).\')">Warmer</button><button class="ab" onclick="__ec.note(\'HAL regenerates the draft (coming with Gmail).\')">↻ Regenerate</button></div>' +
         '<textarea spellcheck="false">' + esc(t.draft || '') + '</textarea><div class="ec-actions"><button class="ab go" onclick="__ec.act(' + t.id + ',\'sent\')">▸ Send</button><button class="ab" onclick="__ec.act(' + t.id + ',\'sent + archived\')">⌥ Send + Archive</button></div></div>';
     } else { read += '<div class="empty">Select a thread.<br><br>HAL is standing by with summaries + drafted replies.</div>'; }
     read += '</div>';
@@ -195,8 +209,8 @@
       '<div class="say" id="ec-halSay"></div>' +
       '<div class="gauge">BURN-DOWN<b>' + cleared + ' ▸ ' + total + '</b>cleared today</div></div>' +
       '<div class="chips"><button class="bchip go" onclick="__ec.note(\'RUN THE PLAN: focus mode — one card at a time, fly with Approve/Edit/Skip while HAL narrates.\')">▸ RUN THE PLAN</button>' +
-      '<button class="bchip ai">✋ ' + byBand('REPLY').length + ' NEED REPLY</button><button class="bchip amb">★ ' + byBand('VIP').length + ' VIP</button><button class="bchip red">⏷ ' + byBand('TIME').length + ' TIME-SENSITIVE</button>' +
-      '<button class="bchip">🗑 140 NOISE — REVIEW</button><button class="bchip">✓ INBOX ZERO IN ~9 MIN</button></div></div>';
+      '<button class="bchip ai" onclick="__ec.note(\'Filters the queue to the ' + byBand('REPLY').length + ' awaiting your reply (coming with Gmail).\')">✋ ' + byBand('REPLY').length + ' NEED REPLY</button><button class="bchip amb" onclick="__ec.note(\'Filters to VIP senders (coming with Gmail).\')">★ ' + byBand('VIP').length + ' VIP</button><button class="bchip red" onclick="__ec.note(\'Filters to time-sensitive items (coming with Gmail).\')">⏷ ' + byBand('TIME').length + ' TIME-SENSITIVE</button>' +
+      '<button class="bchip" onclick="__ec.note(\'Shows the 140 items HAL cleared as noise, with per-item RESTORE (coming with Gmail).\')">🗑 140 NOISE — REVIEW</button><button class="bchip" onclick="__ec.note(\'Projected time to inbox zero at your current pace.\')">✓ INBOX ZERO IN ~9 MIN</button></div></div>';
     var q = '<div class="queue"><div class="inner">';
     var ordered = byBand('TIME').concat(byBand('REPLY')).concat(byBand('VIP')).concat(byBand('FYI')).concat(byBand('NOISE'));
     ordered.forEach(function(t){ var bm = BANDMAP[t.band];
@@ -226,6 +240,7 @@
   /* ---- render + layout ---- */
   function render(){
     var b = $('.ec-body'); if (!b) return;
+    var say = b.querySelector('#ec-halSay'); if (say && say._iv) clearInterval(say._iv);   // kill any running typewriter before we blow away the DOM
     if (layout === 'stream') renderStream(b); else if (layout === 'split') renderSplit(b); else renderCockpit(b);
     $('.ec-name').textContent = '// ' + NAMES[layout];
     root.querySelectorAll('.seg button').forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-l') === layout); });
@@ -251,10 +266,19 @@
       '<div class="ec-vig"></div><div class="ec-scan"></div>' +
       '<div class="ec-toast"><span class="msg"></span><button class="undo">↶ UNDO</button></div>';
     document.body.appendChild(root);
+    root.setAttribute('tabindex', '-1');                 // so the dialog can take focus on open
     root.querySelector('.back').addEventListener('click', close);
     root.querySelector('.x').addEventListener('click', close);
     root.querySelector('.ec-toast .undo').addEventListener('click', undo);
     root.querySelector('.seg').addEventListener('click', function(e){ var btn = e.target.closest('button'); if (btn) setLayout(btn.getAttribute('data-l')); });
+    // delegated stubs for the controls rebuilt inside .ec-body each render (rail filters, compose Enter)
+    var body = root.querySelector('.ec-body');
+    body.addEventListener('click', function(e){ if (e.target.closest('.rail .ri')) note('Smart-views, folders & labels become live filters once Gmail is connected.'); });
+    body.addEventListener('keydown', function(e){ if (e.key === 'Enter' && e.target.matches && e.target.matches('.compose input')) note('HAL drafts the full email, then opens it for your approval (coming with Gmail).'); });
+    var srch = root.querySelector('.ec-search input');
+    if (srch) srch.addEventListener('keydown', function(e){ if (e.key === 'Enter') note('Search runs against Gmail once connected — the demo set isn\'t searchable yet.'); });
+    var acct = root.querySelector('.acct');
+    if (acct){ acct.style.cursor = 'pointer'; acct.addEventListener('click', function(){ note('Multi-account switching (iCloud next) arrives with Gmail.'); }); }
     built = true;
   }
 
@@ -262,12 +286,23 @@
     build();
     live = T.slice(); cleared = 13; total = 201;        // fresh each open (demo)
     sel = T[0].id; splitShowRead = false;               // SPLIT starts on the first thread
+    removedStack = [];                                   // fresh undo history
     layout = (window.innerWidth < 820) ? 'stream' : 'cockpit';   // phone -> STREAM, computer -> COCKPIT
+    if (!root.classList.contains('open')){ prevOverflow = document.body.style.overflow; prevFocus = document.activeElement; }
     render();
     root.classList.add('open');
+    document.body.style.overflow = 'hidden';            // lock the dashboard scroll behind the overlay
+    try { root.focus(); } catch (e) {}                  // move focus into the dialog
     document.addEventListener('keydown', onKey);
   }
-  function close(){ if (root){ root.classList.remove('open'); } document.removeEventListener('keydown', onKey); }
+  function close(){
+    if (root){ root.classList.remove('open'); }
+    clearTimeout(toastTO);
+    var say = root && root.querySelector('#ec-halSay'); if (say && say._iv) clearInterval(say._iv);
+    document.body.style.overflow = prevOverflow || '';  // restore background scroll
+    document.removeEventListener('keydown', onKey);
+    if (prevFocus && prevFocus.focus){ try { prevFocus.focus(); } catch (e) {} prevFocus = null; }
+  }
   function onKey(e){ if (e.key === 'Escape') close(); }
 
   window.EmailConsole = { open: open, close: close };
@@ -276,7 +311,11 @@
   /* ---- wire the Daily Brief "EMAILS" line ---- */
   function wireLauncher(){
     var row = document.getElementById('brief-emails');
-    if (row && !row.__wired){ row.__wired = true; row.addEventListener('click', function(e){ e.stopPropagation(); open(); }); }
+    if (row && !row.__wired){
+      row.__wired = true;
+      row.addEventListener('click', function(e){ e.stopPropagation(); open(); });
+      row.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); open(); } });
+    }
   }
   document.addEventListener('hub:ready', wireLauncher);
   if (document.readyState !== 'loading') wireLauncher();

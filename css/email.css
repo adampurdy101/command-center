@@ -22,7 +22,7 @@
   background:radial-gradient(120% 120% at 50% 46%, transparent 40%, rgba(0,2,4,.6) 100%)}
 
 /* top bar */
-#email-console .ec-top{flex:none;display:flex;align-items:center;gap:12px;height:50px;padding:0 12px;
+#email-console .ec-top{flex:none;display:flex;align-items:center;gap:12px;min-height:50px;padding:env(safe-area-inset-top) 12px 0;
   border-bottom:1px solid var(--faint);background:linear-gradient(180deg, rgba(65,255,126,.06), transparent);z-index:2}
 #email-console .back{color:var(--dim);background:transparent;border:1px solid var(--faint);border-radius:7px;padding:8px 11px;font-size:11px;letter-spacing:1px;min-height:38px}
 #email-console .back:hover{color:var(--hi);border-color:var(--hi)}
@@ -61,7 +61,7 @@
 #email-console .tag{font-size:9px;letter-spacing:1px;padding:2px 6px;border-radius:4px;border:1px solid currentColor;white-space:nowrap}
 #email-console .vip{color:var(--amb)}
 #email-console .ec-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
-#email-console .ab{display:inline-flex;align-items:center;gap:5px;background:transparent;color:var(--dim);border:1px solid var(--faint);border-radius:6px;padding:7px 9px;font-size:10.5px;letter-spacing:.5px;min-height:36px}
+#email-console .ab{display:inline-flex;align-items:center;justify-content:center;gap:5px;background:transparent;color:var(--dim);border:1px solid var(--faint);border-radius:6px;padding:7px 9px;font-size:10.5px;letter-spacing:.5px;min-height:36px;min-width:36px}
 #email-console .ab:hover{color:var(--hi);border-color:var(--hi)}
 #email-console .ab.lead{color:var(--ai);border-color:rgba(125,247,255,.5)}
 #email-console .ab.go{background:rgba(65,255,126,.12);color:var(--hi);border-color:var(--g);box-shadow:0 0 10px rgba(65,255,126,.25)}
@@ -115,7 +115,7 @@
 /* (the rail re-uses the shared #email-console .rail styles from the cockpit) */
 #email-console .lst{padding:0}
 #email-console .lst .lh{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:9px 10px;font-size:9.5px;letter-spacing:1px;color:var(--dim);background:#03130d;border-bottom:1px solid rgba(28,143,70,.35)}
-#email-console .lst .lh .triage{margin-left:auto;color:var(--ai);border:1px solid rgba(125,247,255,.4);border-radius:6px;padding:5px 8px;background:transparent;font-size:9.5px;min-height:30px}
+#email-console .lst .lh .triage{margin-left:auto;color:var(--ai);border:1px solid rgba(125,247,255,.4);border-radius:6px;padding:7px 10px;background:transparent;font-size:9.5px;min-height:36px}
 #email-console .ldiv{font-size:9px;letter-spacing:2px;padding:9px 10px 4px;color:var(--faint)}
 #email-console .ldiv.red{color:var(--red)} #email-console .ldiv.amb{color:var(--amb)} #email-console .ldiv.ai{color:var(--ai)}
 #email-console .li{padding:9px 10px;border-bottom:1px solid rgba(28,143,70,.22);cursor:pointer;border-left:2px solid transparent}
@@ -138,7 +138,7 @@
 #email-console .read .tbrief .bt{font-size:11.5px;color:var(--hi);line-height:1.5}
 #email-console .read .tbrief ul{margin:6px 0 0;padding-left:16px;font-size:11.5px;color:var(--hi);line-height:1.5}
 #email-console .read .msgtxt{font-size:12.5px;color:var(--g);line-height:1.6;white-space:pre-wrap}
-#email-console .read .reply{margin-top:auto;border-top:1px solid rgba(28,143,70,.35);padding:10px 12px;background:rgba(0,0,0,.2)}
+#email-console .read .reply{margin-top:auto;border-top:1px solid rgba(28,143,70,.35);padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(0,0,0,.2)}
 #email-console .read .rchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 #email-console .read textarea{width:100%;min-height:64px;background:rgba(0,0,0,.3);border:1px solid var(--faint);border-radius:7px;color:var(--hi);font-family:var(--emono);font-size:12px;padding:8px;resize:vertical;outline:0}
 
@@ -185,8 +185,8 @@
 #email-console .fc .inset .it{font-size:11.5px;color:var(--hi);line-height:1.45}
 #email-console .fc .decide{flex:none;width:128px;border-left:1px solid rgba(28,143,70,.35);padding:11px 10px;display:flex;flex-direction:column;gap:6px}
 #email-console .fc .decide .qr{display:flex;gap:5px;margin-top:auto;padding-top:6px}
-#email-console .fc .decide .qr .ab{padding:6px;min-height:0;flex:1;justify-content:center}
-#email-console .compose{grid-area:compose;display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid rgba(28,143,70,.35);background:rgba(0,0,0,.25)}
+#email-console .fc .decide .qr .ab{padding:8px 6px;min-height:36px;flex:1;justify-content:center}
+#email-console .compose{grid-area:compose;display:flex;align-items:center;gap:10px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));border-top:1px solid rgba(28,143,70,.35);background:rgba(0,0,0,.25)}
 #email-console .compose .eye{width:18px;height:18px;border-radius:50%;flex:none;background:radial-gradient(circle at 38% 35%, #d9fff0, var(--ai) 45%, #06343a);box-shadow:0 0 9px var(--ai)}
 #email-console .compose input{flex:1;background:rgba(0,0,0,.3);border:1px solid var(--faint);border-radius:8px;color:var(--hi);font-family:var(--emono);font-size:12.5px;padding:10px 12px;outline:0}
 #email-console .compose input::placeholder{color:var(--faint)}
@@ -201,12 +201,9 @@
   #email-console .ec-search{display:none}
   #email-console .acct{display:none}
 }
-/* split: drop the rail, then it's list -> tap a thread -> reading pane (with a ◂ LIST back) */
+/* split below 900px: drop the rail and go single column — list -> tap a thread -> reading pane (◂ LIST back).
+   (collapsing straight to one column avoids a cramped two-pane band between 760-900px) */
 @media (max-width:900px){
-  #email-console .split{grid-template-columns:minmax(280px,1fr) minmax(340px,1.2fr)}
-  #email-console .split>.rail{display:none}
-}
-@media (max-width:760px){
   #email-console .split{grid-template-columns:1fr}
   #email-console .split>.rail{display:none}
   #email-console .split>.read{display:none}
@@ -214,4 +211,4 @@
   #email-console .split.show-read>.read{display:flex}
   #email-console .read .back-list{display:inline-flex}
 }
-@media (prefers-reduced-motion: reduce){ #email-console.open{animation:none} #email-console .ec-eye,#email-console .fc.red .spine{animation:none} }
+@media (prefers-reduced-motion: reduce){ #email-console.open{animation:none} #email-console .ec-eye,#email-console .fc.red .spine,#email-console .leaving{animation:none} }
