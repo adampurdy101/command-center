@@ -28,6 +28,13 @@
 /* a brief phosphor flash when a readout "updates" (driven by js/enhance.js, reuses mc-tick) */
 #hub .ag .st.tick{ animation:mc-tick .55s ease-out; }
 
+/* the clickable EMAILS line in the Daily Brief (opens the email console) */
+#hub #brief-emails{ cursor:pointer; border-radius:4px; transition:background .15s ease; }
+#hub #brief-emails:hover, #hub #brief-emails:focus-visible{ background:rgba(65,255,126,.09); outline:none; }
+#hub #brief-emails:hover .k{ color:var(--hi); }
+#hub #brief-emails .go{ opacity:.55; transition:opacity .15s ease; }
+#hub #brief-emails:hover .go{ opacity:1; text-shadow:0 0 8px var(--g); }
+
 /* satisfying button press */
 #hub .tools button:active, #hub .btn:active, #hub .panel .tb .btn:active{ transform:translateY(1px); }
 

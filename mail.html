@@ -437,7 +437,10 @@
     function typeOut(el,txt){ if(!el)return; if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=txt;return;} el.textContent=''; var i=0; clearInterval(el._iv); el._iv=setInterval(function(){ el.textContent=txt.slice(0,i++)+(i<txt.length?'▌':''); if(i>txt.length)clearInterval(el._iv); },14); }
 
     /* ---------- switcher ---------- */
-    var layout='stream', names={stream:'// TRIAGE STREAM',split:'// COMMAND SPLIT',cockpit:'// HAL COCKPIT'};
+    var names={stream:'// TRIAGE STREAM',split:'// COMMAND SPLIT',cockpit:'// HAL COCKPIT'};
+    /* auto-pick by device: phone (+ iPad portrait) -> STREAM, computer / iPad landscape -> COCKPIT.
+       The 1/2/3 switch still overrides on any device. This is exactly how the real build will behave. */
+    var layout = (window.innerWidth < 820) ? 'stream' : 'cockpit';
     function render(){
       var b=document.getElementById('body');
       if(layout==='stream')renderStream(b); else if(layout==='split')renderSplit(b); else renderCockpit(b);

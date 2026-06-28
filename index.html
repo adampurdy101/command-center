@@ -22,6 +22,8 @@
   <link rel="stylesheet" href="css/mobile.css" />
   <!-- tasteful always-on polish (bloom, hover-glow, corner brackets, glowing progress edge) -->
   <link rel="stylesheet" href="css/enhance.css" />
+  <!-- full-screen email console (opens from the Daily Brief EMAILS line) -->
+  <link rel="stylesheet" href="css/email.css" />
   <!-- optional Neon Noir glass theme — inert unless opened with ?noir (js/noir.js) -->
   <link rel="stylesheet" href="css/noir.css" />
 </head>
@@ -103,7 +105,7 @@
           <section class="panel" id="panel-brief" style="flex:1.1">
             <div class="tb"><span class="led on"></span><span class="n">01 Daily Brief</span><span class="sp"></span><span class="s" id="brief-stat">…</span></div>
             <div class="bd" id="brief-bd">
-              <div class="row"><span class="k">UNREAD MAIL</span><span class="v big" id="brief-unread">–</span></div>
+              <div class="row mail-launch" id="brief-emails" role="button" tabindex="0" title="Open email console"><span class="k">EMAILS</span><span class="v big" id="brief-unread">–</span><span class="v go" style="font-size:12px;margin-left:7px;color:var(--hi)">▸</span></div>
               <div class="row"><span class="k">FLAGGED</span><span class="v warn" id="brief-flagged">–</span></div>
               <div class="row"><span class="k">NEXT EVENT</span><span class="v" id="brief-next" style="font-size:11px">—</span></div>
               <div class="row"><span class="k">TASKS</span><span class="v" id="brief-tasks">–</span></div>
@@ -251,6 +253,8 @@
   <script defer src="js/panels.js"></script>
   <!-- tasteful micro-interactions (readout "update" flicker) -->
   <script defer src="js/enhance.js"></script>
+  <!-- full-screen email console (window.EmailConsole) -->
+  <script defer src="js/email.js"></script>
   <!-- optional Neon Noir glass theme activator (only runs with ?noir) -->
   <script defer src="js/noir.js"></script>
   <!-- auth + live data wiring -->
