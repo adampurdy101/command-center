@@ -123,8 +123,8 @@
     root.querySelectorAll('.gauge b').forEach(function(e){ e.textContent = cleared + ' ▸ ' + total; });
   }
   function act(id, verb){
-    if (!live.some(function(t){ return t.id === id; })) return;     // already cleared — ignore (no double-count)
-    var item = live.filter(function(t){ return t.id === id; })[0] || {};
+    if (!live.some(function(t){ return String(t.id) === String(id); })) return;     // already cleared — ignore
+    var item = live.filter(function(t){ return String(t.id) === String(id); })[0] || {};
 
     if (REAL && verb !== 'skipped'){
       var ga = REAL_ACTIONS[verb];
@@ -135,10 +135,10 @@
       });
     }
 
-    var reRender = (layout === 'split' && id === sel);              // SPLIT: the reading pane must refresh
+    var reRender = (layout === 'split' && String(id) === String(sel));   // SPLIT: the reading pane must refresh
     var el = root.querySelector('[data-id="' + id + '"]');
     if (el && !reRender){ el.classList.add('leaving'); setTimeout(function(){ if (el && el.parentNode) el.parentNode.removeChild(el); }, 220); }
-    live = live.filter(function(t){ return t.id !== id; });
+    live = live.filter(function(t){ return String(t.id) !== String(id); });
     if (!REAL) removedStack.push(item);                            // undo only in demo (real actions are already in Gmail)
     tick();
     note((REAL ? 'GMAIL · ' : '') + verb.toUpperCase() + ' · ' + (item.who || ''), !REAL);
@@ -168,11 +168,11 @@
     var d = '';
     if (t.draft){
       d = '<div class="draft"><div class="dh"><span class="conf ' + t.conf + '"></span>🤖 HAL DRAFTED REPLY' + (t.conf === 'hollow' ? ' · check this one' : '') + '</div><div class="dt">' + esc(t.draft) + '</div>' +
-        '<div class="ec-actions"><button class="ab go" onclick="__ec.act(' + t.id + ',\'approved+sent\')">✓ Approve + send</button><button class="ab" onclick="__ec.note(\'Opens the draft in an inline editor (coming with Gmail).\')">✎ Edit</button><button class="ab" onclick="__ec.act(' + t.id + ',\'discarded draft\')">✕ Discard</button></div></div>';
+        '<div class="ec-actions"><button class="ab go" onclick="__ec.act(\'' + t.id + '\',\'approved+sent\')">✓ Approve + send</button><button class="ab" onclick="__ec.note(\'Opens the draft in an inline editor (coming with Gmail).\')">✎ Edit</button><button class="ab" onclick="__ec.act(\'' + t.id + '\',\'discarded draft\')">✕ Discard</button></div></div>';
     } else if (t.band === 'REPLY' || t.band === 'VIP'){
       d = '<div class="ec-actions"><button class="ab lead" onclick="__ec.note(\'Inline composer with a ✨ Draft-with-HAL button (coming with Gmail).\')">↩ Quick reply · ✨ HAL</button></div>';
     }
-    return '<div class="ec-actions"><button class="ab" onclick="__ec.act(' + t.id + ',\'archived\')">☷ Archive</button><button class="ab warn" onclick="__ec.act(' + t.id + ',\'snoozed\')">☾ Snooze</button><button class="ab" onclick="__ec.act(' + t.id + ',\'flagged\')">⚑ Flag</button><button class="ab" onclick="__ec.act(' + t.id + ',\'read\')">✓ Read</button></div>' + d;
+    return '<div class="ec-actions"><button class="ab" onclick="__ec.act(\'' + t.id + '\',\'archived\')">☷ Archive</button><button class="ab warn" onclick="__ec.act(\'' + t.id + '\',\'snoozed\')">☾ Snooze</button><button class="ab" onclick="__ec.act(\'' + t.id + '\',\'flagged\')">⚑ Flag</button><button class="ab" onclick="__ec.act(\'' + t.id + '\',\'read\')">✓ Read</button></div>' + d;
   }
 
   /* ============ STREAM ============ */
@@ -192,7 +192,7 @@
       items.forEach(function(t){
         if (s[1] === '__rest'){
           river += '<div class="mc noise" data-id="' + t.id + '"><div class="r1"><span class="who">' + esc(t.who) + '</span><span class="right"><span class="age">' + t.age + '</span></span></div>' +
-            '<div class="subj">' + esc(t.subj) + '</div><div class="sum">▸ ' + sumLine(t) + ' <button class="ab" style="padding:6px 10px" onclick="__ec.act(' + t.id + ',\'archived\')">archive</button></div></div>';
+            '<div class="subj">' + esc(t.subj) + '</div><div class="sum">▸ ' + sumLine(t) + ' <button class="ab" style="padding:6px 10px" onclick="__ec.act(\'' + t.id + '\',\'archived\')">archive</button></div></div>';
         } else {
           var bm = BANDMAP[t.band];
           river += '<div class="mc ' + bm.cls + '" data-id="' + t.id + '"><div class="r1">' + (t.vip ? '<span class="vip">★</span>' : '') + '<span class="who">' + esc(t.who) + '</span><span class="org">· ' + esc(t.org) + '</span><span class="right"><span class="tag ' + bm.tag + '">' + t.tag + '</span><span class="age">' + t.age + '</span></span></div>' +
@@ -228,20 +228,20 @@
     order.forEach(function(bd){ var items = byBand(bd); if (!items.length) return; var L = labels[bd];
       list += '<div class="ldiv ' + L[1] + '">' + L[0] + ' · ' + items.length + '</div>';
       items.forEach(function(t){
-        list += '<div class="li' + (t.id === sel ? ' on' : '') + '" data-id="' + t.id + '" onclick="__ec.sel(' + t.id + ')"><div class="l1"><span class="ldot"></span>' + (t.vip ? '<span class="vip">★ </span>' : '') + '<span class="who">' + esc(t.who) + '</span><span class="t">' + t.age + '</span></div><div class="l2">' + esc(t.subj) + '</div><div class="l3">⟁ ' + sumLine(t) + '</div></div>';
+        list += '<div class="li' + (String(t.id) === String(sel) ? ' on' : '') + '" data-id="' + t.id + '" onclick="__ec.sel(\'' + t.id + '\')"><div class="l1"><span class="ldot"></span>' + (t.vip ? '<span class="vip">★ </span>' : '') + '<span class="who">' + esc(t.who) + '</span><span class="t">' + t.age + '</span></div><div class="l2">' + esc(t.subj) + '</div><div class="l3">⟁ ' + sumLine(t) + '</div></div>';
       });
     });
     list += '</div>';
-    var t = live.filter(function(x){ return x.id === sel; })[0] || live[0];
+    var t = live.filter(function(x){ return String(x.id) === String(sel); })[0] || live[0];
     var read = '<div class="read">';
     if (t){
-      read += '<div class="ra"><button class="ab back-list" onclick="__ec.unsel()">◂ LIST</button><button class="ab lead" onclick="__ec.note(\'Opens the reply editor with the HAL draft loaded (coming with Gmail).\')">↩ Reply</button><button class="ab" onclick="__ec.note(\'Reply-all composer (coming with Gmail).\')">↩↩ All</button><button class="ab" onclick="__ec.note(\'Forward composer (coming with Gmail).\')">→ Fwd</button><button class="ab" onclick="__ec.act(' + t.id + ',\'archived\')">☷ Archive</button><button class="ab warn" onclick="__ec.act(' + t.id + ',\'snoozed\')">☾ Snooze</button><button class="ab" onclick="__ec.act(' + t.id + ',\'flagged\')">⚑</button><button class="ab" onclick="__ec.act(' + t.id + ',\'trashed\')">⌫</button></div>' +
+      read += '<div class="ra"><button class="ab back-list" onclick="__ec.unsel()">◂ LIST</button><button class="ab lead" onclick="__ec.note(\'Opens the reply editor with the HAL draft loaded (coming with Gmail).\')">↩ Reply</button><button class="ab" onclick="__ec.note(\'Reply-all composer (coming with Gmail).\')">↩↩ All</button><button class="ab" onclick="__ec.note(\'Forward composer (coming with Gmail).\')">→ Fwd</button><button class="ab" onclick="__ec.act(\'' + t.id + '\',\'archived\')">☷ Archive</button><button class="ab warn" onclick="__ec.act(\'' + t.id + '\',\'snoozed\')">☾ Snooze</button><button class="ab" onclick="__ec.act(\'' + t.id + '\',\'flagged\')">⚑</button><button class="ab" onclick="__ec.act(\'' + t.id + '\',\'trashed\')">⌫</button></div>' +
         '<div class="rbody"><div class="rh">' + esc(t.subj) + '</div><div class="rmeta">' + (t.vip ? '★ ' : '') + esc(t.who) + ' · ' + esc(t.org || '') + ' · ' + t.age + '</div>' +
         '<div class="tbrief"><div class="bh">⟁ HAL THREAD BRIEF' + (t.tag ? ' · ' + t.tag : '') + '</div><div class="bt">' + esc(t.sum) + '</div>' +
         '<ul>' + (t.draft ? '<li>Recommended reply ready below — review and send.</li>' : '<li>HAL needs your steer on this one.</li>') + '</ul></div>' +
         '<div class="msgtxt">' + esc(t.who) + ' wrote:\n\n' + esc(t.subj) + '.\n\n' + esc(t.sum) + '\n\n— sent from ' + esc(t.org || 'mail') + '</div></div>' +
         '<div class="reply"><div class="rchips">' + (t.draft ? '<button class="ab go" onclick="__ec.note(\'The HAL draft is already loaded in the box below — edit then Send.\')">✓ Use HAL draft</button>' : '<button class="ab lead" onclick="__ec.note(\'HAL will draft a reply here once Gmail is connected.\')">✨ Draft with HAL</button>') + '<button class="ab" onclick="__ec.note(\'Tone control — shortens the draft (coming with Gmail).\')">Shorter</button><button class="ab" onclick="__ec.note(\'Tone control — warmer phrasing (coming with Gmail).\')">Warmer</button><button class="ab" onclick="__ec.note(\'HAL regenerates the draft (coming with Gmail).\')">↻ Regenerate</button></div>' +
-        '<textarea spellcheck="false">' + esc(t.draft || '') + '</textarea><div class="ec-actions"><button class="ab go" onclick="__ec.act(' + t.id + ',\'sent\')">▸ Send</button><button class="ab" onclick="__ec.act(' + t.id + ',\'sent + archived\')">⌥ Send + Archive</button></div></div>';
+        '<textarea spellcheck="false">' + esc(t.draft || '') + '</textarea><div class="ec-actions"><button class="ab go" onclick="__ec.act(\'' + t.id + '\',\'sent\')">▸ Send</button><button class="ab" onclick="__ec.act(\'' + t.id + '\',\'sent + archived\')">⌥ Send + Archive</button></div></div>';
     } else { read += '<div class="empty">Select a thread.<br><br>HAL is standing by with summaries + drafted replies.</div>'; }
     read += '</div>';
     b.innerHTML = '<div class="split' + (splitShowRead ? ' show-read' : '') + '">' + rail + list + read + '</div>';
@@ -276,9 +276,9 @@
         (t.draft ? '<div class="inset"><div class="ih"><span style="width:8px;height:8px;border-radius:50%;' + (t.conf === 'solid' ? 'background:var(--g)' : 'border:1.5px solid var(--amb)') + '"></span>HAL DRAFT</div><div class="it">' + esc(t.draft) + '</div></div>'
           : '<div class="inset"><div class="ih">HAL</div><div class="it" style="color:var(--ai)">▸ I need your steer — what should I say?</div></div>') +
         '</div><div class="decide">' +
-        (t.draft ? '<button class="ab go" onclick="__ec.act(' + t.id + ',\'approved+sent\')">APPROVE ▸</button><button class="ab" onclick="__ec.note(\'Opens the reply drawer with the draft loaded.\')">EDIT</button><button class="ab" onclick="__ec.act(' + t.id + ',\'skipped\')">SKIP</button>'
-          : '<button class="ab lead" onclick="__ec.note(\'Opens compose for your steer.\')">WRITE ▸</button><button class="ab" onclick="__ec.act(' + t.id + ',\'skipped\')">SKIP</button>') +
-        '<div class="qr"><button class="ab" title="archive" onclick="__ec.act(' + t.id + ',\'archived\')">☷</button><button class="ab" title="flag" onclick="__ec.act(' + t.id + ',\'flagged\')">⚑</button><button class="ab" title="snooze" onclick="__ec.act(' + t.id + ',\'snoozed\')">◔</button></div>' +
+        (t.draft ? '<button class="ab go" onclick="__ec.act(\'' + t.id + '\',\'approved+sent\')">APPROVE ▸</button><button class="ab" onclick="__ec.note(\'Opens the reply drawer with the draft loaded.\')">EDIT</button><button class="ab" onclick="__ec.act(\'' + t.id + '\',\'skipped\')">SKIP</button>'
+          : '<button class="ab lead" onclick="__ec.note(\'Opens compose for your steer.\')">WRITE ▸</button><button class="ab" onclick="__ec.act(\'' + t.id + '\',\'skipped\')">SKIP</button>') +
+        '<div class="qr"><button class="ab" title="archive" onclick="__ec.act(\'' + t.id + '\',\'archived\')">☷</button><button class="ab" title="flag" onclick="__ec.act(\'' + t.id + '\',\'flagged\')">⚑</button><button class="ab" title="snooze" onclick="__ec.act(\'' + t.id + '\',\'snoozed\')">◔</button></div>' +
         '</div></div>';
     });
     q += '</div></div>';
