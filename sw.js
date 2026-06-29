@@ -1,11 +1,11 @@
 /* command-center service worker — minimal + safe.
    Network-first so the live site always wins; cache is only a
    last-resort offline fallback. Old caches are cleared on activate. */
-const CACHE = 'cc-shell-v36';
+const CACHE = 'cc-shell-v37';
 const SHELL = [
   '.', 'index.html',
   'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css', 'css/enhance.css', 'css/email.css', 'css/noir.css',
-  'js/mission.js', 'js/effects.js', 'js/panels.js', 'js/mobile.js', 'js/sniper.js', 'js/backdrop.js', 'js/saber.js', 'js/enhance.js', 'js/email.js', 'js/noir.js',
+  'js/mission.js', 'js/effects.js', 'js/panels.js', 'js/mobile.js', 'js/sniper.js', 'js/backdrop.js', 'js/saber.js', 'js/enhance.js', 'js/email.js', 'js/gmail.js', 'js/noir.js',
   'manifest.webmanifest', 'icons/icon.svg'
 ];
 

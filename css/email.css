@@ -46,6 +46,15 @@
 #email-console .ec-sub{flex:none;display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:9.5px;letter-spacing:1px;color:var(--dim);border-bottom:1px solid rgba(28,143,70,.35)}
 #email-console .ec-sub .led{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 6px var(--g)}
 #email-console .ec-sub .demo{color:var(--amb);margin-left:auto}
+#email-console .ec-sub .ec-conn{margin-left:auto;display:flex;align-items:center}
+#email-console .ec-status.live{color:var(--g)}
+#email-console .ec-status.demo{color:var(--amb)}
+#email-console .ec-status.warn{color:var(--red)}
+#email-console .ec-connect{background:rgba(65,255,126,.14);color:var(--hi);border:1px solid var(--g);border-radius:7px;padding:6px 11px;font-size:10px;letter-spacing:1px;cursor:pointer;box-shadow:0 0 10px rgba(65,255,126,.25);min-height:30px;font-family:var(--emono)}
+#email-console .ec-connect:hover{background:rgba(65,255,126,.22)}
+#email-console .ec-connect.ghost{background:transparent;border-color:var(--faint);color:var(--dim);box-shadow:none}
+#email-console .ec-connect.ghost:hover{color:var(--hi);border-color:var(--hi)}
+#email-console .ec-loading{margin:auto;color:var(--ai);font-size:13px;letter-spacing:1px;padding:40px;text-align:center;width:100%}
 
 /* meter */
 #email-console .meter{display:flex;flex-direction:column;gap:3px}

@@ -67,6 +67,49 @@
   var root = null, built = false, toastTO = null, prevFocus = null, prevOverflow = '';
   var removedStack = [];                 // undo history: removed item objects, most-recent last
 
+  /* ---- real-Gmail mode (window.Gmail bridges to the edge functions) ---- */
+  var REAL = false;                      // true once connected + synced
+  var connState = 'demo';                // 'demo' | 'live' | 'reconnect' | 'loading'
+  var pendingOpen = false;               // open the console after returning from Google
+  var REAL_ACTIONS = { archived:'archive', snoozed:'snooze', flagged:'flag', read:'read', trashed:'trash' };
+
+  function relAge(iso){
+    if (!iso) return '';
+    var t = new Date(iso).getTime(); if (!isFinite(t)) return '';
+    var mins = Math.floor((Date.now() - t) / 60000);
+    if (mins < 1) return 'now';
+    if (mins < 60) return mins + 'm';
+    var hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h';
+    var days = Math.floor(hrs / 24);
+    if (days < 7) return days + 'd';
+    try { return new Date(iso).toLocaleDateString(undefined, { month:'short', day:'numeric' }); } catch (e) { return ''; }
+  }
+  function bandFor(it){
+    var L = it.labels || [];
+    if (L.indexOf('STARRED') >= 0 || L.indexOf('IMPORTANT') >= 0) return 'VIP';
+    if (L.indexOf('CATEGORY_PROMOTIONS') >= 0 || L.indexOf('CATEGORY_SOCIAL') >= 0 || L.indexOf('CATEGORY_FORUMS') >= 0) return 'NOISE';
+    if (it.is_unread) return 'REPLY';
+    return 'FYI';
+  }
+  function mapItem(it){
+    var L = it.labels || [];
+    return {
+      id: it.gmail_msg_id, threadId: it.thread_id,
+      who: it.from_name || it.from_email || '(unknown)',
+      org: it.from_email || '',
+      vip: (L.indexOf('STARRED') >= 0) ? 1 : 0,
+      band: bandFor(it),
+      tag: it.is_unread ? 'UNREAD' : '',
+      age: relAge(it.received_at),
+      subj: it.subject || '(no subject)',
+      sum: it.snippet || '',
+      draft: null, conf: null, real: true
+    };
+  }
+  // demo summaries are HAL's voice; real ones are the email's own snippet
+  function sumLine(t){ return t.real ? esc(t.sum) : 'HAL: ' + esc(t.sum); }
+
   function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function byBand(b){ return live.filter(function(t){ return t.band === b; }); }
   function $(sel){ return root.querySelector(sel); }
@@ -81,15 +124,25 @@
   }
   function act(id, verb){
     if (!live.some(function(t){ return t.id === id; })) return;     // already cleared — ignore (no double-count)
-    var item = T.filter(function(t){ return t.id === id; })[0];
+    var item = live.filter(function(t){ return t.id === id; })[0] || {};
+
+    if (REAL && verb !== 'skipped'){
+      var ga = REAL_ACTIONS[verb];
+      if (!ga){ note('Reply & compose land next — for now: archive, read, flag, snooze, trash.'); return; }  // don't remove the card
+      window.Gmail.action(ga, { id: id, threadId: item.threadId }).then(function(r){
+        if (r && r.reconnect){ connState = 'reconnect'; updateConnState(); note('Gmail session expired — tap Reconnect Gmail.'); }
+        else if (r && (r.error || r.ok === false)){ note('Gmail didn’t accept that one — try again.'); }
+      });
+    }
+
     var reRender = (layout === 'split' && id === sel);              // SPLIT: the reading pane must refresh
     var el = root.querySelector('[data-id="' + id + '"]');
     if (el && !reRender){ el.classList.add('leaving'); setTimeout(function(){ if (el && el.parentNode) el.parentNode.removeChild(el); }, 220); }
     live = live.filter(function(t){ return t.id !== id; });
-    if (item) removedStack.push(item);
+    if (!REAL) removedStack.push(item);                            // undo only in demo (real actions are already in Gmail)
     tick();
-    note(verb.toUpperCase() + ' · ' + ((item || {}).who || ''), true);
-    if (reRender){ sel = (live[0] || {}).id; render(); }            // advance to the next thread + refresh pane
+    note((REAL ? 'GMAIL · ' : '') + verb.toUpperCase() + ' · ' + (item.who || ''), !REAL);
+    if (reRender){ sel = (live[0] || {}).id; render(); }           // advance to the next thread + refresh pane
   }
   function note(msg, undoable){
     var t = $('.ec-toast'); if (!t) return;
@@ -128,7 +181,7 @@
       '<span class="pill ai on">⚑ NEEDS REPLY <b>' + byBand('REPLY').length + '</b></span>' +
       '<span class="pill amb">★ VIP <b>' + byBand('VIP').length + '</b></span>' +
       '<span class="pill red">⏰ TIME-SENSITIVE <b>' + byBand('TIME').length + '</b></span>' +
-      '<span class="pill">EVERYTHING ELSE <b>' + (byBand('FYI').length + byBand('NOISE').length + 139) + '</b></span>' +
+      '<span class="pill">EVERYTHING ELSE <b>' + (byBand('FYI').length + byBand('NOISE').length + (REAL ? 0 : 139)) + '</b></span>' +
       '<span class="pill">⌂ FOLDERS</span></div>';
     var river = '<div class="river">' + meterHTML();
     var sections = [['NEEDS REPLY','REPLY','ai'],['VIP','VIP','amb'],['TIME-SENSITIVE','TIME','red'],['EVERYTHING ELSE','__rest','dim']];
@@ -139,15 +192,18 @@
       items.forEach(function(t){
         if (s[1] === '__rest'){
           river += '<div class="mc noise" data-id="' + t.id + '"><div class="r1"><span class="who">' + esc(t.who) + '</span><span class="right"><span class="age">' + t.age + '</span></span></div>' +
-            '<div class="subj">' + esc(t.subj) + '</div><div class="sum">▸ HAL: ' + esc(t.sum) + ' <button class="ab" style="padding:6px 10px" onclick="__ec.act(' + t.id + ',\'archived\')">archive</button></div></div>';
+            '<div class="subj">' + esc(t.subj) + '</div><div class="sum">▸ ' + sumLine(t) + ' <button class="ab" style="padding:6px 10px" onclick="__ec.act(' + t.id + ',\'archived\')">archive</button></div></div>';
         } else {
           var bm = BANDMAP[t.band];
           river += '<div class="mc ' + bm.cls + '" data-id="' + t.id + '"><div class="r1">' + (t.vip ? '<span class="vip">★</span>' : '') + '<span class="who">' + esc(t.who) + '</span><span class="org">· ' + esc(t.org) + '</span><span class="right"><span class="tag ' + bm.tag + '">' + t.tag + '</span><span class="age">' + t.age + '</span></span></div>' +
-            '<div class="subj">' + esc(t.subj) + '</div><div class="sum">▸ HAL: ' + esc(t.sum) + '</div>' + actionRow(t) + '</div>';
+            '<div class="subj">' + esc(t.subj) + '</div><div class="sum">▸ ' + sumLine(t) + '</div>' + actionRow(t) + '</div>';
         }
       });
     });
-    river += '<div class="nf">▸ HAL: I archived <b>140 low-priority items</b> (newsletters, receipts, promos). <button class="ab" style="display:inline-flex;margin-left:6px" onclick="__ec.note(\'Shows the cleared pile with per-item RESTORE.\')">Review plan</button></div></div>';
+    river += (REAL
+      ? (live.length ? '' : '<div class="nf">✓ Nothing in your recent inbox to triage.</div>')
+      : '<div class="nf">▸ HAL: I archived <b>140 low-priority items</b> (newsletters, receipts, promos). <button class="ab" style="display:inline-flex;margin-left:6px" onclick="__ec.note(\'Shows the cleared pile with per-item RESTORE.\')">Review plan</button></div>'
+      ) + '</div>';
     b.innerHTML = '<div class="stream">' + pills + river + '</div>';
   }
 
@@ -172,7 +228,7 @@
     order.forEach(function(bd){ var items = byBand(bd); if (!items.length) return; var L = labels[bd];
       list += '<div class="ldiv ' + L[1] + '">' + L[0] + ' · ' + items.length + '</div>';
       items.forEach(function(t){
-        list += '<div class="li' + (t.id === sel ? ' on' : '') + '" data-id="' + t.id + '" onclick="__ec.sel(' + t.id + ')"><div class="l1"><span class="ldot"></span>' + (t.vip ? '<span class="vip">★ </span>' : '') + '<span class="who">' + esc(t.who) + '</span><span class="t">' + t.age + '</span></div><div class="l2">' + esc(t.subj) + '</div><div class="l3">⟁ HAL: ' + esc(t.sum) + '</div></div>';
+        list += '<div class="li' + (t.id === sel ? ' on' : '') + '" data-id="' + t.id + '" onclick="__ec.sel(' + t.id + ')"><div class="l1"><span class="ldot"></span>' + (t.vip ? '<span class="vip">★ </span>' : '') + '<span class="who">' + esc(t.who) + '</span><span class="t">' + t.age + '</span></div><div class="l2">' + esc(t.subj) + '</div><div class="l3">⟁ ' + sumLine(t) + '</div></div>';
       });
     });
     list += '</div>';
@@ -216,7 +272,7 @@
     ordered.forEach(function(t){ var bm = BANDMAP[t.band];
       q += '<div class="fc ' + bm.cls + '" data-id="' + t.id + '"><div class="spine"></div><div class="main">' +
         '<div class="meta">' + (t.vip ? '<span class="vip">★</span> ' : '') + '<span class="who">' + esc(t.who) + '</span><span class="org">· ' + esc(t.org) + '</span><span class="t"><span class="tag ' + bm.tag + '">' + t.tag + '</span> ' + t.age + '</span></div>' +
-        '<div class="subj">' + esc(t.subj) + '</div><div class="sum">▸ HAL: ' + esc(t.sum) + '</div>' +
+        '<div class="subj">' + esc(t.subj) + '</div><div class="sum">▸ ' + sumLine(t) + '</div>' +
         (t.draft ? '<div class="inset"><div class="ih"><span style="width:8px;height:8px;border-radius:50%;' + (t.conf === 'solid' ? 'background:var(--g)' : 'border:1.5px solid var(--amb)') + '"></span>HAL DRAFT</div><div class="it">' + esc(t.draft) + '</div></div>'
           : '<div class="inset"><div class="ih">HAL</div><div class="it" style="color:var(--ai)">▸ I need your steer — what should I say?</div></div>') +
         '</div><div class="decide">' +
@@ -228,7 +284,10 @@
     q += '</div></div>';
     var compose = '<div class="compose"><div class="eye"></div><input placeholder="☉ Tell HAL what to send…  e.g. “thank Sarah and confirm Thursday”" /><button class="send" onclick="__ec.note(\'HAL drafts the full email, then opens it for your approval (coming with Gmail).\')">HAL DRAFTS ▸</button></div>';
     b.innerHTML = '<div class="cockpit">' + crail + brief + q + compose + '</div>';
-    typeOut($('#ec-halSay'), 'Morning, Adam. ' + total + ' unread overnight. ' + byBand('REPLY').length + ' need your reply, ' + byBand('VIP').length + ' from VIPs, ' + byBand('TIME').length + ' time-sensitive — and I’ve cleared 140 as noise. Drafts are ready. Run the plan?');
+    var halLine = REAL
+      ? ('Connected to Gmail. Showing your ' + live.length + ' most recent — ' + live.filter(function(t){ return t.tag; }).length + ' unread. Archive, read, flag, snooze & trash work now; HAL summaries + drafts come next.')
+      : ('Morning, Adam. ' + total + ' unread overnight. ' + byBand('REPLY').length + ' need your reply, ' + byBand('VIP').length + ' from VIPs, ' + byBand('TIME').length + ' time-sensitive — and I’ve cleared 140 as noise. Drafts are ready. Run the plan?');
+    typeOut($('#ec-halSay'), halLine);
   }
   function typeOut(el, txt){
     if (!el) return;
@@ -241,9 +300,11 @@
   function render(){
     var b = $('.ec-body'); if (!b) return;
     var say = b.querySelector('#ec-halSay'); if (say && say._iv) clearInterval(say._iv);   // kill any running typewriter before we blow away the DOM
+    if (connState === 'loading'){ b.innerHTML = '<div class="ec-loading">◴ syncing your inbox…</div>'; updateConnState(); return; }
     if (layout === 'stream') renderStream(b); else if (layout === 'split') renderSplit(b); else renderCockpit(b);
     $('.ec-name').textContent = '// ' + NAMES[layout];
     root.querySelectorAll('.seg button').forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-l') === layout); });
+    updateConnState();
   }
   function setLayout(l){ if (l === layout || !NAMES[l]) return; layout = l; render(); }
 
@@ -261,7 +322,7 @@
         '<div class="seg"><button data-l="stream">STREAM</button><button data-l="split">SPLIT</button><button data-l="cockpit">COCKPIT</button></div>' +
         '<button class="x" aria-label="Close">✕</button>' +
       '</div>' +
-      '<div class="ec-sub"><span class="led"></span><span>SYNCED 06:42</span><span>· 201 UNREAD · 6 NEED REPLY · 3 VIP · 2 TIME-SENSITIVE</span><span class="demo">● DEMO DATA · GMAIL NOT YET CONNECTED</span></div>' +
+      '<div class="ec-sub"><span class="led"></span><span class="ec-status">CONNECTING…</span><span class="ec-conn"></span></div>' +
       '<div class="ec-body"></div>' +
       '<div class="ec-vig"></div><div class="ec-scan"></div>' +
       '<div class="ec-toast"><span class="msg"></span><button class="undo">↶ UNDO</button></div>';
@@ -278,22 +339,64 @@
     var srch = root.querySelector('.ec-search input');
     if (srch) srch.addEventListener('keydown', function(e){ if (e.key === 'Enter') note('Search runs against Gmail once connected — the demo set isn\'t searchable yet.'); });
     var acct = root.querySelector('.acct');
-    if (acct){ acct.style.cursor = 'pointer'; acct.addEventListener('click', function(){ note('Multi-account switching (iCloud next) arrives with Gmail.'); }); }
+    if (acct){ acct.style.cursor = 'pointer'; acct.addEventListener('click', function(){ note('Multi-account switching (iCloud next) arrives later.'); }); }
+    var sub = root.querySelector('.ec-sub');
+    if (sub) sub.addEventListener('click', function(e){ if (e.target.closest('.ec-connect') && window.Gmail){ window.Gmail.connect(); } });
     built = true;
   }
 
   function open(){
     build();
-    live = T.slice(); cleared = 13; total = 201;        // fresh each open (demo)
-    sel = T[0].id; splitShowRead = false;               // SPLIT starts on the first thread
-    removedStack = [];                                   // fresh undo history
+    splitShowRead = false;
+    removedStack = [];
     layout = (window.innerWidth < 820) ? 'stream' : 'cockpit';   // phone -> STREAM, computer -> COCKPIT
     if (!root.classList.contains('open')){ prevOverflow = document.body.style.overflow; prevFocus = document.activeElement; }
-    render();
     root.classList.add('open');
     document.body.style.overflow = 'hidden';            // lock the dashboard scroll behind the overlay
     try { root.focus(); } catch (e) {}                  // move focus into the dialog
     document.addEventListener('keydown', onKey);
+    loadAndRender();
+  }
+  // Decide the data source: live Gmail if connected, otherwise the demo set.
+  function loadAndRender(){
+    if (window.Gmail && typeof window.Gmail.sync === 'function'){
+      connState = 'loading'; live = []; cleared = 0; total = 1; render();
+      window.Gmail.sync().then(function(res){
+        if (res && res.connected){
+          REAL = true; connState = 'live';
+          live = (res.items || []).map(mapItem);
+          sel = (live[0] || {}).id;
+          total = Math.max(live.length, 1);
+          cleared = live.filter(function(t){ return !t.tag; }).length;   // read = "cleared"
+        } else if (res && res.reconnect){
+          REAL = false; connState = 'reconnect'; live = T.slice(); sel = T[0].id; cleared = 13; total = 201;
+        } else {
+          REAL = false; connState = 'demo'; live = T.slice(); sel = T[0].id; cleared = 13; total = 201;
+        }
+        render();
+      });
+    } else {
+      REAL = false; connState = 'demo'; live = T.slice(); sel = T[0].id; cleared = 13; total = 201; render();
+    }
+  }
+  // header status line + Connect / Reconnect button
+  function updateConnState(){
+    var st = root.querySelector('.ec-status'), cn = root.querySelector('.ec-conn');
+    if (!st || !cn) return;
+    if (connState === 'live'){
+      var unread = live.filter(function(t){ return t.tag; }).length;
+      st.textContent = 'LIVE · gmail · adampurdy101@gmail.com · ' + live.length + ' shown · ' + unread + ' unread';
+      st.className = 'ec-status live';
+      cn.innerHTML = '<button class="ec-connect ghost" type="button">↻ Reconnect</button>';
+    } else if (connState === 'loading'){
+      st.textContent = 'SYNCING GMAIL…'; st.className = 'ec-status'; cn.innerHTML = '';
+    } else if (connState === 'reconnect'){
+      st.textContent = 'GMAIL NOT CONNECTED · showing sample inbox'; st.className = 'ec-status demo';
+      cn.innerHTML = '<button class="ec-connect" type="button">⚡ CONNECT GMAIL</button>';
+    } else {
+      st.textContent = 'DEMO DATA · sample inbox'; st.className = 'ec-status demo';
+      cn.innerHTML = '<button class="ec-connect" type="button">⚡ CONNECT GMAIL</button>';
+    }
   }
   function close(){
     if (root){ root.classList.remove('open'); }
@@ -320,4 +423,16 @@
   document.addEventListener('hub:ready', wireLauncher);
   if (document.readyState !== 'loading') wireLauncher();
   else document.addEventListener('DOMContentLoaded', wireLauncher);
+
+  /* ---- return trip from Google (events fired by js/gmail.js) ---- */
+  document.addEventListener('gmail:connected', function(){
+    var hub = document.getElementById('hub');
+    if (hub && !hub.classList.contains('hidden')) open();   // hub already up → open the console (it syncs)
+    else pendingOpen = true;                                 // otherwise wait for hub:ready
+  });
+  document.addEventListener('gmail:error', function(e){
+    var why = (e && e.detail) ? e.detail : 'error';
+    alert('Gmail connection didn’t finish (' + why + '). You can tap “Connect Gmail” to try again.');
+  });
+  document.addEventListener('hub:ready', function(){ if (pendingOpen){ pendingOpen = false; setTimeout(open, 500); } });
 })();
