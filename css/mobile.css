@@ -19,6 +19,16 @@
 
   #hub { height: auto; }
 
+  /* touch-friendly hit areas — audit found many controls at ~20-30px
+     (Voice Scope STOP/⚙/WAKE HAL, MORNING DIGEST, sniper launch, HUM/FULLSCREEN/LOG OUT,
+     panel-detail CLOSE/RUN DIGEST). Give them a 40px floor + center the glyph. */
+  #hub .btn, #hub .tb .btn, #hub .tools button {
+    min-height: 40px; display: inline-flex; align-items: center; justify-content: center;
+  }
+  #hub .tb .btn { padding: 6px 10px; }
+  #hub #amb-vol { height: 26px; }            /* fatter volume slider for thumbs */
+  .bolt { display: none; }                    /* decorative corner dots overlapped the header on phones */
+
   /* stack the deck into one scrolling column */
   #hub .deck {
     display: flex; flex-direction: column; gap: 10px;

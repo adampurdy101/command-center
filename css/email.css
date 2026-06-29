@@ -26,7 +26,7 @@
   border-bottom:1px solid var(--faint);background:linear-gradient(180deg, rgba(65,255,126,.06), transparent);z-index:2}
 #email-console .back{color:var(--dim);background:transparent;border:1px solid var(--faint);border-radius:7px;padding:8px 11px;font-size:11px;letter-spacing:1px;min-height:38px}
 #email-console .back:hover{color:var(--hi);border-color:var(--hi)}
-#email-console .ttl{color:var(--hi);font-size:13px;letter-spacing:2px;text-shadow:0 0 8px rgba(125,255,176,.5);white-space:nowrap}
+#email-console .ttl{color:var(--hi);font-size:13px;letter-spacing:2px;text-shadow:0 0 8px rgba(125,255,176,.5);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
 #email-console .ttl small{color:var(--faint);font-size:9px;letter-spacing:1px;margin-left:6px}
 #email-console .ec-eye{width:13px;height:13px;border-radius:50%;display:inline-block;vertical-align:-2px;margin-right:7px;
   background:radial-gradient(circle at 38% 35%, #d9fff0, var(--ai) 45%, #06343a);box-shadow:0 0 9px var(--ai);animation:ec-eye 3.2s ease-in-out infinite}
@@ -220,4 +220,16 @@
   #email-console .split.show-read>.read{display:flex}
   #email-console .read .back-list{display:inline-flex}
 }
+/* narrow phones: let the top bar wrap so the STREAM|SPLIT|COCKPIT toggle and the
+   ✕ close button can never get pushed off the right edge (the ✕ is the main exit) */
+@media (max-width:520px){
+  #email-console .ec-top{flex-wrap:wrap; height:auto; min-height:50px; row-gap:6px; padding:env(safe-area-inset-top) 10px 6px}
+  #email-console .ec-top .spacer{display:none}
+  #email-console .ttl small{display:none}
+  #email-console .seg button{padding:8px 9px}
+  #email-console .back{padding:8px 9px}
+  /* keep the undo toast clear of the SPLIT reply / COCKPIT compose bar at the bottom */
+  #email-console .ec-toast{bottom:calc(80px + env(safe-area-inset-bottom))}
+}
+
 @media (prefers-reduced-motion: reduce){ #email-console.open{animation:none} #email-console .ec-eye,#email-console .fc.red .spine,#email-console .leaving{animation:none} }

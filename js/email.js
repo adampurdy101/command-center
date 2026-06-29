@@ -435,4 +435,6 @@
     alert('Gmail connection didn’t finish (' + why + '). You can tap “Connect Gmail” to try again.');
   });
   document.addEventListener('hub:ready', function(){ if (pendingOpen){ pendingOpen = false; setTimeout(open, 500); } });
+  // on logout the hub leaves — make sure this full-screen overlay doesn't linger over the login screen
+  document.addEventListener('hub:left', function(){ try { close(); } catch (e) {} });
 })();

@@ -190,7 +190,7 @@
       return p;
     }
     function onInnerControl(t) {
-      return t && t.closest && t.closest("button,a,input,select,textarea,.btn,.tools");
+      return t && t.closest && t.closest("button,a,input,select,textarea,.btn,.tools,.mail-launch,[role=button]");
     }
 
     document.addEventListener("touchstart", function (e) {

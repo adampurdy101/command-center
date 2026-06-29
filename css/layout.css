@@ -71,7 +71,7 @@ body {
   position: fixed; width: 10px; height: 10px; border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, var(--chassis-light), var(--bolt) 60%, var(--chassis-dark));
   box-shadow: 0 1px 1px rgba(0,0,0,.6);
-  z-index: 60;
+  z-index: 60; pointer-events: none;   /* purely decorative — never eat a tap */
 }
 .bolt.tl { top: 20px; left: 20px; }
 .bolt.tr { top: 20px; right: 20px; }
