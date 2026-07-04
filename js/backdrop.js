@@ -118,6 +118,7 @@
   function frame(ms) {
     raf = requestAnimationFrame(frame);
     if (!t0) t0 = ms;
+    if (window.CC_GAME_OPEN) { last = ms; return; } /* idle while the fullscreen game runs */
     if (ms - last < 33) return;                 /* cap ~30fps */
     var dt = Math.min(0.05, (ms - last) / 1000) || 0.016; last = ms;
     scene((ms - t0) / 1000, dt);

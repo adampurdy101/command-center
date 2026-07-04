@@ -27,6 +27,13 @@
   var FONT = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 
   /* ------------------------------------------------------------------ *
+   * PERF — adaptive quality. shadowBlur is the slowest canvas op (esp.
+   * iOS), so per-entity glow is gated on PERF.glow, and a governor in
+   * loop() steps glow/resolution down if real frame times run slow.
+   * ------------------------------------------------------------------ */
+  var PERF = { glow: true };
+
+  /* ------------------------------------------------------------------ *
    * Small numeric helpers (all guard against NaN where it matters)
    * ------------------------------------------------------------------ */
   function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
@@ -451,7 +458,10 @@
     var rh = rect && isFinite(rect.height) ? rect.height : 0;
     var W = Math.max(40, Math.floor(rw || window.innerWidth || 800));
     var H = Math.max(40, Math.floor(rh || window.innerHeight || 450));
-    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    // Touch devices get a 1.5 pixel-ratio cap (fill-rate is the phone bottleneck);
+    // perfScale is the governor's knob — it trades internal resolution for frame rate.
+    var dprCap = this.isTouchDevice() ? 1.5 : 2;
+    var dpr = Math.min(dprCap, window.devicePixelRatio || 1) * (this.perfScale || 1);
     if (!isFinite(dpr) || dpr <= 0) dpr = 1;
     this.W = W; this.H = H; this.dpr = dpr;
     this.canvas.width = Math.floor(W * dpr);
@@ -538,6 +548,11 @@
     window.addEventListener('keydown', this._onKey);
     this.canvas.addEventListener('wheel', this._onWheel, { passive: false });
 
+    // fresh quality state each session + tell the hub to pause its animations
+    this._stage = 0; this._ema = 0; this._govT = 0; this.perfScale = 1; PERF.glow = true;
+    window.CC_GAME_OPEN = true;
+    try { document.dispatchEvent(new CustomEvent('game:open')); } catch (e) {}
+
     this.fit();
     this.resetGame();
     this.running = true;
@@ -572,6 +587,10 @@
     this.activePointers = {};
     this.fireBtn.active = false; this.zoomSlider.dragging = false;
     this.pinch.active = false;
+
+    // let the hub resume its animations
+    window.CC_GAME_OPEN = false;
+    try { document.dispatchEvent(new CustomEvent('game:close')); } catch (e) {}
   };
 
   Game.prototype.resetGame = function () {
@@ -1341,14 +1360,12 @@
   Game.prototype.drawWorld = function (ctx, W, H) {
     var th = TH();
     var horizon = fin(this.cy + this.camY * 0.85, this.cy);
-    var top = horizon - H * 1.2, bot = horizon + H * 0.5;
-    if (isFinite(top) && isFinite(bot) && bot > top) {
-      var g = ctx.createLinearGradient(0, top, 0, bot);
-      g.addColorStop(0, th.sky[0]); g.addColorStop(0.55, th.sky[1]);
-      g.addColorStop(0.86, th.sky[2]); g.addColorStop(1, th.sky[3]);
-      ctx.fillStyle = g;
-    } else { ctx.fillStyle = th.sky[1]; }
-    ctx.fillRect(0, 0, W, H);
+    // Static sky (gradient + starfield + nebula + moon) is pre-rendered once —
+    // rebuilding those gradients and the shadowBlur moon per frame was the
+    // single biggest render cost on phones.
+    this.ensureSkyCache(W, H, horizon);
+    if (this._sky) ctx.drawImage(this._sky, 0, 0, W, H);
+    else { ctx.fillStyle = th.sky[1]; ctx.fillRect(0, 0, W, H); }
 
     /* weather clock (render-side, self-contained) */
     var nowS = performance.now() / 1000;
@@ -1357,9 +1374,9 @@
     var wx = this._wx;
     var aCamX = fin(this.camX, 0), aCamY = fin(this.camY, 0), T = nowS;
 
-    /* twinkling starfield + rare shooting star */
+    /* live twinkle — a handful of stars pulse over the baked starfield */
     ctx.save();
-    for (var s = 0; s < 90; s++) {
+    for (var s = 0; s < 90; s += 6) {
       var sxp = ((((s * 149.3 - aCamX * 0.04) % (W + 60)) + W + 60) % (W + 60)) - 30;
       var syp = ((s * 71.7) % Math.max(40, horizon)) * 0.8 + aCamY * 0.25;
       if (syp > horizon - 16 || !isFinite(sxp) || !isFinite(syp)) continue;
@@ -1388,55 +1405,7 @@
       }
     }
 
-    /* NEBULA — soft deep-space cloud, sky only */
-    if (!th.rain) {
-      ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      var nbc = th.embers ? '255,80,45' : '65,230,160';
-      var nbx = W * 0.24, nby = Math.max(30, horizon - H * 0.62);
-      var nb1 = ctx.createRadialGradient(nbx, nby, 0, nbx, nby, W * 0.3);
-      nb1.addColorStop(0, 'rgba(' + nbc + ',0.075)'); nb1.addColorStop(0.6, 'rgba(' + nbc + ',0.025)'); nb1.addColorStop(1, 'rgba(' + nbc + ',0)');
-      ctx.fillStyle = nb1; ctx.fillRect(0, 0, W, Math.max(0, horizon - 10));
-      var nb2 = ctx.createRadialGradient(W * 0.5, nby * 0.5, 0, W * 0.5, nby * 0.5, W * 0.2);
-      nb2.addColorStop(0, 'rgba(125,247,255,0.05)'); nb2.addColorStop(1, 'rgba(125,247,255,0)');
-      ctx.fillStyle = nb2; ctx.fillRect(0, 0, W, Math.max(0, horizon - 10));
-      ctx.restore();
-    }
-
-    /* MOON — themed */
-    var mr = Math.min(W, H) * th.moon.r;
-    var mx = W * 0.68 - aCamX * 0.02;
-    var my = horizon - H * 0.31 + aCamY * 0.18;
-    if (isFinite(mx) && isFinite(my)) {
-      ctx.save();
-      var mg = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 3.8);
-      mg.addColorStop(0, th.moon.glow); mg.addColorStop(0.5, th.moon.glow.replace(/[\d.]+\)$/, '0.05)')); mg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx, my, mr * 3.8, 0, Math.PI * 2); ctx.fill();
-      var ringCol = th.ring || th.moon.rim, rTilt = -0.42;
-      var moonRing = function (rx2, ry2, lw2, al2, a0, a1) {
-        ctx.save(); ctx.globalAlpha = al2; ctx.strokeStyle = ringCol; ctx.lineWidth = lw2;
-        ctx.shadowColor = ringCol; ctx.shadowBlur = 8;
-        ctx.beginPath(); ctx.ellipse(mx, my, mr * rx2, mr * ry2, rTilt, a0, a1); ctx.stroke(); ctx.restore();
-      };
-      moonRing(1.95, 0.6, 3, 0.3, Math.PI, Math.PI * 2);
-      moonRing(2.3, 0.72, 1.5, 0.18, Math.PI, Math.PI * 2);
-      ctx.globalAlpha = 0.95; ctx.fillStyle = th.moon.body; ctx.shadowColor = th.moon.rim; ctx.shadowBlur = 26;
-      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0; ctx.globalAlpha = 0.7; ctx.strokeStyle = th.moon.rim; ctx.lineWidth = 1.3;
-      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1; ctx.fillStyle = th.moon.crater;
-      ctx.beginPath(); ctx.arc(mx - mr * 0.3, my - mr * 0.18, mr * 0.22, 0, 6.28); ctx.fill();
-      ctx.beginPath(); ctx.arc(mx + mr * 0.34, my + 0.24 * mr, mr * 0.15, 0, 6.28); ctx.fill();
-      ctx.beginPath(); ctx.arc(mx + mr * 0.1, my - mr * 0.42, mr * 0.1, 0, 6.28); ctx.fill();
-      ctx.beginPath(); ctx.arc(mx - mr * 0.12, my + mr * 0.38, mr * 0.12, 0, 6.28); ctx.fill();
-      /* crescent shade for depth */
-      ctx.globalAlpha = 0.35; ctx.fillStyle = th.sky[0];
-      ctx.beginPath(); ctx.arc(mx + mr * 0.45, my - mr * 0.18, mr * 0.92, 0, 6.28); ctx.fill();
-      ctx.globalAlpha = 1;
-      moonRing(1.95, 0.6, 3.2, 0.55, 0, Math.PI);
-      moonRing(2.3, 0.72, 1.6, 0.32, 0, Math.PI);
-      moonRing(1.62, 0.5, 1.2, 0.4, 0, Math.PI);
-      ctx.restore();
-    }
+    /* (nebula + moon are baked into the sky cache — see buildSkyCache) */
 
     /* AURORA — living curtains (recon) */
     if (th.aurora) {
@@ -1522,14 +1491,25 @@
         var exx = (em.x + Math.sin(T * 0.6 + em.ph) * 0.015) * W;
         var eyy = em.y * skyH;
         ctx.globalAlpha = (0.2 + 0.5 * Math.abs(Math.sin(T * 2 + em.ph))) * (0.3 + 0.7 * em.y);
-        ctx.fillStyle = ei % 3 === 0 ? '#ffd2a0' : '#ff7a4a'; ctx.shadowColor = '#ff5a2a'; ctx.shadowBlur = 5;
+        ctx.fillStyle = ei % 3 === 0 ? '#ffd2a0' : '#ff7a4a'; ctx.shadowColor = '#ff5a2a'; ctx.shadowBlur = PERF.glow ? 5 : 0;
         ctx.fillRect(exx, eyy, em.s, em.s);
       }
       ctx.restore();
     }
 
-    /* Parallax ridgelines back-to-front */
-    for (var li = 0; li < this.layers.length; li++) this.drawRidge(ctx, li, W, H);
+    /* Parallax ridgelines back-to-front. Fast path: far layers + play ridge
+       come from one composite; per-layer path only during a lightning flash
+       (so the rim glow still lands on every layer). */
+    var rcKey = W + 'x' + H + ':' + VARIANT;
+    if (!this._rc || this._rcKey !== rcKey) { try { this.buildRidgeCache(W, H); } catch (e) { this._rc = null; this._rcKey = rcKey; } }
+    var flashing = this._wx && this._wx.flash > 0.03;
+    if (this._rcBack && !flashing) {
+      ctx.drawImage(this._rcBack, 0, 0, W, H);
+      this.drawGrass(ctx, W);
+      for (var li = this.playLayer + 1; li < this.layers.length; li++) this.drawRidge(ctx, li, W, H);
+    } else {
+      for (var li2 = 0; li2 < this.layers.length; li2++) this.drawRidge(ctx, li2, W, H);
+    }
 
     /* FIREFLIES above the play ridge (recon) */
     if (th.fireflies) {
@@ -1589,6 +1569,130 @@
       try { this.paintRidgeLayer(c, li, W, H); } catch (e) {}
       this._rc.push(cv);
     }
+    // composite the far layers through the play ridge into ONE stamp —
+    // three full-screen drawImages per frame become one (grass + the
+    // ground layer still draw on top in their original order).
+    this._rcBack = null;
+    try {
+      var okAll = this._rc.length > 0;
+      for (var bi = 0; bi <= this.playLayer; bi++) if (!this._rc[bi]) okAll = false;
+      if (okAll) {
+        var bk = document.createElement('canvas');
+        bk.width = this._rc[0].width; bk.height = this._rc[0].height;
+        var bc = bk.getContext('2d');
+        if (bc) {
+          for (var bj = 0; bj <= this.playLayer; bj++) bc.drawImage(this._rc[bj], 0, 0);
+          this._rcBack = bk;
+        }
+      }
+    } catch (e) { this._rcBack = null; }
+  };
+
+  /* grass sway on the play ridge — live (extracted so the composite fast
+     path can draw it between the back composite and the ground layer) */
+  Game.prototype.drawGrass = function (ctx, W) {
+    var th = TH(), li = this.playLayer;
+    if (!th.grass) return;
+    ctx.save();
+    ctx.strokeStyle = th.rimHi; ctx.lineWidth = 1; ctx.globalAlpha = 0.5;
+    var swayW = Math.sin((performance.now() / 1000) * 1.3) * 1.4;
+    for (var gx = 4; gx <= W; gx += 9) {
+      var h1 = hash1(gx * 0.37 + li * 9);
+      if (h1 < 0.42) continue;
+      var gy = this.ridgeY(li, gx);
+      if (!isFinite(gy)) continue;
+      var gh = 3 + h1 * 6;
+      ctx.beginPath(); ctx.moveTo(gx, gy + 1);
+      ctx.lineTo(gx + swayW * h1 + (h1 - 0.5) * 2, gy - gh);
+      ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  /* ---- static sky cache: gradient + starfield + nebula + moon, painted once ---- */
+  Game.prototype.ensureSkyCache = function (W, H, horizon) {
+    var key = W + 'x' + H + ':' + VARIANT;
+    if (this._sky && this._skyKey === key) return;
+    this._skyKey = key; this._sky = null;
+    try {
+      var th = TH();
+      var cv = document.createElement('canvas');
+      var dprC = Math.min(1.5, this.dpr || 1);
+      cv.width = Math.max(2, Math.round(W * dprC)); cv.height = Math.max(2, Math.round(H * dprC));
+      var c = cv.getContext('2d'); if (!c) return;
+      c.scale(dprC, dprC);
+
+      /* sky gradient */
+      var top = horizon - H * 1.2, bot = horizon + H * 0.5;
+      if (isFinite(top) && isFinite(bot) && bot > top) {
+        var g = c.createLinearGradient(0, top, 0, bot);
+        g.addColorStop(0, th.sky[0]); g.addColorStop(0.55, th.sky[1]);
+        g.addColorStop(0.86, th.sky[2]); g.addColorStop(1, th.sky[3]);
+        c.fillStyle = g;
+      } else { c.fillStyle = th.sky[1]; }
+      c.fillRect(0, 0, W, H);
+
+      /* starfield (mid-twinkle — a few live stars pulse on top per frame) */
+      for (var s = 0; s < 90; s++) {
+        var sxp = (((s * 149.3) % (W + 60)) + W + 60) % (W + 60) - 30;
+        var syp = ((s * 71.7) % Math.max(40, horizon)) * 0.8;
+        if (syp > horizon - 16 || !isFinite(sxp) || !isFinite(syp)) continue;
+        c.globalAlpha = (s % 9 === 0 ? 0.9 : 0.4) * 0.68 * (th.rain ? 0.45 : 1);
+        c.fillStyle = (s % 11 === 0) ? C.cyan : (th.embers && s % 6 === 0 ? '#ff9a6a' : C.faint);
+        var ss = (s % 13 === 0) ? 1.9 : 1.1;
+        c.fillRect(sxp, syp, ss, ss);
+      }
+      c.globalAlpha = 1;
+
+      /* nebula */
+      if (!th.rain) {
+        c.save(); c.globalCompositeOperation = 'lighter';
+        var nbc = th.embers ? '255,80,45' : '65,230,160';
+        var nbx = W * 0.24, nby = Math.max(30, horizon - H * 0.62);
+        var nb1 = c.createRadialGradient(nbx, nby, 0, nbx, nby, W * 0.3);
+        nb1.addColorStop(0, 'rgba(' + nbc + ',0.075)'); nb1.addColorStop(0.6, 'rgba(' + nbc + ',0.025)'); nb1.addColorStop(1, 'rgba(' + nbc + ',0)');
+        c.fillStyle = nb1; c.fillRect(0, 0, W, Math.max(0, horizon - 10));
+        var nb2 = c.createRadialGradient(W * 0.5, nby * 0.5, 0, W * 0.5, nby * 0.5, W * 0.2);
+        nb2.addColorStop(0, 'rgba(125,247,255,0.05)'); nb2.addColorStop(1, 'rgba(125,247,255,0)');
+        c.fillStyle = nb2; c.fillRect(0, 0, W, Math.max(0, horizon - 10));
+        c.restore();
+      }
+
+      /* moon — themed, with rings/craters/crescent (shadowBlur is fine here, paid once) */
+      var mr = Math.min(W, H) * th.moon.r;
+      var mx = W * 0.68, my = horizon - H * 0.31;
+      if (isFinite(mx) && isFinite(my)) {
+        c.save();
+        var mg = c.createRadialGradient(mx, my, 0, mx, my, mr * 3.8);
+        mg.addColorStop(0, th.moon.glow); mg.addColorStop(0.5, th.moon.glow.replace(/[\d.]+\)$/, '0.05)')); mg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = mg; c.beginPath(); c.arc(mx, my, mr * 3.8, 0, Math.PI * 2); c.fill();
+        var ringCol = th.ring || th.moon.rim, rTilt = -0.42;
+        var moonRing = function (rx2, ry2, lw2, al2, a0, a1) {
+          c.save(); c.globalAlpha = al2; c.strokeStyle = ringCol; c.lineWidth = lw2;
+          c.shadowColor = ringCol; c.shadowBlur = 8;
+          c.beginPath(); c.ellipse(mx, my, mr * rx2, mr * ry2, rTilt, a0, a1); c.stroke(); c.restore();
+        };
+        moonRing(1.95, 0.6, 3, 0.3, Math.PI, Math.PI * 2);
+        moonRing(2.3, 0.72, 1.5, 0.18, Math.PI, Math.PI * 2);
+        c.globalAlpha = 0.95; c.fillStyle = th.moon.body; c.shadowColor = th.moon.rim; c.shadowBlur = 26;
+        c.beginPath(); c.arc(mx, my, mr, 0, Math.PI * 2); c.fill();
+        c.shadowBlur = 0; c.globalAlpha = 0.7; c.strokeStyle = th.moon.rim; c.lineWidth = 1.3;
+        c.beginPath(); c.arc(mx, my, mr, 0, Math.PI * 2); c.stroke();
+        c.globalAlpha = 1; c.fillStyle = th.moon.crater;
+        c.beginPath(); c.arc(mx - mr * 0.3, my - mr * 0.18, mr * 0.22, 0, 6.28); c.fill();
+        c.beginPath(); c.arc(mx + mr * 0.34, my + 0.24 * mr, mr * 0.15, 0, 6.28); c.fill();
+        c.beginPath(); c.arc(mx + mr * 0.1, my - mr * 0.42, mr * 0.1, 0, 6.28); c.fill();
+        c.beginPath(); c.arc(mx - mr * 0.12, my + mr * 0.38, mr * 0.12, 0, 6.28); c.fill();
+        c.globalAlpha = 0.35; c.fillStyle = th.sky[0];
+        c.beginPath(); c.arc(mx + mr * 0.45, my - mr * 0.18, mr * 0.92, 0, 6.28); c.fill();
+        c.globalAlpha = 1;
+        moonRing(1.95, 0.6, 3.2, 0.55, 0, Math.PI);
+        moonRing(2.3, 0.72, 1.6, 0.32, 0, Math.PI);
+        moonRing(1.62, 0.5, 1.2, 0.4, 0, Math.PI);
+        c.restore();
+      }
+      this._sky = cv;
+    } catch (e) { this._sky = null; }
   };
 
   Game.prototype.ridgePath = function (c, li, W, H) {
@@ -1779,22 +1883,7 @@
     }
 
     /* live: grass sway on the play ridge */
-    if (th.grass && li === this.playLayer) {
-      ctx.save();
-      ctx.strokeStyle = th.rimHi; ctx.lineWidth = 1; ctx.globalAlpha = 0.5;
-      var swayW = Math.sin((performance.now() / 1000) * 1.3) * 1.4;
-      for (var gx = 4; gx <= W; gx += 9) {
-        var h1 = hash1(gx * 0.37 + li * 9);
-        if (h1 < 0.42) continue;
-        var gy = this.ridgeY(li, gx);
-        if (!isFinite(gy)) continue;
-        var gh = 3 + h1 * 6;
-        ctx.beginPath(); ctx.moveTo(gx, gy + 1);
-        ctx.lineTo(gx + swayW * h1 + (h1 - 0.5) * 2, gy - gh);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
+    if (li === this.playLayer) this.drawGrass(ctx, W);
   };
 
   Game.prototype.drawAgent = function (ctx, a) {
@@ -1815,7 +1904,7 @@
     ctx.lineWidth = Math.max(1, figH * 0.06);
     ctx.strokeStyle = col;
     ctx.fillStyle = col;
-    ctx.shadowColor = C.green; ctx.shadowBlur = 5;
+    ctx.shadowColor = C.green; ctx.shadowBlur = PERF.glow ? 5 : 0;
     ctx.globalAlpha = clamp(0.4 + pop * 0.6, 0, 1);
 
     if (a.dead) {
@@ -1826,7 +1915,7 @@
       // DRONE — diamond body + spinning rotor arms + scanning eye
       var dw = figH * 1.0;
       ctx.strokeStyle = a.flash > 0 ? C.amber : C.green; ctx.fillStyle = 'rgba(18,40,26,0.55)';
-      ctx.lineWidth = Math.max(1, figH * 0.07); ctx.shadowColor = C.green; ctx.shadowBlur = 7;
+      ctx.lineWidth = Math.max(1, figH * 0.07); ctx.shadowColor = C.green; ctx.shadowBlur = PERF.glow ? 7 : 0;
       ctx.beginPath();
       ctx.moveTo(0, -figH * 0.22); ctx.lineTo(dw * 0.42, 0); ctx.lineTo(0, figH * 0.22); ctx.lineTo(-dw * 0.42, 0); ctx.closePath();
       ctx.fill(); ctx.stroke();
@@ -1838,7 +1927,7 @@
         ctx.beginPath(); ctx.ellipse(0, 0, blur, 2.2, 0, 0, Math.PI * 2); ctx.stroke();
         ctx.restore();
       }
-      ctx.fillStyle = C.red; ctx.shadowColor = C.red; ctx.shadowBlur = 9;
+      ctx.fillStyle = C.red; ctx.shadowColor = C.red; ctx.shadowBlur = PERF.glow ? 9 : 0;
       ctx.beginPath(); ctx.arc(0, figH * 0.12, Math.max(1.5, figH * 0.07), 0, Math.PI * 2); ctx.fill();
     } else if (a.type === 'depot') {
       // fuel depot / vehicle box with tank + hazard mark
@@ -1914,17 +2003,19 @@
   };
 
   Game.prototype.drawTracers = function (ctx) {
+    if (!this.tracers.length) return;
+    var glow = PERF.glow;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.shadowColor = C.green;
+    var seg = function (x0, y0, x1, y1, w, col, al, blur) {
+      ctx.globalAlpha = al; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.shadowBlur = glow ? blur : 0;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    };
     for (var i = 0; i < this.tracers.length; i++) {
       var t = this.tracers[i];
       var a = clamp(1 - t.age / t.life, 0, 1);
       if (!isFinite(t.x0) || !isFinite(t.y0) || !isFinite(t.x1) || !isFinite(t.y1)) continue;
-      ctx.save();
-      ctx.lineCap = 'round';
-      ctx.shadowColor = C.green;
-      var seg = function (x0, y0, x1, y1, w, col, al, blur) {
-        ctx.globalAlpha = al; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.shadowBlur = blur;
-        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      };
       if (t.kind === 'double') {
         // MG: twin bolts — glow + hot white core
         seg(t.x0 - 3, t.y0, t.x1 - 1.5, t.y1, 2.6, C.green, a, 11);
@@ -1942,38 +2033,40 @@
         seg(t.x0, t.y0, t.x1, t.y1, 1.2, '#eafff2', a, 0);
       }
       // muzzle spark at the barrel
-      ctx.globalAlpha = a * 0.85; ctx.fillStyle = C.hi; ctx.shadowColor = C.green; ctx.shadowBlur = 12;
+      ctx.globalAlpha = a * 0.85; ctx.fillStyle = C.hi; ctx.shadowBlur = glow ? 12 : 0;
       ctx.beginPath(); ctx.arc(t.x0, t.y0, (t.kind === 'beam' ? 4.5 : 3) * a + 1, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
     }
+    ctx.restore();
   };
 
+  /* Particles/debris explode into the hundreds mid-fight — per-particle
+     shadowBlur + save/restore was the stutter. 'lighter' compositing gives
+     the same hot-glow look for a fraction of the cost. */
   Game.prototype.drawParticles = function (ctx) {
+    if (!this.particles.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
     for (var i = 0; i < this.particles.length; i++) {
       var p = this.particles[i];
       if (!isFinite(p.x) || !isFinite(p.y)) continue;
-      var a = clamp(1 - p.t / p.life, 0, 1);
-      ctx.save();
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = clamp(1 - p.t / p.life, 0, 1);
       ctx.fillStyle = p.color;
-      ctx.shadowColor = p.color; ctx.shadowBlur = 6;
       ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-      ctx.restore();
     }
+    ctx.restore();
   };
 
   Game.prototype.drawDebris = function (ctx) {
+    if (!this.debris.length) return;
+    ctx.save();
     for (var i = 0; i < this.debris.length; i++) {
       var d = this.debris[i];
       if (!isFinite(d.x) || !isFinite(d.y)) continue;
-      var a = clamp(1 - d.t / d.life, 0, 1);
-      ctx.save();
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = clamp(1 - d.t / d.life, 0, 1);
       ctx.fillStyle = d.color;
-      ctx.shadowColor = d.color; ctx.shadowBlur = 4;
       ctx.fillRect(d.x - d.size / 2, d.y - d.size / 2, d.size, d.size);
-      ctx.restore();
     }
+    ctx.restore();
   };
 
   Game.prototype.drawPopups = function (ctx) {
@@ -1997,14 +2090,9 @@
     var cx = this.aimX, cy = this.aimY, R = this.lensR;   // lens rides the moving aim point
     if (!isFinite(cx) || !isFinite(cy) || !isFinite(R) || R <= 0) return;
 
-    // Gentle full-screen edge vignette — NOT a hard mask; the whole scene stays visible.
-    var vig = ctx.createRadialGradient(W * 0.5, H * 0.5, Math.min(W, H) * 0.34, W * 0.5, H * 0.5, Math.max(W, H) * 0.74);
-    if (vig) {
-      vig.addColorStop(0, 'rgba(2,8,5,0)');
-      vig.addColorStop(0.7, 'rgba(2,8,5,0.12)');
-      vig.addColorStop(1, 'rgba(2,8,5,0.6)');
-      ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
-    }
+    // Gentle full-screen edge vignette — NOT a hard mask; baked once in ensureFxCache.
+    this.ensureFxCache(W, H);
+    if (this._vig) ctx.drawImage(this._vig, 0, 0, W, H);
 
     // faint "glass" darkening just inside the small scope so the aim area reads as a lens
     var lens = ctx.createRadialGradient(cx, cy, R * 0.2, cx, cy, R);
@@ -2129,17 +2217,16 @@
   };
 
   Game.prototype.drawBlooms = function (ctx) {
+    if (!this.blooms.length) return;
+    var wash = 0;
+    ctx.save();
     for (var i = 0; i < this.blooms.length; i++) {
       var b = this.blooms[i];
       var t = clamp(b.t / b.life, 0, 1);
       var r = lerp(b.r0, b.r1, ease(t));
       var a = (1 - t);
       if (!isFinite(b.x) || !isFinite(b.y) || !isFinite(r) || r <= 0) continue;
-      ctx.save();
-      // full-screen wash
-      ctx.globalAlpha = a * 0.25;
-      ctx.fillStyle = C.hi;
-      ctx.fillRect(0, 0, this.W, this.H);
+      if (a > wash) wash = a;
       ctx.globalAlpha = 1;
       var gg = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
       gg.addColorStop(0, 'rgba(220,255,235,' + (a * 0.8) + ')');
@@ -2148,8 +2235,10 @@
       gg.addColorStop(1, 'rgba(255,107,90,0)');
       ctx.fillStyle = gg;
       ctx.fillRect(b.x - r, b.y - r, r * 2, r * 2);
-      ctx.restore();
     }
+    // one full-screen wash at the strongest bloom (was one per bloom)
+    if (wash > 0) { ctx.globalAlpha = wash * 0.25; ctx.fillStyle = C.hi; ctx.fillRect(0, 0, this.W, this.H); }
+    ctx.restore();
   };
 
   /* Expanding shockwave rings from kills & explosions. */
@@ -2164,7 +2253,7 @@
       ctx.globalAlpha = a * 0.8;
       ctx.strokeStyle = rn.col || C.green;
       ctx.lineWidth = Math.max(0.5, (rn.lw || 2) * (1 - t * 0.6));
-      ctx.shadowColor = rn.col || C.green; ctx.shadowBlur = 8;
+      ctx.shadowColor = rn.col || C.green; ctx.shadowBlur = PERF.glow ? 8 : 0;
       ctx.beginPath(); ctx.arc(rn.x, rn.y, r, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
@@ -2541,22 +2630,47 @@
   };
 
   /* CRT scanlines + outer vignette overlay. */
-  Game.prototype.drawCRT = function (ctx, W, H) {
-    ctx.save();
-    ctx.globalAlpha = 0.06;
-    ctx.fillStyle = '#000';
-    for (var y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
-    ctx.restore();
-    // subtle outer vignette
-    var r0 = Math.min(W, H) * 0.35, r1 = Math.max(W, H) * 0.7;
-    if (isFinite(r0) && isFinite(r1) && r1 > 0) {
-      var vg = ctx.createRadialGradient(W / 2, H / 2, r0, W / 2, H / 2, r1);
-      if (vg) {
-        vg.addColorStop(0, 'rgba(0,0,0,0)');
-        vg.addColorStop(1, 'rgba(0,0,0,0.5)');
-        ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  /* CRT scanlines + vignettes are static per size — bake them once, stamp per frame
+     (was ~300 fillRects + 2 fresh gradients every frame). */
+  Game.prototype.ensureFxCache = function (W, H) {
+    var key = W + 'x' + H + ':' + (this.dpr || 1);
+    if (this._fxKey === key && this._vig && this._crt) return;
+    this._fxKey = key; this._vig = null; this._crt = null;
+    try {
+      var dprC = Math.min(2, this.dpr || 1);
+      var pw = Math.max(2, Math.round(W * dprC)), ph = Math.max(2, Math.round(H * dprC));
+      // screen-centered scene vignette (was rebuilt per frame in drawScopeBody)
+      var v = document.createElement('canvas'); v.width = pw; v.height = ph;
+      var vc = v.getContext('2d');
+      if (vc) {
+        vc.scale(dprC, dprC);
+        var vig = vc.createRadialGradient(W * 0.5, H * 0.5, Math.min(W, H) * 0.34, W * 0.5, H * 0.5, Math.max(W, H) * 0.74);
+        vig.addColorStop(0, 'rgba(2,8,5,0)'); vig.addColorStop(0.7, 'rgba(2,8,5,0.12)'); vig.addColorStop(1, 'rgba(2,8,5,0.6)');
+        vc.fillStyle = vig; vc.fillRect(0, 0, W, H);
+        this._vig = v;
       }
-    }
+      // CRT scanlines + outer vignette
+      var k = document.createElement('canvas'); k.width = pw; k.height = ph;
+      var kc = k.getContext('2d');
+      if (kc) {
+        kc.scale(dprC, dprC);
+        kc.globalAlpha = 0.06; kc.fillStyle = '#000';
+        for (var y = 0; y < H; y += 3) kc.fillRect(0, y, W, 1);
+        kc.globalAlpha = 1;
+        var r0 = Math.min(W, H) * 0.35, r1 = Math.max(W, H) * 0.7;
+        if (isFinite(r0) && isFinite(r1) && r1 > 0) {
+          var vg = kc.createRadialGradient(W / 2, H / 2, r0, W / 2, H / 2, r1);
+          vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.5)');
+          kc.fillStyle = vg; kc.fillRect(0, 0, W, H);
+        }
+        this._crt = k;
+      }
+    } catch (e) { this._vig = null; this._crt = null; }
+  };
+
+  Game.prototype.drawCRT = function (ctx, W, H) {
+    this.ensureFxCache(W, H);
+    if (this._crt) ctx.drawImage(this._crt, 0, 0, W, H);
   };
 
   /* ==================================================================== *
@@ -2566,13 +2680,28 @@
     if (!this.running) return;
     var self = this;
     if (!this.lastT) this.lastT = t;
-    var dt = (t - this.lastT) / 1000;
+    var rawDt = (t - this.lastT) / 1000;
     this.lastT = t;
-    if (!isFinite(dt)) dt = 0;
-    dt = Math.min(0.05, Math.max(0, dt));
+    if (!isFinite(rawDt)) rawDt = 0;
+    var dt = Math.min(0.05, Math.max(0, rawDt));
 
     try { this.update(dt); } catch (e) { /* keep running */ }
     try { this.render(); } catch (e) { try { this.ctx.restore(); } catch (e2) {} }
+
+    // ---- adaptive quality governor ----
+    // Rolling average of the real frame interval; if the device can't hold
+    // ~40fps, step down: 1) drop glow, 2) render at 85%, 3) render at 70%.
+    // Steps down only (no oscillation); resets on next open().
+    if (rawDt > 0 && rawDt < 0.5) {
+      this._ema = this._ema ? (this._ema * 0.92 + rawDt * 0.08) : rawDt;
+      this._govT = (this._govT || 0) + rawDt;
+      if (this._govT > 2 && this._ema > 0.025 && (this._stage || 0) < 3) {
+        this._stage = (this._stage || 0) + 1;
+        this._govT = 0; this._ema = 0;
+        if (this._stage === 1) { PERF.glow = false; }
+        else { this.perfScale = this._stage === 2 ? 0.85 : 0.7; this.fit(); }
+      }
+    }
 
     this.rafId = requestAnimationFrame(function (tt) { self.loop(tt); });
   };
@@ -2599,7 +2728,7 @@
       if (self.previewCanvas !== canvasEl) return; // remounted elsewhere
       if (!document.body.contains(canvasEl)) { self.previewRAF = 0; return; }
       self.previewRAF = requestAnimationFrame(frame);
-      if (document.hidden || self._pvVis === false) { last = t; return; } // pause when hidden / scrolled offscreen
+      if (document.hidden || self._pvVis === false || window.CC_GAME_OPEN) { last = t; return; } // pause when hidden / offscreen / fullscreen game running
       if (t - pvLast < 33) return; pvLast = t;     // ~30fps
       if (!last) last = t;
       var dt = Math.min(0.05, Math.max(0, (t - last) / 1000)); last = t;

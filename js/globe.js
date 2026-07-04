@@ -402,7 +402,7 @@ let gVis=true,gLast=0;
 try{if('IntersectionObserver' in window)new IntersectionObserver(es=>{gVis=es[0].isIntersecting;},{rootMargin:'140px'}).observe(cv);}catch(e){}
 function draw(ms){
   requestAnimationFrame(draw);
-  if(document.hidden||!gVis)return;
+  if(document.hidden||!gVis||window.CC_GAME_OPEN)return;
   if(ms&&ms-gLast<FRAME_MS)return;
   const dtn=gLast?Math.max(0.25,Math.min(2.5,(ms-gLast)/32)):1;   // motion normalized to the old 30fps step
   gLast=ms||gLast;
