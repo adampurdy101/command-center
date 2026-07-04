@@ -297,7 +297,6 @@
     this.buildTerrain();
 
     /* ----- controls runtime ----- */
-    this.stick = { active: false, id: -1, cx: 0, cy: 0, dx: 0, dy: 0, R: 64, homeX: 0, homeY: 0 };
     this.fireBtn = { active: false, id: -1, x: 0, y: 0, r: 0 };
     this.zoomSlider = { dragging: false, id: -1, x: 0, y: 0, w: 0, h: 0 };
     this.pinch = { active: false, ids: [], startDist: 0, startZoom: 0 };
@@ -469,13 +468,8 @@
     this.aimX = clamp(this.aimX, W * 0.05, W * 0.95);
     this.aimY = clamp(this.aimY, H * 0.06, H * 0.86);
 
-    // Control geometry (landscape, two thumbs)
+    // Control geometry (landscape — drag anywhere to aim, fire under the right thumb)
     var pad = Math.max(18, Math.min(W, H) * 0.05);
-    // Joystick bottom-left
-    this.stick.R = clamp(Math.min(W, H) * 0.13, 50, 92);
-    this.stick.homeX = pad + this.stick.R;
-    this.stick.homeY = H - pad - this.stick.R;
-    if (!this.stick.active) { this.stick.cx = this.stick.homeX; this.stick.cy = this.stick.homeY; this.stick.dx = 0; this.stick.dy = 0; }
 
     // Fire button bottom-right
     this.fireBtn.r = clamp(Math.min(W, H) * 0.115, 44, 84);
@@ -510,7 +504,7 @@
     var block = portrait && this.isTouchDevice();
     this.portraitBlocked = block;
     this.rotateGate.style.display = block ? 'flex' : 'none';
-    if (block) { this.firing = false; this.stick.active = false; this.stick.dx = 0; this.stick.dy = 0; }
+    if (block) { this.firing = false; }
   };
 
   /* ------------------------------------------------------------------ *
@@ -576,7 +570,7 @@
     window.removeEventListener('keydown', this._onKey);
     this.canvas.removeEventListener('wheel', this._onWheel);
     this.activePointers = {};
-    this.stick.active = false; this.fireBtn.active = false; this.zoomSlider.dragging = false;
+    this.fireBtn.active = false; this.zoomSlider.dragging = false;
     this.pinch.active = false;
   };
 
@@ -1002,7 +996,7 @@
   };
 
   /* ------------------------------------------------------------------ *
-   * POINTER HANDLERS — joystick, fire, zoom slider, UI buttons, pinch.
+   * POINTER HANDLERS — drag-anywhere aim, fire, zoom slider, UI buttons, pinch.
    * ------------------------------------------------------------------ */
   Game.prototype.onPointerDown = function (e) {
     e.preventDefault();
@@ -1049,17 +1043,7 @@
       return;
     }
 
-    // Joystick — activate if pressed anywhere in left-bottom region.
-    if (x < this.W * 0.5 && y > this.H * 0.4) {
-      this.stick.active = true; this.stick.id = id;
-      this.stick.cx = this.stick.homeX; this.stick.cy = this.stick.homeY;
-      this.stick.dx = 0; this.stick.dy = 0;
-      this.activePointers[id].role = 'stick';
-      this.updateStick(x, y);
-      return;
-    }
-
-    // Otherwise — treat as a free aim drag on the world (right area) = pan.
+    // Otherwise — anywhere on screen is a free aim drag: grab and slide the reticle.
     this.activePointers[id].role = 'drag';
     this.activePointers[id].lastX = x;
     this.activePointers[id].lastY = y;
@@ -1084,7 +1068,6 @@
       return;
     }
 
-    if (p.role === 'stick') { this.updateStick(x, y); return; }
     if (p.role === 'zoom') { this.setZoomFromSlider(y); return; }
     if (p.role === 'drag') {
       var dx = x - p.lastX, dy = y - p.lastY;
@@ -1101,7 +1084,6 @@
     var p = this.activePointers[id];
     try { this.canvas.releasePointerCapture(id); } catch (err) {}
     if (p) {
-      if (p.role === 'stick') { this.stick.active = false; this.stick.dx = 0; this.stick.dy = 0; }
       if (p.role === 'zoom') { this.zoomSlider.dragging = false; }
       if (p.role === 'fire') { this.fireBtn.active = false; this.firing = false; }
     }
@@ -1111,17 +1093,6 @@
       var ids = Object.keys(this.activePointers);
       if (ids.length < 2) this.pinch.active = false;
     }
-  };
-
-  Game.prototype.updateStick = function (x, y) {
-    var dx = x - this.stick.homeX, dy = y - this.stick.homeY;
-    var d = Math.hypot(dx, dy);
-    var R = this.stick.R || 1;
-    if (d > R) { dx = dx / d * R; dy = dy / d * R; }
-    this.stick.cx = this.stick.homeX + dx;
-    this.stick.cy = this.stick.homeY + dy;
-    this.stick.dx = R ? dx / R : 0; // -1..1
-    this.stick.dy = R ? dy / R : 0;
   };
 
   Game.prototype.setZoomFromSlider = function (y) {
@@ -1160,10 +1131,10 @@
     this.zoom += (this.zoomTarget - this.zoom) * Math.min(1, rdt * 9);
     this.zoom = clamp(fin(this.zoom, 6), 2, 12);
 
-    // Joystick slews the AIM RETICLE across the FIXED scene. Snappy; eases off a touch at high zoom.
+    // Keyboard (WASD/arrows) slews the AIM RETICLE; touch drags it directly in onPointerMove.
     var aimSpeed = Math.max(W, H) * (2.45 - clamp(this.zoom, 2, 12) * 0.07);
-    var ix = this.stick.active ? this.stick.dx : (this.panVX || 0);
-    var iy = this.stick.active ? this.stick.dy : (this.panVY || 0);
+    var ix = this.panVX || 0;
+    var iy = this.panVY || 0;
     // mild curve: a little fine control near center, quick toward the edge (not the old sluggish floor)
     var resp = function (v) { var s = Math.sign(v), a = Math.min(1, Math.abs(v)); return s * Math.pow(a, 1.25); };
     this.aimX = clamp(fin(this.aimX + resp(ix) * aimSpeed * rdt, this.aimX), W * 0.05, W * 0.95);
@@ -2335,7 +2306,7 @@
   };
 
   /* ------------------------------------------------------------------ *
-   * CONTROLS — joystick, fire, zoom slider, gun-select, +/- zoom.
+   * CONTROLS — fire, zoom slider, gun-select, +/- zoom (aim = drag anywhere).
    * Also (re)populates this.uiHotspots for hit-testing.
    * ------------------------------------------------------------------ */
   Game.prototype.drawControls = function (ctx, W, H) {
@@ -2343,7 +2314,7 @@
     var self = this;
     var pad = Math.max(18, Math.min(W, H) * 0.05);
 
-    /* ---- Gun-select buttons (bottom-center cluster, above stick area) ---- */
+    /* ---- Gun-select buttons (bottom-center cluster) ---- */
     var keys = ['rifle', 'mg', 'minigun'];
     var gbW = clamp(W * 0.12, 78, 120), gbH = clamp(Math.min(W, H) * 0.06, 44, 54), gap = 8;
     var gx0 = W * 0.5 - (gbW * 3 + gap * 2) / 2;
@@ -2388,9 +2359,6 @@
 
     /* ---- Zoom slider (right edge, above fire) ---- */
     this.drawZoomSlider(ctx);
-
-    /* ---- Joystick (bottom-left) ---- */
-    this.drawJoystick(ctx);
 
     /* ---- Fire button (bottom-right) ---- */
     this.drawFireButton(ctx);
@@ -2457,35 +2425,6 @@
     ctx.shadowBlur = 0;
     ctx.fillStyle = C.dim; ctx.font = '9px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.fillText('ZOOM', zs.x + zs.w / 2, zs.y - 6);
-    ctx.restore();
-  };
-
-  Game.prototype.drawJoystick = function (ctx) {
-    var s = this.stick;
-    if (!isFinite(s.homeX) || !isFinite(s.homeY) || !(s.R > 0)) return;
-    ctx.save();
-    // base ring
-    ctx.beginPath(); ctx.arc(s.homeX, s.homeY, s.R, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(8,18,12,0.5)';
-    ctx.fill();
-    ctx.strokeStyle = C.faint; ctx.lineWidth = 1.4; ctx.globalAlpha = 0.8; ctx.stroke();
-    // cross guide
-    ctx.globalAlpha = 0.3; ctx.strokeStyle = C.dim; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(s.homeX - s.R, s.homeY); ctx.lineTo(s.homeX + s.R, s.homeY); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(s.homeX, s.homeY - s.R); ctx.lineTo(s.homeX, s.homeY + s.R); ctx.stroke();
-    ctx.globalAlpha = 1;
-    // knob
-    var kx = s.active ? s.cx : s.homeX, ky = s.active ? s.cy : s.homeY;
-    ctx.beginPath(); ctx.arc(kx, ky, s.R * 0.42, 0, Math.PI * 2);
-    ctx.fillStyle = s.active ? 'rgba(65,255,126,0.28)' : 'rgba(20,40,26,0.7)';
-    ctx.fill();
-    ctx.strokeStyle = s.active ? C.green : C.dim; ctx.lineWidth = 2;
-    ctx.shadowColor = C.green; ctx.shadowBlur = s.active ? 10 : 4;
-    ctx.stroke();
-    // label
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = C.dim; ctx.font = '10px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    ctx.fillText('AIM', s.homeX, s.homeY + s.R + 6);
     ctx.restore();
   };
 
