@@ -44,8 +44,6 @@
   #hub #globe { touch-action: pan-y; }
   /* avoid the corner caption labels colliding on a narrow globe */
   #hub .globe-wrap .lab2 { display: none; }
-  /* drop the redundant "HOME · RENTON" chip on phones (weather station styling in mission.css) */
-  #hub .globe-wrap .wxchips .wxchips-home { display: none; }
 
   /* heartbeat: on phones show the inline pulse after the title, hide the bigger
      one by SYSTEM ONLINE to keep the header tidy */

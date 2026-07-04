@@ -180,11 +180,11 @@ function issPos(){
 
 /* USGS seismic feed (M2.5+, last 24h) + readout chip */
 let quakes=[];
-(function(){const chips=document.querySelector('.globe-wrap .wxchips')||document.querySelector('.globe-wrap .readout');
-  if(chips&&!document.getElementById('seis')){const s=document.createElement('span');
+(function(){const foot=document.querySelector('.globe-wrap .wxfoot')||document.querySelector('.globe-wrap .readout');
+  if(foot&&!document.getElementById('seis')){const s=document.createElement('span');
     s.id='seis';s.className='wx';s.textContent='SEIS —';
-    // land it between ZOOM and HOME in the chips row (or before the last child on the old layout)
-    chips.insertBefore(s,chips.lastElementChild);}})();
+    // land it between ZOOM and the moon in the footer telemetry line
+    foot.insertBefore(s,foot.lastElementChild);}})();
 function pollQuakes(){if(document.hidden)return;
   fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson')
     .then(r=>r.json()).then(g=>{const f=g.features||[];let mx=0;

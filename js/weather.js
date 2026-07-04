@@ -24,8 +24,11 @@
   var started = false;
 
   /* ---------- tiny DOM helpers ---------- */
-  function cell(city, f) { return document.querySelector('.wxcity[data-city="' + city + '"] [data-f="' + f + '"]'); }
-  function set(city, f, txt) { var el = cell(city, f); if (el && txt != null) el.textContent = txt; }
+  // a field (temp / sym / clock) can appear in BOTH the collapsed pin face and
+  // the expanded card, so update every matching node, not just the first.
+  function cells(city, f) { return document.querySelectorAll('[data-city="' + city + '"] [data-f="' + f + '"]'); }
+  function cell(city, f) { return cells(city, f)[0] || null; }
+  function set(city, f, txt) { if (txt == null) return; var els = cells(city, f); for (var i = 0; i < els.length; i++) els[i].textContent = txt; }
 
   /* ---------- formatting ---------- */
   function wxSymbol(code) {
@@ -166,26 +169,34 @@
     return null;
   }
 
-  /* ---------- render: sun times + golden-hour countdown (on tick) ---------- */
+  /* ---------- render: sun times + golden-hour countdown + collapsed "next" (on tick) ---------- */
   function renderSun(s) {
     var snap = data[s.city]; if (!snap || !snap.fc || !snap.fc.daily) return;
     var fc = snap.fc, d = fc.daily, off = fc.utc_offset_seconds || 0, now = Date.now();
     var riseISO = d.sunrise && d.sunrise[0], setISO = d.sunset && d.sunset[0];
     set(s.city, "rise", "↑ " + fmtClockISO(riseISO));
     set(s.city, "set", "↓ " + fmtClockISO(setISO));
-    var gold = cell(s.city, "gold"); if (!gold) return;
-    gold.classList.remove("now");
     var setInst = isoToInstant(setISO, off), riseInst = isoToInstant(riseISO, off);
+    var rise2ISO = d.sunrise && d.sunrise[1];
+
+    // collapsed pin face: the NEXT sun event (↓ sunset while it's still ahead, else ↑ next sunrise)
+    if (riseInst && now < riseInst) set(s.city, "next", "↑ " + fmtClockISO(riseISO));
+    else if (setInst && now < setInst) set(s.city, "next", "↓ " + fmtClockISO(setISO));
+    else set(s.city, "next", "↑ " + fmtClockISO(rise2ISO || riseISO));
+
+    // expanded card: golden-hour countdown (may be several gold nodes)
+    var golds = cells(s.city, "gold"), txt, isGold = false;
     if (riseInst && now < riseInst) {
-      gold.textContent = "🌙 sunrise in " + human(riseInst - now);
+      txt = "🌙 sunrise in " + human(riseInst - now);
     } else if (setInst && now < setInst) {
       var ms = setInst - now;
-      if (ms <= 3600000) { gold.classList.add("now"); gold.textContent = "✦ golden hour · " + human(ms) + " left"; }
-      else gold.textContent = "⏳ " + human(ms) + " to sunset";
+      if (ms <= 3600000) { isGold = true; txt = "✦ golden hour · " + human(ms) + " left"; }
+      else txt = "⏳ " + human(ms) + " to sunset";
     } else {
-      var rise2 = d.sunrise && d.sunrise[1] ? isoToInstant(d.sunrise[1], off) : null;
-      gold.textContent = rise2 ? ("🌙 night · sunrise in " + human(rise2 - now)) : "🌙 after sunset";
+      var rise2 = rise2ISO ? isoToInstant(rise2ISO, off) : null;
+      txt = rise2 ? ("🌙 night · sunrise in " + human(rise2 - now)) : "🌙 after sunset";
     }
+    for (var i = 0; i < golds.length; i++) { golds[i].textContent = txt; golds[i].classList.toggle("now", isGold); }
   }
 
   /* ---------- render: moon + Pattaya clock (on tick) ---------- */
@@ -200,19 +211,75 @@
     var homeSpot = null; for (var i = 0; i < SPOTS.length; i++) if (SPOTS[i].city === HOME) homeSpot = SPOTS[i];
     var homeOff = homeSpot ? offsetMin(homeSpot.tz, now) : 0;
     SPOTS.forEach(function (s) {
-      var el = cell(s.city, "clock"); if (!el) return;
-      if (s.city === HOME) { el.textContent = ""; return; }
+      if (s.city === HOME) { set(s.city, "clock", ""); return; }
       var gap = Math.round((offsetMin(s.tz, now) - homeOff) / 60);
-      el.textContent = cityClock(s.tz, now) + " · " + (gap >= 0 ? "+" : "−") + Math.abs(gap) + "h";
+      set(s.city, "clock", cityClock(s.tz, now) + " · " + (gap >= 0 ? "+" : "−") + Math.abs(gap) + "h");
     });
   }
 
   function tick() { SPOTS.forEach(renderSun); renderMoon(); renderClock(); }
   function loadAll() { SPOTS.forEach(fetchCity); }
 
+  /* ---------- corner-pin interaction: hover-peek + click-pin (desktop) / tap (touch) ---------- */
+  function wirePins() {
+    var pins = document.querySelectorAll(".wxpin");
+    if (!pins.length) return;
+    var COARSE = false;
+    try { COARSE = window.matchMedia && window.matchMedia("(pointer:coarse)").matches; } catch (e) {}
+
+    function openPin(pin, pinned) {
+      pin.classList.add("open");
+      pin.classList.toggle("pinned", !!pinned);
+      var f = pin.querySelector(".wxpin-face"); if (f) f.setAttribute("aria-expanded", "true");
+    }
+    function closePin(pin) {
+      pin.classList.remove("open", "pinned");
+      if (pin._t) { clearTimeout(pin._t); pin._t = null; }
+      var f = pin.querySelector(".wxpin-face"); if (f) f.setAttribute("aria-expanded", "false");
+    }
+    function closeAll(except) { for (var i = 0; i < pins.length; i++) if (pins[i] !== except) closePin(pins[i]); }
+
+    pins.forEach(function (pin) {
+      var face = pin.querySelector(".wxpin-face"); if (!face) return;
+
+      if (!COARSE) {
+        // desktop: hover peeks open, click pins
+        pin.addEventListener("mouseenter", function () {
+          if (pin._t) { clearTimeout(pin._t); pin._t = null; }
+          if (!pin.classList.contains("pinned")) pin._t = setTimeout(function () { pin.classList.add("open"); }, 80);
+        });
+        pin.addEventListener("mouseleave", function () {
+          if (pin._t) { clearTimeout(pin._t); pin._t = null; }
+          if (!pin.classList.contains("pinned")) pin._t = setTimeout(function () { pin.classList.remove("open"); }, 170);
+        });
+        face.addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (pin.classList.contains("pinned")) closePin(pin);
+          else { closeAll(pin); openPin(pin, true); }
+        });
+      } else {
+        // touch: tap toggles open (pinned), one at a time
+        face.addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (pin.classList.contains("open")) closePin(pin);
+          else { closeAll(pin); openPin(pin, true); }
+        });
+      }
+    });
+
+    // tap / click anywhere that isn't a pin closes any open card (incl. globe drag start)
+    document.addEventListener("pointerdown", function (e) {
+      if (e.target && e.target.closest && e.target.closest(".wxpin")) return;
+      closeAll(null);
+    }, true);
+    // logout / leaving the hub tidies any open card
+    document.addEventListener("hub:left", function () { closeAll(null); });
+  }
+
   function start() {
-    if (started || !document.querySelector(".wxstation")) return;
+    if (started || !document.querySelector(".wxpin")) return;
     started = true;
+    wirePins();
     renderMoon(); renderClock();     // instant paint of the local-only bits
     loadAll();
     setInterval(loadAll, 10 * 60 * 1000);

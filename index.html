@@ -143,25 +143,30 @@
             <canvas id="globe"></canvas>
             <div class="continent" id="continent"></div>
             <div class="readout" id="readout">
-              <div class="wxstation" id="wxstation" aria-live="polite">
-                <div class="wxcity" data-city="renton">
-                  <div class="wxc-h"><b class="wxc-name">RENTON</b><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span></div>
-                  <div class="wxc-r"><span data-f="feel">feels —</span><span data-f="hum">💧 —</span><span data-f="wind">🌬 —</span></div>
-                  <div class="wxc-r"><span data-f="uv">☀ UV —</span><span data-f="aqi">AQI —</span></div>
-                  <div class="wxc-r wxc-sun"><span data-f="rise">↑ —</span><span data-f="set">↓ —</span><span class="wxc-gold" data-f="gold"></span></div>
-                </div>
-                <div class="wxcity" data-city="pattaya">
-                  <div class="wxc-h"><b class="wxc-name">PATTAYA</b><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span><span class="wxc-clock" data-f="clock"></span></div>
+              <!-- corner weather pins: collapsed badge -> hover-peek / click-pin / tap-open full card -->
+              <div class="wxpin" data-city="renton" data-side="left">
+                <button class="wxpin-face" type="button" aria-expanded="false" aria-label="Renton weather — expand">
+                  <span class="wxp-name">RENTON</span><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span><span class="wxc-next" data-f="next">↓ —</span>
+                </button>
+                <div class="wxpin-card" role="group" aria-label="Renton weather detail">
+                  <div class="wxpc-h"><b>RENTON · WA</b><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span></div>
                   <div class="wxc-r"><span data-f="feel">feels —</span><span data-f="hum">💧 —</span><span data-f="wind">🌬 —</span></div>
                   <div class="wxc-r"><span data-f="uv">☀ UV —</span><span data-f="aqi">AQI —</span></div>
                   <div class="wxc-r wxc-sun"><span data-f="rise">↑ —</span><span data-f="set">↓ —</span><span class="wxc-gold" data-f="gold"></span></div>
                 </div>
               </div>
-              <div class="wxmoon" id="wxmoon">🌙 —</div>
-              <div class="wxchips">
-                <span id="zoomr">ZOOM 1.0×</span>
-                <span class="wxchips-home">HOME · RENTON</span>
+              <div class="wxpin" data-city="pattaya" data-side="right">
+                <button class="wxpin-face" type="button" aria-expanded="false" aria-label="Pattaya weather — expand">
+                  <span class="wxp-name">PATTAYA</span><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span><span class="wxc-next" data-f="next">↓ —</span><span class="wxc-clock" data-f="clock"></span>
+                </button>
+                <div class="wxpin-card" role="group" aria-label="Pattaya weather detail">
+                  <div class="wxpc-h"><b>PATTAYA · TH</b><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span><span class="wxc-clock" data-f="clock"></span></div>
+                  <div class="wxc-r"><span data-f="feel">feels —</span><span data-f="hum">💧 —</span><span data-f="wind">🌬 —</span></div>
+                  <div class="wxc-r"><span data-f="uv">☀ UV —</span><span data-f="aqi">AQI —</span></div>
+                  <div class="wxc-r wxc-sun"><span data-f="rise">↑ —</span><span data-f="set">↓ —</span><span class="wxc-gold" data-f="gold"></span></div>
+                </div>
               </div>
+              <div class="wxfoot" id="wxfoot"><span id="zoomr">ZOOM 1.0×</span><span class="wxmoon" id="wxmoon">🌙 —</span></div>
             </div>
           </div>
         </div>
