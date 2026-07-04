@@ -304,6 +304,10 @@
     this.buildTerrain();
 
     /* ----- controls runtime ----- */
+    // Touch aim sensitivity: the reticle travels this many times farther than
+    // the finger, so a short drag crosses the whole screen (like turning mouse
+    // sensitivity up high). 1 = 1:1. Bump toward 3 for even less reach needed.
+    this.aimSens = 2.4;
     this.fireBtn = { active: false, id: -1, x: 0, y: 0, r: 0 };
     this.zoomSlider = { dragging: false, id: -1, x: 0, y: 0, w: 0, h: 0 };
     this.pinch = { active: false, ids: [], startDist: 0, startZoom: 0 };
@@ -1089,9 +1093,12 @@
 
     if (p.role === 'zoom') { this.setZoomFromSlider(y); return; }
     if (p.role === 'drag') {
-      var dx = x - p.lastX, dy = y - p.lastY;
+      // Touch: amplify the finger delta so a small drag sweeps the reticle far
+      // (mouse-drag on desktop stays 1:1 — a mouse is already precise).
+      var sens = (e.pointerType === 'touch') ? (this.aimSens || 1) : 1;
+      var dx = (x - p.lastX) * sens, dy = (y - p.lastY) * sens;
       p.lastX = x; p.lastY = y;
-      // drag the reticle directly across the fixed scene
+      // drag the reticle across the fixed scene
       this.aimX = clamp(fin(this.aimX + dx, this.aimX), this.W * 0.05, this.W * 0.95);
       this.aimY = clamp(fin(this.aimY + dy, this.aimY), this.H * 0.06, this.H * 0.86);
       return;
