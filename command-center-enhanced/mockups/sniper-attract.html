@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sniper Scope — Final Attract Screen</title>
+<style>
+  :root{ --g:#41ff7e; --hi:#7dffb0; --dim:#2bd964; --faint:#1c8f46; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:#04080a; color:var(--dim); font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; padding:26px 22px 44px; }
+  h1{ color:var(--hi); font-size:16px; letter-spacing:3px; margin:0 0 4px; }
+  .sub{ color:var(--faint); font-size:11px; letter-spacing:1px; margin-bottom:24px; }
+  .tag{ color:var(--g); font-size:12px; letter-spacing:2px; margin:0 0 7px; }
+  .frame{ border:1px solid #163e26; border-radius:8px; overflow:hidden; display:inline-block;
+    box-shadow:0 0 0 1px rgba(65,255,126,.05), 0 14px 30px rgba(0,0,0,.5); background:#020705; }
+  #big{ width:819px; height:182px; display:block; }
+  #real{ width:585px; height:130px; display:block; }
+  .row{ margin-bottom:26px; }
+</style>
+</head>
+<body>
+  <h1>SNIPER SCOPE // OVERWATCH — ATTRACT SCREEN</h1>
+  <div class="sub">Overwatch splash + hunting reticle + target-acquired + radar. Explosions kept; box-flash removed.</div>
+
+  <div class="row">
+    <div class="tag">ENLARGED (1.4×)</div>
+    <div class="frame"><canvas id="big"></canvas></div>
+  </div>
+  <div class="row">
+    <div class="tag">ACTUAL PANEL SIZE (585 × 130)</div>
+    <div class="frame"><canvas id="real"></canvas></div>
+  </div>
+
+<script>
+const C = { g:'#41ff7e', hi:'#7dffb0', dim:'#2bd964', faint:'#1c8f46', amb:'#ffd24a', red:'#ff6b5a', cyan:'#7df7ff' };
+const TAU = Math.PI*2;
+function rnd(a,b){ return a + Math.random()*(b-a); }
+function ridgeY(x, seed, baseY, amp, h){
+  const n = Math.sin(x*0.0075 + seed)*0.55 + Math.sin(x*0.019 + seed*1.7)*0.3 + Math.sin(x*0.045 + seed*2.6)*0.15;
+  return baseY*h - n*amp*h;
+}
+function drawRidge(ctx,w,h,seed,baseY,amp,fill,alpha){
+  ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle=fill; ctx.beginPath(); ctx.moveTo(0,h);
+  for(let x=0;x<=w;x+=4) ctx.lineTo(x, ridgeY(x,seed,baseY,amp,h));
+  ctx.lineTo(w,h); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function sky(ctx,w,h){
+  const gr = ctx.createLinearGradient(0,0,0,h);
+  gr.addColorStop(0,'#02100b'); gr.addColorStop(0.55,'#04160e'); gr.addColorStop(0.82,'#0a2615'); gr.addColorStop(1,'#0e3019');
+  ctx.fillStyle=gr; ctx.fillRect(0,0,w,h);
+}
+let STAR=null;
+function stars(ctx,w,h,t,horizon){
+  if(!STAR){ STAR=[]; for(let i=0;i<46;i++) STAR.push([Math.random(),Math.random()*0.7, Math.random()]); }
+  ctx.save();
+  for(const s of STAR){ const x=s[0]*w, y=s[1]*horizon; if(y>horizon-5) continue;
+    const tw=0.35+0.45*(0.5+0.5*Math.sin(t*1.4+s[2]*9));
+    ctx.globalAlpha=tw*0.7; ctx.fillStyle = s[2]>0.9?C.cyan:C.faint; ctx.fillRect(x,y,1.2,1.2); }
+  ctx.restore();
+}
+function crt(ctx,w,h){
+  ctx.save(); ctx.globalAlpha=0.05; ctx.fillStyle='#000';
+  for(let y=0;y<h;y+=3) ctx.fillRect(0,y,w,1);
+  ctx.globalAlpha=1;
+  const v = ctx.createRadialGradient(w/2,h/2,h*0.25,w/2,h/2,w*0.62);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.5)');
+  ctx.fillStyle=v; ctx.fillRect(0,0,w,h); ctx.restore();
+}
+
+const F = { swarm:[], rings:[], emb:[], streak:[], retX:0, retY:0, tgt:null, fire:0, acq:0, radar:0, init:false };
+function frameFinal(ctx,w,h,t,dt){
+  const sc = h/130;
+  if(!F.init){ F.init=true; F.retX=w*0.5; F.retY=h*0.3;
+    for(let i=0;i<8;i++) F.swarm.push({x:rnd(0,w),y:rnd(h*0.15,h*0.46),s:rnd(.7,1.2)*sc,ph:rnd(0,TAU),dr:Math.random()<.5?-1:1,fly:Math.random()<0.6, alive:true, dead:0}); }
+  const horizon=h*0.66;
+  sky(ctx,w,h); stars(ctx,w,h,t,horizon);
+  drawRidge(ctx,w,h,17,0.68,0.12,'#0a2414',0.8);
+
+  // respawn killed targets
+  for(const s of F.swarm){ if(!s.alive){ s.dead+=dt; if(s.dead>0.7){ s.alive=true; s.dead=0; s.x=rnd(0,w); s.y=rnd(h*0.15,h*0.46); s.fly=Math.random()<0.6; } } }
+  if(!F.tgt || !F.tgt.alive){ const live=F.swarm.filter(s=>s.alive); F.tgt=live.length?live[(Math.random()*live.length)|0]:null; F.acq=0; }
+  if(F.tgt){ F.retX += (F.tgt.x-F.retX)*Math.min(1,dt*4); F.retY += (F.tgt.y-F.retY)*Math.min(1,dt*4);
+    const near=Math.hypot(F.tgt.x-F.retX,F.tgt.y-F.retY);
+    if(near<14*sc) F.acq=Math.min(1,F.acq+dt*3);
+    if(near<6*sc && F.fire<=0 && F.acq>0.6){ F.fire=0.34; F.tgt.alive=false; F.tgt.dead=0.001;
+      F.rings.push({x:F.tgt.x,y:F.tgt.y,age:0});
+      for(let i=0;i<8;i++) F.emb.push({x:F.tgt.x,y:F.tgt.y,vx:rnd(-40,40)*sc,vy:rnd(-70,-10)*sc,age:0,life:rnd(.5,1)});
+      F.streak.push({x0:w*0.5,y0:h+8,x1:F.tgt.x,y1:F.tgt.y,age:0}); F.acq=0; }
+  }
+  F.fire=Math.max(0,F.fire-dt);
+
+  // swarm
+  for(const s of F.swarm){ if(!s.alive) continue; s.x+=s.dr*9*dt*(s.s/sc); if(s.x<-12)s.x=w+12; if(s.x>w+12)s.x=-12;
+    const yy=s.y+Math.sin(t*2+s.ph)*3;
+    ctx.save(); ctx.translate(s.x,yy); ctx.fillStyle='#0d3a20'; ctx.strokeStyle=C.faint; ctx.lineWidth=1; ctx.globalAlpha=0.9;
+    if(s.fly){ ctx.beginPath(); ctx.moveTo(0,-2*s.s); ctx.lineTo(4*s.s,0); ctx.lineTo(0,2*s.s); ctx.lineTo(-4*s.s,0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-6*s.s,-1); ctx.lineTo(-3*s.s,0); ctx.moveTo(6*s.s,-1); ctx.lineTo(3*s.s,0); ctx.stroke(); }
+    else { ctx.beginPath(); ctx.arc(0,-3*s.s,1.6*s.s,0,TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(0,-1.4*s.s); ctx.lineTo(0,3*s.s); ctx.stroke(); }
+    ctx.restore();
+  }
+  drawRidge(ctx,w,h,17,0.68,0.12,'#06140c',1);
+
+  // explosions (NO box flash)
+  for(let i=F.rings.length-1;i>=0;i--){ const r=F.rings[i]; r.age+=dt; if(r.age>0.6){F.rings.splice(i,1);continue;}
+    const p=r.age/0.6, rad=(30*p+4)*sc; ctx.save();
+    const gr=ctx.createRadialGradient(r.x,r.y,0,r.x,r.y,rad);
+    gr.addColorStop(0,'rgba(230,255,240,'+(1-p)*0.9+')'); gr.addColorStop(.4,'rgba(125,255,176,'+(1-p)*0.55+')'); gr.addColorStop(.72,'rgba(255,210,74,'+(1-p)*0.32+')'); gr.addColorStop(1,'rgba(255,107,90,0)');
+    ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(r.x,r.y,rad,0,TAU); ctx.fill();
+    ctx.globalAlpha=(1-p)*0.7; ctx.strokeStyle=C.g; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(r.x,r.y,rad*1.15,0,TAU); ctx.stroke(); ctx.restore(); }
+  for(let i=F.emb.length-1;i>=0;i--){ const e=F.emb[i]; e.age+=dt; if(e.age>e.life){F.emb.splice(i,1);continue;}
+    e.x+=e.vx*dt; e.y+=e.vy*dt; e.vy+=60*dt*sc; ctx.save(); ctx.globalAlpha=Math.max(0,1-e.age/e.life); ctx.fillStyle=Math.random()<0.4?C.amb:C.g; ctx.fillRect(e.x,e.y,1.7*sc,1.7*sc); ctx.restore(); }
+  for(let i=F.streak.length-1;i>=0;i--){ const s=F.streak[i]; s.age+=dt; if(s.age>0.12){F.streak.splice(i,1);continue;}
+    ctx.save(); ctx.globalAlpha=(1-s.age/0.12)*0.9; ctx.strokeStyle=C.hi; ctx.lineWidth=1.8; ctx.shadowColor=C.g; ctx.shadowBlur=9;
+    ctx.beginPath(); ctx.moveTo(s.x0,s.y0); ctx.lineTo(s.x1,s.y1); ctx.stroke(); ctx.restore(); }
+
+  // TITLE
+  ctx.save(); ctx.textAlign='center'; ctx.globalAlpha=0.96; ctx.fillStyle=C.hi; ctx.shadowColor=C.g; ctx.shadowBlur=13;
+  ctx.font='800 '+Math.round(23*sc)+'px ui-monospace,monospace'; ctx.fillText('SNIPER SCOPE', w*0.5, h*0.47);
+  ctx.font='700 '+Math.round(10*sc)+'px ui-monospace,monospace'; ctx.fillStyle=C.g; ctx.shadowBlur=6; ctx.globalAlpha=0.9;
+  ctx.fillText('/ /   O V E R W A T C H', w*0.5, h*0.47+16*sc); ctx.restore();
+
+  // moving reticle (the "sight")
+  ctx.save(); ctx.translate(F.retX,F.retY); const rc=F.acq>0.6?C.red:C.g; ctx.strokeStyle=rc; ctx.lineWidth=1.4; ctx.shadowColor=rc; ctx.shadowBlur=6; ctx.globalAlpha=0.95;
+  const R=12*sc; ctx.beginPath(); ctx.arc(0,0,R,0,TAU); ctx.stroke();
+  for(const a of [0,Math.PI/2,Math.PI,Math.PI*1.5]){ ctx.beginPath(); ctx.moveTo(Math.cos(a)*R*0.42,Math.sin(a)*R*0.42); ctx.lineTo(Math.cos(a)*R*1.5,Math.sin(a)*R*1.5); ctx.stroke(); }
+  if(F.acq>0.3){ const bs=(9+(1-F.acq)*14)*sc, L=4*sc; ctx.strokeStyle=C.red; ctx.shadowColor=C.red; ctx.globalAlpha=F.acq;
+    for(const[sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ ctx.beginPath(); ctx.moveTo(sx*bs,sy*bs-sy*L); ctx.lineTo(sx*bs,sy*bs); ctx.lineTo(sx*bs-sx*L,sy*bs); ctx.stroke(); } }
+  ctx.fillStyle=C.hi; ctx.beginPath(); ctx.arc(0,0,1.4*sc,0,TAU); ctx.fill(); ctx.restore();
+
+  // TARGET ACQUIRED (top-left)
+  if(F.acq>0.6){ ctx.save(); const p=0.6+0.4*Math.sin(t*9); ctx.globalAlpha=p; ctx.fillStyle=C.red; ctx.shadowColor=C.red; ctx.shadowBlur=7;
+    ctx.font='700 '+Math.round(9*sc)+'px ui-monospace,monospace'; ctx.textAlign='left'; ctx.fillText('● TARGET ACQUIRED', 10*sc, 14*sc); ctx.restore(); }
+
+  // radar (upper-right)
+  F.radar+=dt*2.2; ctx.save(); ctx.translate(w-22*sc,20*sc); const RR=11*sc; ctx.strokeStyle=C.faint; ctx.lineWidth=1; ctx.globalAlpha=0.75;
+  ctx.beginPath(); ctx.arc(0,0,RR,0,TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(0,0,RR*0.55,0,TAU); ctx.stroke();
+  ctx.strokeStyle=C.g; ctx.shadowColor=C.g; ctx.shadowBlur=6; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(F.radar)*RR,Math.sin(F.radar)*RR); ctx.stroke();
+  ctx.fillStyle=C.red; for(let b=0;b<2;b++){ const ang=F.radar*0.6+b*2.3, rr=RR*(0.4+b*0.3); ctx.beginPath(); ctx.arc(Math.cos(ang)*rr,Math.sin(ang)*rr,1.4*sc,0,TAU); ctx.fill(); } ctx.restore();
+
+  // DEPLOY button
+  const p=0.5+0.5*Math.sin(t*2.4), bw=108*sc, bh=22*sc, bx=w*0.5-bw/2, by=h-bh-8*sc;
+  ctx.save(); ctx.shadowColor=C.g; ctx.shadowBlur=8+p*15; ctx.strokeStyle=C.g; ctx.lineWidth=2;
+  ctx.fillStyle='rgba(65,255,126,'+(0.10+p*0.15)+')'; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(bx,by,bw,bh,6*sc); else ctx.rect(bx,by,bw,bh); ctx.fill(); ctx.stroke();
+  ctx.shadowBlur=0; ctx.fillStyle=C.hi; ctx.font='700 '+Math.round(12*sc)+'px ui-monospace,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('▶  DEPLOY', w*0.5, by+bh/2+1); ctx.restore();
+
+  crt(ctx,w,h);
+}
+
+function mk(id, lw, lh){ const cv=document.getElementById(id); const dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=lw*dpr; cv.height=lh*dpr; const ctx=cv.getContext('2d'); return {ctx,w:lw,h:lh,dpr}; }
+const cReal=mk('real',585,130), cBig=mk('big',585,130);
+let last=0;
+function loop(ms){ const t=ms/1000; let dt=last?Math.min(0.05,t-last):0.016; last=t;
+  cReal.ctx.save(); cReal.ctx.setTransform(cReal.dpr,0,0,cReal.dpr,0,0); cReal.ctx.clearRect(0,0,585,130); frameFinal(cReal.ctx,585,130,t,dt); cReal.ctx.restore();
+  cBig.ctx.save(); cBig.ctx.setTransform(cBig.dpr,0,0,cBig.dpr,0,0); cBig.ctx.clearRect(0,0,585,130); frameFinal(cBig.ctx,585,130,t,0); cBig.ctx.restore();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

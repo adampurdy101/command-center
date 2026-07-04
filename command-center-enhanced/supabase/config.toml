@@ -1,0 +1,16 @@
+project_id = "fzsfizqkolkxkorgvtcl"
+
+# OAuth start/data functions require a valid Supabase JWT.
+[functions.gmail-auth-start]
+verify_jwt = true
+
+# Google redirects the browser here with NO Supabase JWT — this function is
+# protected instead by an HMAC-signed `state` (see _shared/shared.ts).
+[functions.gmail-auth-callback]
+verify_jwt = false
+
+[functions.gmail-sync]
+verify_jwt = true
+
+[functions.gmail-action]
+verify_jwt = true

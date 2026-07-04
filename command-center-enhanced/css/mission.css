@@ -1,0 +1,410 @@
+/* ============================================================
+   MISSION CONTROL  ·  the authenticated hub
+   ------------------------------------------------------------
+   Everything here is scoped to #hub, so the login screen and the
+   rest of the app are untouched. This is the rich interface
+   (cities clocks, globe, Voice Scope + HAL, Defense Grid, panels)
+   ported from the mission-live prototype and wired to live data.
+   ============================================================ */
+
+#hub{
+  /* local palette — scoped so it never overrides theme.css globally */
+  --g:#41ff7e; --hi:#7dffb0; --dim:#2bd964; --faint:#1c8f46;
+  --amb:#ffd24a; --red:#ff6b5a; --bg:#0a1409; --bg2:#0d1b0c; --deep:#06100a;
+  --mono:ui-monospace,"SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
+  --glow2:0 0 6px;
+
+  position:relative; z-index:10;
+  display:flex; flex-direction:column; gap:8px;
+  height:calc(100vh - 64px); min-height:0;
+  font-family:var(--mono); color:var(--g);
+}
+
+/* ---------- LIVING BACKDROP (Grid Chamber) ---------- */
+/* a slow 3D grid-chamber canvas behind the panels; z-index:-1 keeps it
+   inside #hub's stacking context but below the in-flow header + deck, so
+   it shows only through the gutters + behind the header. Panels are opaque,
+   so it never washes over data. Driven by js/backdrop.js. */
+/* fixed to the viewport (not the full scroll height) so the backdrop never paints a
+   multi-thousand-pixel canvas on mobile — a major scroll-jank source */
+#hub #page-bg{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:-1;pointer-events:none}
+
+/* ---------- HEADER ---------- */
+#hub .hdr{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--faint);
+  padding-bottom:8px;margin-bottom:0;flex:none;z-index:10}
+#hub .hdr .title{font-size:19px;letter-spacing:2px;color:var(--hi);text-shadow:var(--glow2) var(--hi);white-space:nowrap}
+#hub .hdr .title small{display:block;font-size:10px;letter-spacing:2px;color:var(--dim)}
+#hub .cities{display:flex;gap:14px;margin-left:8px}
+#hub .cities div{text-align:center}
+#hub .cities .c{font-size:9px;color:var(--dim);letter-spacing:1px}
+#hub .cities .t{font-size:12px;color:var(--g);line-height:1.2}
+#hub .cities .t12{font-size:10px;color:var(--dim);letter-spacing:.5px;line-height:1.25;white-space:nowrap}
+#hub .hdr .spacer{flex:1}
+#hub .hdr .clock{text-align:right}
+#hub .hdr .clock .times{display:flex;gap:10px;align-items:baseline;justify-content:flex-end}
+#hub .hdr .clock .time{font-size:20px;color:var(--hi);text-shadow:var(--glow2) var(--hi)}
+#hub .hdr .clock .time12{font-size:13px;color:var(--dim);letter-spacing:1px}
+#hub .hdr .clock .date{font-size:10px;color:var(--dim);letter-spacing:1px}
+#hub .master{display:flex;align-items:center;gap:7px;padding-left:14px;border-left:1px solid var(--faint)}
+#hub .master .lab{font-size:9px;letter-spacing:1px;color:var(--dim);line-height:1.1}
+#hub .tools{display:flex;align-items:center;gap:8px;padding-left:14px;border-left:1px solid var(--faint)}
+#hub .tools button{background:transparent;color:var(--dim);border:1px solid var(--faint);
+  font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:5px 9px;border-radius:4px;cursor:pointer}
+#hub .tools button:hover{color:var(--hi);border-color:var(--hi)}
+#hub .tools .logout:hover{color:var(--red);border-color:var(--red)}
+/* ambient hum: volume is tucked INTO the ♪ HUM control and flies out on hover */
+#hub .amb-wrap{position:relative;display:inline-flex;align-items:center}
+#hub .amb-pop{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(-4px);
+  display:flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--faint);border-radius:8px;
+  background:linear-gradient(180deg,var(--bg2),var(--deep));
+  box-shadow:0 8px 20px rgba(0,0,0,.55),inset 0 0 0 1px rgba(65,255,126,.07);
+  opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease;z-index:60;white-space:nowrap}
+#hub .amb-wrap:hover .amb-pop,#hub .amb-wrap:focus-within .amb-pop{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+#hub .amb-pop .amb-ico{color:var(--dim);font-size:12px;line-height:1}
+#hub #amb-vol{width:108px;height:16px;cursor:pointer;vertical-align:middle;accent-color:var(--g);background:transparent}
+/* fullscreen is ONE button living in the top bar; #fs-exit (legacy 2nd button) stays hidden */
+#hub #fs-exit{display:none}
+/* fixed width so the label can flip FULLSCREEN <-> EXIT FULLSCREEN without nudging LOG OUT */
+#hub .tools #fs-btn{min-width:138px;text-align:center;
+  transition:background .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease}
+/* in fullscreen: same button, same place — lit green, a touch stronger so it clearly stands out, still in-bar */
+#hub .tools #fs-btn.fs-on{color:var(--hi);border-color:var(--g);background:rgba(65,255,126,.24);
+  box-shadow:0 0 11px rgba(65,255,126,.42),inset 0 0 10px rgba(65,255,126,.12)}
+#hub .tools #fs-btn.fs-on:hover{background:rgba(65,255,126,.34);border-color:var(--hi);box-shadow:0 0 16px rgba(65,255,126,.6),inset 0 0 12px rgba(65,255,126,.15)}
+
+/* ---------- LED dots (mission style: .on / .amb) ---------- */
+#hub .led{width:9px;height:9px;border-radius:50%;background:#14361f;display:inline-block;flex:none;box-shadow:none}
+#hub .led.on{background:var(--g);box-shadow:0 0 8px var(--g);animation:mc-pulse 1.6s ease-in-out infinite}
+#hub .led.amb{background:var(--amb);box-shadow:0 0 8px var(--amb);animation:mc-pulse 1.6s ease-in-out infinite}
+#hub .led.red{background:var(--red);box-shadow:0 0 8px var(--red)}
+@keyframes mc-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ---------- DECK GRID ---------- */
+#hub .deck{flex:1;display:grid;gap:8px;min-height:0;
+  grid-template-columns:minmax(230px,1fr) minmax(380px,2.1fr) minmax(230px,1fr);
+  grid-template-rows:1fr auto}
+#hub .col{display:flex;flex-direction:column;gap:8px;min-height:0}
+#hub .center{display:flex;flex-direction:column;gap:8px;min-height:0}
+
+/* ---------- PANELS ---------- */
+#hub .panel{background:
+    linear-gradient(rgba(65,255,126,.055) 1px, transparent 1px) 0 0/100% 22px,
+    linear-gradient(90deg, rgba(65,255,126,.055) 1px, transparent 1px) 0 0/22px 100%,
+    radial-gradient(150% 105% at 8% -16%, rgba(65,255,126,.20), transparent 55%),
+    radial-gradient(120% 80% at 105% 120%, rgba(125,255,176,.08), transparent 60%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+  border:1px solid var(--faint);border-radius:7px;display:flex;flex-direction:column;min-height:0;overflow:hidden;contain:paint}
+#hub .panel .tb{display:flex;align-items:center;gap:7px;padding:5px 9px;border-bottom:1px solid var(--faint);
+  background:rgba(65,255,126,.05);flex:none}
+#hub .panel .tb .n{color:var(--hi);font-size:11px;letter-spacing:1px;text-transform:uppercase}
+#hub .panel .tb .sp{flex:1}
+#hub .panel .tb .s{font-size:9px;color:var(--dim);letter-spacing:1px}
+/* panel bodies scroll when content overflows (so nothing gets clipped) — thin themed
+   scrollbar on the right; two-finger / trackpad / wheel / drag all work. Scrollbar only
+   appears on panels that actually overflow; overscroll-behavior keeps it from scrolling the page. */
+#hub .panel .bd{padding:8px 9px;flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;
+  overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:rgba(65,255,126,.45) transparent}
+#hub .panel .bd::-webkit-scrollbar{width:7px;height:7px}
+#hub .panel .bd::-webkit-scrollbar-track{background:transparent}
+#hub .panel .bd::-webkit-scrollbar-thumb{background:rgba(65,255,126,.3);border-radius:4px}
+#hub .panel .bd:hover::-webkit-scrollbar-thumb{background:rgba(65,255,126,.6)}
+#hub .row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;
+  padding:3px 7px;margin:0 -7px;border-radius:4px;position:relative;
+  transition:transform .18s cubic-bezier(.2,.7,.3,1),background .18s ease,box-shadow .18s ease}
+/* TARGET LOCK row/clickable hover treatment is in the FLOURISHES section below */
+#hub .row .k{color:var(--dim)} #hub .row .v{color:var(--g)}
+#hub .row .v.big{font-size:18px;color:var(--hi)}
+#hub .row .v.muted{color:var(--faint);font-size:10px;letter-spacing:.5px}   /* calm empty state */
+#hub .up{color:var(--g)} #hub .down{color:var(--red)} #hub .warn{color:var(--amb)}
+/* a brief phosphor flash when a live value updates (markets ticker) */
+#hub .row .v.tick{animation:mc-tick .55s ease-out}
+@keyframes mc-tick{0%{text-shadow:0 0 9px currentColor;filter:brightness(1.5)}100%{text-shadow:none;filter:none}}
+#hub .bar{height:9px;border:1px solid var(--faint);border-radius:3px;background:var(--deep);overflow:hidden}
+#hub .bar>span{display:block;height:100%;background:var(--g);box-shadow:var(--glow2) var(--g)}
+#hub .spark{width:100%;height:30px}
+#hub .ag{display:flex;align-items:center;gap:7px;font-size:12px}
+#hub .ag .nm{color:var(--g);min-width:96px} #hub .ag .st{color:var(--dim);margin-left:auto;font-size:10px}
+
+/* ---------- buttons inside the hub ---------- */
+#hub .btn{background:transparent;color:var(--hi);border:1px solid var(--hi);border-radius:4px;
+  font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:4px 9px;cursor:pointer}
+#hub .btn:hover{background:rgba(65,255,126,.12);box-shadow:var(--glow2) var(--hi)}
+#hub .btn.amb{color:var(--amb);border-color:var(--amb)}
+#hub .tb .btn{padding:2px 7px;font-size:10px}
+
+/* ---------- GLOBE ---------- */
+#hub .globe-wrap{flex:1;position:relative;border:1px solid var(--faint);border-radius:7px;
+  background:radial-gradient(circle at 50% 42%,#0c2012,var(--deep) 70%);overflow:hidden;min-height:0}
+#hub .globe-wrap .lab{position:absolute;top:7px;left:10px;font-size:10px;color:var(--dim);letter-spacing:2px;z-index:3;
+  max-width:46%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hub .globe-wrap .lab2{position:absolute;top:7px;right:10px;font-size:10px;color:var(--dim);letter-spacing:1px;z-index:3;
+  max-width:46%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+#hub #globe{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+#hub .globe-wrap .lab,#hub .globe-wrap .lab2,#hub .globe-wrap .readout,#hub .globe-wrap .continent{pointer-events:none}
+#hub .globe-wrap .continent{position:absolute;top:13%;left:0;right:0;text-align:center;z-index:3;
+  color:#7dffb0;font-size:18px;letter-spacing:5px;text-shadow:0 0 12px var(--g);opacity:0;transition:opacity .25s}
+#hub .readout{position:absolute;bottom:7px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;
+  font-size:10px;color:var(--faint);letter-spacing:1px;z-index:3}
+#hub .readout span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* mid widths: drop the lower-priority chips so the readout stays one clean line */
+@media (max-width:1250px){ #hub .readout #wx-bkk{display:none} }
+@media (max-width:1050px){ #hub .globe-wrap .lab2{display:none} #hub .readout #wx-home{display:none} }
+
+/* ---------- BOTTOM BAND : VOICE + GAME ---------- */
+#hub .bottom{grid-column:1/4;display:grid;grid-template-columns:1.3fr 1fr;gap:8px;height:170px}
+#hub .scope-bd,#hub .game-bd{position:relative;flex:1;min-height:0}
+#hub #voice,#hub #game{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hub #heard{position:absolute;left:8px;right:8px;bottom:3px;text-align:center;font-size:11px;letter-spacing:1px;
+  color:var(--hi);opacity:0;transition:opacity .2s;pointer-events:none;text-shadow:0 0 6px var(--g)}
+#hub #hsEntry{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;background:rgba(6,16,10,.92);z-index:6;color:var(--hi);font-size:13px;letter-spacing:2px;text-align:center}
+#hub #hsEntry.show{display:flex}
+#hub #hsEntry .big{font-size:15px;color:var(--amb);letter-spacing:3px;text-shadow:var(--glow2) var(--amb)}
+#hub #hsName{width:96px;text-align:center;text-transform:uppercase;background:var(--deep);color:var(--g);
+  border:1px solid var(--g);border-radius:4px;font-family:var(--mono);font-size:20px;letter-spacing:6px;padding:7px 4px;outline:none}
+#hub #hsName:focus{box-shadow:var(--glow2) var(--g)}
+
+/* ---------- HAL overlays (cover the hub) ---------- */
+#hub #flash{position:absolute;inset:0;background:#41ff7e;opacity:0;pointer-events:none;z-index:84;mix-blend-mode:screen}
+#hub #flash.go{animation:mc-fl .55s ease-out}
+@keyframes mc-fl{0%{opacity:.16}100%{opacity:0}}
+#hub #jarvisBanner{position:absolute;left:6%;right:6%;top:44%;transform:translateY(-50%);z-index:85;
+  text-align:center;pointer-events:none;opacity:0;transition:opacity .35s}
+#hub #jarvisBanner.show{opacity:1}
+#hub #jarvisText{display:inline-block;background:rgba(6,16,10,.86);border:1px solid var(--g);border-radius:10px;
+  padding:16px 24px;color:var(--hi);font-size:19px;line-height:1.55;max-width:720px;
+  text-shadow:0 0 8px var(--g);box-shadow:0 0 34px rgba(65,255,126,.45),inset 0 0 18px rgba(65,255,126,.12);
+  font-style:italic;letter-spacing:.3px}
+#hub #voiceCfg{position:fixed;inset:0;z-index:88;display:flex;align-items:center;justify-content:center;background:rgba(3,8,5,.8)}
+#hub #voiceCfg.hidden{display:none}
+#hub .vc-box{width:min(560px,92%);max-height:92%;overflow:auto;background:linear-gradient(180deg,#0d1b0c,#0a1409);
+  border:1px solid var(--g);border-radius:10px;box-shadow:0 0 40px rgba(65,255,126,.3);padding:16px 18px;font-size:13px}
+#hub .vc-title{color:var(--hi);letter-spacing:2px;font-size:13px;text-shadow:var(--glow2) var(--hi);margin-bottom:12px}
+#hub .vc-line{display:flex;align-items:center;gap:10px;margin:9px 0;flex-wrap:wrap}
+#hub .vc-k{color:var(--dim);font-size:11px;letter-spacing:1px;min-width:54px}
+#hub .vc-s{color:var(--amb);font-size:11px;flex:1;min-width:120px}
+#hub .vc-box select{flex:1;min-width:150px;background:var(--deep);color:var(--g);border:1px solid var(--faint);border-radius:5px;
+  font-family:var(--mono);font-size:13px;padding:6px 8px;outline:none}
+#hub .vc-bar{height:7px;border:1px solid var(--faint);border-radius:4px;background:var(--deep);overflow:hidden;margin:2px 0 6px}
+#hub .vc-bar>span{display:block;height:100%;width:0;background:var(--g);box-shadow:var(--glow2) var(--g)}
+#hub .vc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:10px 0;border:1px solid var(--faint);border-radius:7px;padding:10px}
+#hub .vc-grid label{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);letter-spacing:1px;margin-bottom:3px}
+#hub .vc-grid b{color:var(--g);font-weight:400}
+#hub .vc-grid input[type=range]{width:100%;accent-color:var(--g)}
+#hub .vc-btns{justify-content:flex-end;margin-top:6px}
+#hub .vc-note{color:var(--faint);font-size:10px;line-height:1.5;margin-top:8px}
+
+/* ============================================================
+   FLOURISHES  ·  heartbeat, HAL eye, boot, weather, depth, bloom
+   ============================================================ */
+
+/* ---- heartbeat / EKG ---- */
+#hub .ekg{display:block;height:30px;width:92px}
+#hub .master{gap:8px}
+#hub #ekg-sys{width:92px;height:30px}
+#hub .ekg-inline{display:none;width:74px;height:22px;vertical-align:middle;margin-left:10px} /* shown on phone */
+
+/* ---- HAL 9000 eye (in the Voice Scope title bar) ---- */
+#hub #hal-eye{--eye:0.6;width:18px;height:18px;border-radius:50%;flex:none;position:relative;
+  background:radial-gradient(circle at 50% 45%,
+    rgba(255,240,235,calc(0.5 + var(--eye)*0.5)) 0 14%,
+    #ff3b25 16% 46%,
+    #8c0d05 60% 100%);
+  box-shadow:0 0 calc(6px + var(--eye)*16px) rgba(255,70,50,calc(0.4 + var(--eye)*0.6)),
+             inset 0 0 5px rgba(0,0,0,.6);
+  transition:box-shadow .12s linear}
+#hub #hal-eye.awake{animation:hal-flicker .5s steps(2) infinite}
+@keyframes hal-flicker{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+
+/* ---- ambient toggle active state ---- */
+#hub #amb-btn.active{color:var(--hi);border-color:var(--hi);box-shadow:0 0 8px rgba(65,255,126,.4)}
+
+/* ---- exit-fullscreen button (hidden until in fullscreen; effects.js toggles) ---- */
+#hub #fs-exit{display:none}
+
+/* ---- weather chips in the globe readout ---- */
+#hub .readout .wx{color:var(--hi);text-shadow:0 0 5px rgba(65,255,126,.5);white-space:nowrap}
+
+/* ---- GLOBE depth: floating shadow + smooth tilt ---- */
+#hub .globe-wrap{will-change:transform;transform-style:preserve-3d}
+#hub .globe-wrap::after{content:"";position:absolute;left:50%;bottom:5%;width:64%;height:9%;
+  transform:translateX(-50%);border-radius:50%;pointer-events:none;z-index:1;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,.55),transparent 70%);filter:blur(3px)}
+#hub .col{}   /* dropped will-change:transform — promoting every column to its own layer cost compositor memory for little gain */
+
+/* ---- CRT bloom + chromatic fringe on the glowing headers ---- */
+#hub .hdr .title{text-shadow:0 0 7px var(--hi),1px 0 1px rgba(255,40,40,.18),-1px 0 1px rgba(40,120,255,.18)}
+#hub .hdr .clock .time{text-shadow:0 0 8px var(--hi),1px 0 1px rgba(255,40,40,.16),-1px 0 1px rgba(40,120,255,.16)}
+/* gentle screen-curve vignette + bloom layer over the hub */
+#hub::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:70;border-radius:10px;
+  background:radial-gradient(120% 120% at 50% 50%,transparent 60%,rgba(0,0,0,.28) 100%);
+  box-shadow:inset 0 0 90px rgba(0,0,0,.35),inset 0 0 22px rgba(65,255,126,.05)}
+
+/* ============================================================
+   BOOT / POWER-ON SPLASH
+   ============================================================ */
+#boot{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(130% 130% at 50% 20%,#10260f,#05080a 70%);
+  font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;color:#41ff7e;
+  transition:opacity .6s ease}
+#boot.gone{opacity:0;pointer-events:none}
+#boot .boot-inner{display:flex;flex-direction:column;align-items:center;gap:14px;width:min(420px,86vw)}
+#boot .boot-globe{width:84px;height:84px;border-radius:50%;
+  background:radial-gradient(circle at 38% 34%,rgba(125,255,176,.5),#06170c 62%);
+  border:1px solid rgba(125,255,176,.7);
+  box-shadow:0 0 26px rgba(65,255,126,.55),inset 0 0 18px rgba(65,255,126,.25);
+  animation:boot-spin 2.4s linear infinite}
+@keyframes boot-spin{to{transform:rotate(360deg)}}
+#boot .boot-title{font-size:16px;letter-spacing:3px;color:#7dffb0;text-shadow:0 0 10px #41ff7e}
+#boot .boot-log{font-size:11px;line-height:1.7;color:#2bd964;min-height:108px;width:100%;text-align:left;letter-spacing:.5px}
+#boot .boot-log div{opacity:0;animation:boot-in .25s ease forwards}
+@keyframes boot-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+#boot .boot-bar{width:100%;height:5px;border:1px solid rgba(28,143,70,.8);border-radius:3px;overflow:hidden;background:#06100a}
+#boot .boot-bar>span{display:block;height:100%;width:0;background:#41ff7e;box-shadow:0 0 8px #41ff7e;animation:boot-fill 2.1s ease forwards}
+@keyframes boot-fill{to{width:100%}}
+
+/* ============================================================
+   PUNCHIER PANELS + hover inflate + deeper CRT
+   ============================================================ */
+#hub .panel{position:relative;box-shadow:inset 0 0 0 1px rgba(65,255,126,.05),inset 0 20px 34px rgba(0,0,0,.28)}
+#hub .panel .tb .n{text-shadow:0 0 5px rgba(65,255,126,.4)}
+
+/* the five deck panels lift + glow on hover and show a "click to expand" hint */
+#hub .col .panel{cursor:pointer;transition:transform .16s ease,box-shadow .16s ease}
+#hub .col .panel:hover{transform:translateY(-3px) scale(1.015);z-index:12;
+  box-shadow:0 10px 28px rgba(0,0,0,.5),0 0 0 1px var(--hi),0 0 22px rgba(65,255,126,.3)}
+#hub .col .panel.dx-clickable::after{content:"⤢";position:absolute;top:6px;right:9px;z-index:3;
+  font-size:11px;color:var(--faint);opacity:0;transition:opacity .16s}
+#hub .col .panel.dx-clickable:hover::after{opacity:1;color:var(--hi);text-shadow:0 0 6px var(--hi)}
+
+/* deeper CRT vignette + phosphor bloom over the hub */
+#hub::after{background:radial-gradient(120% 120% at 50% 50%,transparent 55%,rgba(0,0,0,.34) 100%);
+  box-shadow:inset 0 0 120px rgba(0,0,0,.42),inset 0 0 26px rgba(65,255,126,.06)}
+
+/* ============================================================
+   PANEL DETAIL OVERLAY (click a panel → expanded view)
+   ============================================================ */
+#hub #detail{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;
+  background:rgba(2,8,5,.78);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);padding:24px}
+#hub #detail.hidden{display:none}
+#hub .dx-box{width:min(980px,96%);max-height:92vh;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#0d1b0c,#0a1409);border:1px solid var(--g);border-radius:12px;
+  box-shadow:0 0 55px rgba(65,255,126,.3);overflow:hidden;animation:dx-in .18s ease}
+@keyframes dx-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+#hub .dx-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--faint);background:rgba(65,255,126,.05);flex:none}
+#hub .dx-title{color:var(--hi);letter-spacing:2px;font-size:14px;text-shadow:var(--glow2) var(--hi)}
+#hub .dx-sp{flex:1}
+#hub .dx-body{padding:14px 16px;overflow:auto}
+#hub .dx-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#hub .dx-card{border:1px solid var(--faint);border-radius:8px;padding:12px;background:rgba(65,255,126,.03)}
+#hub .dx-card.dx-wide{grid-column:1/3}
+#hub .dx-h{color:var(--dim);font-size:10px;letter-spacing:2px;margin-bottom:8px}
+#hub .dx-big{font-size:34px;color:var(--hi);text-shadow:var(--glow2) var(--hi);line-height:1.1}
+#hub .dx-big small{font-size:12px;color:var(--dim);margin-left:8px;letter-spacing:1px}
+#hub .dx-row,#hub .dx-li{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0}
+#hub .dx-row .k,#hub .dx-li .k{color:var(--dim)} #hub .dx-row .v,#hub .dx-li .v{color:var(--g)}
+#hub .dx-li{border-bottom:1px solid rgba(28,143,70,.22)}
+#hub .dx-list{margin-top:2px}
+#hub .dx-row .v.up,#hub .dx-li .v.up{color:var(--g)}
+#hub .dx-row .v.down,#hub .dx-li .v.down{color:var(--red)}
+#hub .dx-row .v.warn,#hub .dx-li .v.warn{color:var(--amb)}
+#hub .dx-wl{display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid rgba(28,143,70,.2)}
+#hub .dx-wl .sym{min-width:48px;color:var(--hi)} #hub .dx-wl .mini{flex:1} #hub .dx-wl .chg{min-width:56px;text-align:right}
+#hub .dx-wl .chg.up{color:var(--g)} #hub .dx-wl .chg.down{color:var(--red)}
+#hub .dx-ringrow{display:flex;align-items:center;gap:16px}
+#hub .dx-log{font-size:11px;color:var(--dim);line-height:1.7;max-height:150px;overflow:auto;
+  background:var(--deep);border:1px solid var(--faint);border-radius:6px;padding:8px}
+#hub .dx-actions{margin-top:12px}
+#hub .dx-note{margin-top:10px;color:var(--faint);font-size:10px;letter-spacing:.5px}
+
+/* ============================================================
+   TARGET LOCK  ·  chosen hover treatment (sci-fi HUD lock-on)
+   Lift + faint ring + top-emboss + one scan-sweep + corner
+   brackets, on data rows (.row) AND agent rows (.ag), plus a
+   subtle protrude on every clickable. Brackets (.brk spans) are
+   injected by js/mission.js. Honors prefers-reduced-motion.
+   ============================================================ */
+#hub .ag{position:relative;padding:3px 7px;margin:0 -7px;border-radius:4px;
+  transition:transform .18s cubic-bezier(.2,.7,.3,1),background .18s ease,box-shadow .18s ease}
+#hub .row .k,#hub .row .v,#hub .ag .led,#hub .ag .nm,#hub .ag .st{position:relative;z-index:2}
+
+/* ring + top-highlight emboss (layer 1) */
+#hub .row::before,#hub .ag::before{content:"";position:absolute;inset:0;border-radius:4px;pointer-events:none;z-index:1;
+  box-shadow:inset 0 0 0 1px transparent;opacity:0;transition:opacity .18s ease,box-shadow .18s ease}
+/* single phosphor scan-sweep (layer 3) */
+#hub .row::after,#hub .ag::after{content:"";position:absolute;inset:0;border-radius:4px;pointer-events:none;z-index:3;
+  background:linear-gradient(100deg,transparent 40%,rgba(125,255,176,.28) 50%,transparent 60%);
+  background-size:240% 100%;background-position:120% 0;opacity:0}
+
+/* HOVER: bubble up + green tint + soft bloom */
+#hub .col .panel .bd .row:hover,#hub .col .panel .bd .ag:hover{
+  transform:translateY(-2px) scale(1.012);background:rgba(65,255,126,.07);
+  box-shadow:0 6px 14px rgba(0,0,0,.4),0 0 10px rgba(65,255,126,.12)}
+#hub .col .panel .bd .row:hover::before,#hub .col .panel .bd .ag:hover::before{opacity:1;
+  box-shadow:inset 0 0 0 1px rgba(65,255,126,.32),inset 0 1px 0 rgba(125,255,176,.18)}
+#hub .col .panel .bd .row:hover::after,#hub .col .panel .bd .ag:hover::after{animation:tl-sweep .55s ease-out 1}
+@keyframes tl-sweep{0%{opacity:0;background-position:120% 0}10%{opacity:1}100%{opacity:0;background-position:-120% 0}}
+
+/* corner brackets — the "locked on" reticle */
+#hub .row .brk,#hub .ag .brk{position:absolute;width:9px;height:9px;pointer-events:none;z-index:4;
+  opacity:0;transition:opacity .18s ease,transform .2s cubic-bezier(.2,.7,.3,1)}
+#hub .brk::before,#hub .brk::after{content:"";position:absolute;background:var(--hi);box-shadow:0 0 5px var(--g)}
+#hub .brk.tlft{top:2px;left:2px;transform:translate(-4px,-4px)}
+#hub .brk.trgt{top:2px;right:2px;transform:translate(4px,-4px)}
+#hub .brk.blft{bottom:2px;left:2px;transform:translate(-4px,4px)}
+#hub .brk.brgt{bottom:2px;right:2px;transform:translate(4px,4px)}
+#hub .brk::before{width:9px;height:1px;top:0;left:0}
+#hub .brk::after{width:1px;height:9px;top:0;left:0}
+#hub .brk.trgt::before,#hub .brk.trgt::after{right:0;left:auto}
+#hub .brk.blft::before,#hub .brk.blft::after{bottom:0;top:auto}
+#hub .brk.brgt::before,#hub .brk.brgt::after{bottom:0;top:auto;right:0;left:auto}
+#hub .col .panel .bd .row:hover .brk,#hub .col .panel .bd .ag:hover .brk{opacity:1;transform:translate(0,0)}
+
+/* subtle protrude on every clickable so it registers */
+#hub .btn{transition:transform .16s cubic-bezier(.2,.7,.3,1),background .16s ease,box-shadow .16s ease}
+#hub .btn:hover{transform:translateY(-2px);box-shadow:0 5px 12px rgba(0,0,0,.4),var(--glow2) var(--hi)}
+#hub .btn:active{transform:translateY(0)}
+#hub .tools button{transition:transform .16s cubic-bezier(.2,.7,.3,1),color .16s ease,border-color .16s ease}
+#hub .tools button:hover{transform:translateY(-2px)}
+
+@media (prefers-reduced-motion:reduce){
+  #hub .row,#hub .ag,#hub .btn,#hub .tools button,#hub .brk{transition:opacity .18s ease}
+  #hub .col .panel .bd .row:hover,#hub .col .panel .bd .ag:hover,#hub .btn:hover,#hub .tools button:hover{transform:none}
+  #hub .col .panel .bd .row:hover::after,#hub .col .panel .bd .ag:hover::after{animation:none;opacity:0}
+}
+
+/* ============================================================
+   TOUCH  ·  finger-scrub highlight + double-tap to open
+   On phones/tablets there is no hover, so js/panels.js drives a
+   .touch-hover class as the finger runs over panels/rows, and a
+   .dx-armed state after the first tap ("tap again" to open).
+   These class rules are inert on desktop (the class is never set);
+   the @media(hover:none) block only neutralizes sticky :hover.
+   ============================================================ */
+#hub .col .panel.touch-hover{transform:translateY(-3px) scale(1.015);z-index:12;
+  box-shadow:0 10px 28px rgba(0,0,0,.5),0 0 0 1px var(--hi),0 0 22px rgba(65,255,126,.3)}
+#hub .col .panel.dx-clickable.touch-hover::after{opacity:1;color:var(--hi);text-shadow:0 0 6px var(--hi)}
+#hub .col .panel .bd .row.touch-hover,#hub .col .panel .bd .ag.touch-hover{
+  transform:translateY(-2px) scale(1.012);background:rgba(65,255,126,.07);
+  box-shadow:0 6px 14px rgba(0,0,0,.4),0 0 10px rgba(65,255,126,.12)}
+#hub .col .panel .bd .row.touch-hover::before,#hub .col .panel .bd .ag.touch-hover::before{opacity:1;
+  box-shadow:inset 0 0 0 1px rgba(65,255,126,.32),inset 0 1px 0 rgba(125,255,176,.18)}
+#hub .col .panel .bd .row.touch-hover .brk,#hub .col .panel .bd .ag.touch-hover .brk{opacity:1;transform:translate(0,0)}
+
+/* first tap arms the panel: amber lift + "tap again" hint */
+#hub .col .panel.dx-armed{transform:translateY(-3px) scale(1.015);z-index:13;
+  box-shadow:0 10px 28px rgba(0,0,0,.5),0 0 0 1px var(--amb),0 0 22px rgba(255,210,74,.35)}
+#hub .col .panel.dx-armed::after{content:"⤢ TAP AGAIN";opacity:1;color:var(--amb);
+  text-shadow:0 0 6px var(--amb);font-size:9px;letter-spacing:.5px;top:6px;right:9px}
+
+/* on real touch devices, kill the sticky tap-hover so only .touch-hover/.dx-armed show */
+@media (hover:none){
+  #hub .col .panel:hover{transform:none;
+    box-shadow:inset 0 0 0 1px rgba(65,255,126,.05),inset 0 20px 34px rgba(0,0,0,.28)}
+  #hub .col .panel.dx-clickable:hover::after{opacity:0}
+  #hub .col .panel .bd .row:hover,#hub .col .panel .bd .ag:hover{transform:none;background:none;box-shadow:none}
+  #hub .col .panel .bd .row:hover::before,#hub .col .panel .bd .ag:hover::before{opacity:0}
+  #hub .col .panel .bd .row:hover::after,#hub .col .panel .bd .ag:hover::after{animation:none;opacity:0}
+  #hub .col .panel .bd .row:hover .brk,#hub .col .panel .bd .ag:hover .brk{opacity:0}
+}

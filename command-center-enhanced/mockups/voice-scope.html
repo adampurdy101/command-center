@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice Scope — Live Wire, enhanced background</title>
+<style>
+  :root{ --g:#41ff7e; --hi:#7dffb0; --dim:#2bd964; --faint:#1c8f46; --red:#ff6b5a; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:#04080a; color:var(--dim); font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; padding:24px 22px 44px; }
+  h1{ color:var(--hi); font-size:16px; letter-spacing:3px; margin:0 0 4px; }
+  .sub{ color:var(--faint); font-size:11px; letter-spacing:1px; margin-bottom:8px; }
+  #state{ color:var(--red); font-size:11px; letter-spacing:1px; margin-bottom:22px; }
+  .row{ margin-bottom:24px; }
+  .tag{ color:var(--g); font-size:12px; letter-spacing:2px; margin:0 0 7px; }
+  .frame{ border:1px solid #163e26; border-radius:8px; overflow:hidden; display:inline-block;
+    box-shadow:0 0 0 1px rgba(65,255,126,.05), 0 14px 30px rgba(0,0,0,.5); background:#020705; }
+  #big{ width:819px; height:140px; display:block; }
+  #real{ width:763px; height:131px; display:block; }
+</style>
+</head>
+<body>
+  <h1>LIVE WIRE — ENHANCED BACKGROUND</h1>
+  <div class="sub">Foreground unchanged (bars, eye, sparks, rings). Background only: faded grid + receding grid floor + horizon glow + screen glow.</div>
+  <div id="state">SIM: —</div>
+
+  <div class="row"><div class="tag">ACTUAL PANEL SIZE (763 × 131)</div><div class="frame"><canvas id="real"></canvas></div></div>
+
+<script>
+const C={ g:'#41ff7e', hi:'#7dffb0', dim:'#2bd964', faint:'#1c8f46', red:'#ff6b5a', cyan:'#7df7ff', amb:'#ffd24a' };
+const TAU=Math.PI*2;
+function rnd(a,b){ return a+Math.random()*(b-a); }
+function crt(ctx,w,h){ ctx.save(); ctx.globalAlpha=0.05; ctx.fillStyle='#000'; for(let y=0;y<h;y+=3)ctx.fillRect(0,y,w,1); ctx.restore(); }
+function simHal(t){ const p=t%9;
+  if(p>7.5) return {speaking:false, level:0.05+0.02*Math.sin(t*2)};
+  const lvl=0.55+0.45*Math.abs(Math.sin(t*7)*Math.sin(t*3.3)+0.3*Math.sin(t*11));
+  return {speaking:true, level:Math.max(0.3,Math.min(1,lvl))};
+}
+function meter(ctx,x,y,w,h,lvl){ ctx.save(); ctx.strokeStyle='rgba(65,255,126,.3)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,h);
+  const seg=14; for(let s=0;s<seg;s++){ const on=(s/seg)<lvl; ctx.fillStyle=on?(s/seg>0.78?C.amb:C.g):'rgba(65,255,126,.10)'; ctx.fillRect(x+2+s*(w-4)/seg,y+2,(w-4)/seg-1.5,h-4); } ctx.restore(); }
+function eyeBody(ctx,x,y,r,lv,t){ ctx.save(); ctx.translate(x,y);
+  const rr=r*(0.92+0.08*Math.sin(t*2.2));
+  const halo=ctx.createRadialGradient(0,0,0,0,0,rr*2.6);
+  halo.addColorStop(0,'rgba(255,107,90,'+(0.4+lv*0.4)+')'); halo.addColorStop(0.5,'rgba(255,140,90,0.10)'); halo.addColorStop(1,'rgba(255,107,90,0)');
+  ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(0,0,rr*2.6,0,TAU); ctx.fill();
+  const g=ctx.createRadialGradient(-rr*0.2,-rr*0.2,0,0,0,rr);
+  g.addColorStop(0,'rgba(255,255,255,'+(0.85*(0.45+0.55*lv))+')'); g.addColorStop(0.4,'#ff6b5a'); g.addColorStop(1,'#1a0705');
+  ctx.shadowColor=C.red; ctx.shadowBlur=7+15*lv; ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,rr,0,TAU); ctx.fill();
+  ctx.shadowBlur=0; ctx.strokeStyle='rgba(255,180,160,0.5)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(0,0,rr,0,TAU); ctx.stroke();
+  ctx.fillStyle='#ffe6df'; ctx.beginPath(); ctx.arc(-rr*0.3,-rr*0.3,rr*0.16,0,TAU); ctx.fill(); ctx.restore(); }
+function leftCluster(ctx,h,hal,lv,t){
+  eyeBody(ctx,40,36,11,lv,t);
+  ctx.save(); ctx.textAlign='center'; ctx.font='700 9px ui-monospace,monospace'; ctx.fillStyle=hal.speaking?C.red:C.hi; ctx.shadowColor=hal.speaking?C.red:'rgba(0,0,0,0)'; ctx.shadowBlur=hal.speaking?5:0;
+  ctx.fillText(hal.speaking?'SPEAKING':'STANDBY',40,73); ctx.restore();
+  meter(ctx,8,83,72,6,lv);
+  ctx.save(); ctx.fillStyle=C.faint; ctx.font='7px ui-monospace,monospace'; ctx.textAlign='center'; ctx.fillText('LVL '+lv.toFixed(2),40,100); ctx.restore();
+  ctx.save(); ctx.strokeStyle='rgba(65,255,126,0.2)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(86,10); ctx.lineTo(86,h-10); ctx.stroke(); ctx.restore();
+}
+
+/* ===== ENHANCED BACKGROUND (the only change) ===== */
+function bgCool(ctx,w,h,t){
+  const HOR=h-13;                                  // horizon = bar baseline
+  // base gradient
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'#02110b'); g.addColorStop(0.55,'#04170e'); g.addColorStop(1,'#072413');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  // ambient screen glow rising from the horizon
+  const ag=ctx.createRadialGradient(w*0.5,HOR,8,w*0.5,HOR,w*0.5);
+  ag.addColorStop(0,'rgba(65,255,126,0.12)'); ag.addColorStop(0.5,'rgba(65,255,126,0.04)'); ag.addColorStop(1,'rgba(65,255,126,0)');
+  ctx.fillStyle=ag; ctx.fillRect(0,0,w,h);
+  // faint FLAT grid above the horizon (the panel-style faded grid)
+  ctx.save(); ctx.strokeStyle='rgba(65,255,126,0.085)'; ctx.lineWidth=1;
+  for(let x=0;x<=w;x+=26){ ctx.beginPath(); ctx.moveTo(x,6); ctx.lineTo(x,HOR); ctx.stroke(); }
+  for(let y=18;y<HOR;y+=18){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+  ctx.restore();
+  // perspective GRID WALL receding to a vanishing point (depth behind the bars)
+  const vpx=w*0.5, vpy=22;
+  ctx.save(); ctx.strokeStyle=C.g; ctx.lineWidth=1;
+  // converging verticals
+  for(let i=-11;i<=11;i++){ ctx.globalAlpha=0.07-Math.abs(i)*0.002; const bx=vpx+i*(w*0.115); ctx.beginPath(); ctx.moveTo(vpx,vpy); ctx.lineTo(bx,HOR); ctx.stroke(); }
+  // depth horizontals (closer toward the VP), slow drift toward viewer
+  const scroll=(t*0.25)%1;
+  for(let k=0;k<8;k++){ const p=(k+scroll)/8; const y=vpy+(HOR-vpy)*Math.pow(p,1.7); if(y<=vpy+1)continue;
+    ctx.globalAlpha=0.16*(0.3+0.7*p); ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+  ctx.restore();
+  // glowing horizon line where the bars stand
+  ctx.save(); ctx.strokeStyle=C.g; ctx.globalAlpha=0.45; ctx.shadowColor=C.g; ctx.shadowBlur=9; ctx.lineWidth=1.3;
+  ctx.beginPath(); ctx.moveTo(0,HOR); ctx.lineTo(w,HOR); ctx.stroke(); ctx.restore();
+  // soft floor reflection band under the horizon
+  const fg=ctx.createLinearGradient(0,HOR,0,h);
+  fg.addColorStop(0,'rgba(65,255,126,0.10)'); fg.addColorStop(1,'rgba(65,255,126,0)');
+  ctx.fillStyle=fg; ctx.fillRect(0,HOR,w,h-HOR);
+  // drifting scan glow band (CRT refresh) — very subtle
+  const sb=((t*0.12)%1)*w; ctx.save(); ctx.globalAlpha=0.05; const sg=ctx.createLinearGradient(sb-60,0,sb+60,0);
+  sg.addColorStop(0,'rgba(125,255,176,0)'); sg.addColorStop(0.5,'rgba(125,255,176,1)'); sg.addColorStop(1,'rgba(125,255,176,0)');
+  ctx.fillStyle=sg; ctx.fillRect(sb-60,0,120,HOR); ctx.restore();
+  // vignette
+  const vg=ctx.createRadialGradient(w/2,h/2,h*0.22,w/2,h/2,w*0.62);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.55)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,w,h);
+}
+
+/* ===== LIVE WIRE foreground (unchanged) ===== */
+const X0=92,X1=755,COLW=(X1-X0)/22,BARW=16,SEGH=6,UNIT=8,MAXSEG=13;
+let BASE=118, WALLH=104;
+const SC={hh:null,peak:null,spd:null,phase:null,lv:0,parts:[],rings:[],spawn:0};
+function vuUpdate(st,t,lv){ if(!st.hh){ st.hh=new Array(22).fill(0); st.peak=new Array(22).fill(0); st.spd=[]; st.phase=[]; for(let b=0;b<22;b++){st.spd.push(4+(b/21)*7+(b%3)); st.phase.push(b*1.3);} }
+  for(let b=0;b<22;b++){ const shape=(1-0.5*b/21)*(1+0.15*Math.sin(b/21*Math.PI)); const noise=0.5+0.5*Math.sin(t*st.spd[b]+st.phase[b]);
+    let tgt=lv*WALLH*shape*(0.55+0.45*noise); tgt=Math.max(tgt,(1.2+Math.sin(t*1.5+b*0.6))*UNIT);
+    st.hh[b]+=(tgt>st.hh[b]?(tgt-st.hh[b])*0.5:(tgt-st.hh[b])*0.12); st.peak[b]=Math.max(st.hh[b],st.peak[b]-0.7);
+  } }
+function renderC(ctx,w,h,t,dt,hal){ BASE=h-13; WALLH=BASE-14;
+  bgCool(ctx,w,h,t); SC.lv+=(hal.level-SC.lv)*0.2; const lv=SC.lv; vuUpdate(SC,t,lv);
+  SC.spawn-=dt; if(hal.speaking&&SC.spawn<=0&&lv>0.4){SC.spawn=0.42; SC.rings.push({r:14,life:1});}
+  for(let i=SC.rings.length-1;i>=0;i--){ const r=SC.rings[i]; r.r+=dt*52; r.life-=dt*1.4; if(r.life<=0){SC.rings.splice(i,1);continue;}
+    ctx.save(); ctx.globalAlpha=r.life*0.35; ctx.strokeStyle=C.g; ctx.lineWidth=1.3; ctx.shadowColor=C.g; ctx.shadowBlur=5; ctx.beginPath(); ctx.arc(40,36,r.r,0,TAU); ctx.stroke(); ctx.restore(); }
+  ctx.save(); ctx.globalAlpha=0.10; ctx.fillStyle=C.faint; for(let b=0;b<22;b++){ const cx=X0+COLW*b+COLW/2; for(let s=0;s<MAXSEG;s++) ctx.fillRect(cx-BARW/2,BASE-s*UNIT-SEGH,BARW,SEGH);} ctx.restore();
+  for(let b=0;b<22;b++){ const cx=X0+COLW*b+COLW/2; const nSeg=Math.floor(SC.hh[b]/UNIT);
+    for(let s=0;s<nSeg&&s<MAXSEG;s++){ const f=s/MAXSEG; const y=BASE-s*UNIT-SEGH; const top=(s===nSeg-1); let col=f<0.6?C.g:(f<0.85?C.hi:C.amb);
+      ctx.save(); if(top&&f>0.78){ col='#eaffee'; } ctx.fillStyle=col; ctx.shadowColor=f>0.78?C.amb:C.g; ctx.shadowBlur=top?8:3; ctx.fillRect(cx-BARW/2,y,BARW,SEGH); ctx.restore(); }
+    if(SC.peak[b]>WALLH*0.7 && Math.random()<0.3){ SC.parts.push({x:cx+rnd(-6,6),y:BASE-SC.peak[b],vx:rnd(-13,13),vy:rnd(-42,-14),age:0,life:rnd(.4,.9)}); }
+    const py=BASE-SC.peak[b]; ctx.save(); ctx.fillStyle=SC.peak[b]>WALLH*0.9?C.cyan:C.amb; ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=10; ctx.fillRect(cx-BARW/2,py-2.4,BARW,2.6); ctx.restore();
+  }
+  for(let i=SC.parts.length-1;i>=0;i--){ const p=SC.parts[i]; p.age+=dt; if(p.age>p.life){SC.parts.splice(i,1);continue;} p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=55*dt;
+    ctx.save(); ctx.globalAlpha=Math.max(0,1-p.age/p.life); ctx.fillStyle=Math.random()<0.4?C.amb:C.hi; ctx.shadowColor=C.amb; ctx.shadowBlur=4; ctx.fillRect(p.x,p.y,1.7,1.7); ctx.restore(); }
+  leftCluster(ctx,h,hal,lv,t); crt(ctx,w,h);
+}
+
+const real={ctx:document.getElementById('real').getContext('2d')};
+(function init(){ const dpr=Math.min(2,window.devicePixelRatio||1);
+  const r=document.getElementById('real'); r.width=763*dpr; r.height=131*dpr; real.dpr=dpr; })();
+let last=0;
+function loop(ms){ const t=ms/1000; let dt=last?Math.min(0.05,t-last):0.016; last=t;
+  const hal=simHal(t);
+  document.getElementById('state').textContent='SIM: '+(hal.speaking?'● HAL SPEAKING':'◌ IDLE / LISTENING')+'   (lvl '+hal.level.toFixed(2)+')';
+  real.ctx.save(); real.ctx.setTransform(real.dpr,0,0,real.dpr,0,0); real.ctx.clearRect(0,0,763,131); renderC(real.ctx,763,131,t,dt,hal); real.ctx.restore();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

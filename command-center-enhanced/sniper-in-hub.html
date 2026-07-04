@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sniper Scope · in the Command Center</title>
+<style>
+  :root{ --g:#41ff7e; --hi:#7dffb0; --dim:#2bd964; --faint:#1c8f46; --amb:#ffd24a; }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    min-height:100vh;color:var(--hi);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.3px;
+    padding:26px 22px 60px;
+    background:
+      radial-gradient(120% 80% at 50% -10%, rgba(65,255,126,.08), transparent 58%),
+      repeating-linear-gradient(0deg, rgba(65,255,126,.02) 0 1px, transparent 1px 3px),
+      linear-gradient(180deg,#03130b,#020a06 60%,#010604);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1320px;margin:0 auto}
+  .top{display:flex;align-items:center;gap:12px;font-size:11px;letter-spacing:5px;color:var(--faint);margin:0 2px 4px}
+  .top i{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 9px var(--g)}
+  .top .sp{margin-left:auto;letter-spacing:2px}
+  h1{font-weight:900;font-size:clamp(18px,2.4vw,26px);letter-spacing:2px;margin:6px 2px 2px;color:#f2fff8;text-shadow:0 0 18px rgba(65,255,126,.4)}
+  .lead{font-size:12.5px;color:var(--dim);margin:6px 2px 20px;line-height:1.6}
+  .lead b{color:var(--hi)}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+
+  .panel{position:relative;border:1px solid rgba(65,255,126,.22);border-radius:8px;overflow:hidden;
+    background:linear-gradient(180deg, rgba(9,28,18,.62), rgba(3,13,9,.72));
+    box-shadow:0 0 0 1px rgba(0,0,0,.5) inset, 0 20px 54px rgba(0,0,0,.55)}
+  .panel.blood{border-color:rgba(255,120,80,.3);box-shadow:0 0 0 1px rgba(0,0,0,.5) inset, 0 20px 54px rgba(0,0,0,.55), 0 0 30px rgba(255,90,50,.08)}
+  .brk{position:absolute;width:13px;height:13px;border:2px solid var(--g);opacity:.7;z-index:4;pointer-events:none}
+  .panel.blood .brk{border-color:#ff9a6a}
+  .brk.tl{top:7px;left:7px;border-right:0;border-bottom:0}.brk.tr{top:7px;right:7px;border-left:0;border-bottom:0}
+  .brk.bl{bottom:7px;left:7px;border-right:0;border-top:0}.brk.br{bottom:7px;right:7px;border-left:0;border-top:0}
+  .tb{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(65,255,126,.13);
+    background:rgba(3,15,9,.6);font-size:12px;letter-spacing:1.6px;position:relative;z-index:3}
+  .tb .led{width:10px;height:10px;border-radius:50%;background:var(--amb);box-shadow:0 0 8px var(--amb)}
+  .tb .name{font-weight:800;color:#f2fff8}
+  .tb .sp{margin-left:auto}
+  .tb .rid{font-size:10px;letter-spacing:2px;color:var(--amb)}
+  .panel.blood .tb .rid{color:#ff9a6a}
+  .tb .btn{font:800 11px ui-monospace,Menlo,monospace;letter-spacing:1.5px;color:#04170e;background:var(--g);border:0;border-radius:4px;padding:6px 12px}
+  .panel.blood .tb .btn{background:#ff9a6a}
+  .shot{display:block;width:100%;height:auto}
+  .cap{padding:11px 14px 13px;font-size:11.6px;line-height:1.6;color:var(--dim);border-top:1px solid rgba(65,255,126,.1);background:rgba(2,10,6,.4)}
+  .cap b{color:var(--hi)}
+  .tagrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .tag{font-size:10px;letter-spacing:1px;color:var(--faint);border:1px solid rgba(65,255,126,.2);border-radius:3px;padding:3px 7px}
+  .panel.blood .tag{border-color:rgba(255,120,80,.25);color:#c98a6a}
+
+  .note{margin:22px 2px 0;font-size:12px;color:var(--faint);text-align:center;line-height:1.8}
+  .note b{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><i></i>ADAM // COMMAND CENTER<span class="sp">DEFENSE GRID · SNIPER SCOPE // OVERWATCH</span></div>
+  <h1>HOW IT SITS IN YOUR HUB — SIDE BY SIDE</h1>
+  <p class="lead">The same Sniper Scope panel, dropped into command-center chrome, in both worlds. This is the tile as it would live on your dashboard. <b>Left: Midnight Recon. Right: Blood Moon.</b></p>
+
+  <div class="grid">
+    <div class="panel recon">
+      <span class="brk tl"></span><span class="brk tr"></span><span class="brk bl"></span><span class="brk br"></span>
+      <div class="tb"><span class="led"></span><span class="name">SNIPER SCOPE · OVERWATCH</span><span class="sp"></span><span class="rid">R1 · MIDNIGHT RECON</span><button class="btn">▶ DEPLOY</button></div>
+      <img class="shot" src="cmp/01-shot.png" alt="Midnight Recon in-hub">
+      <div class="cap"><b>Blends with the hub.</b> Reads as part of the green-phosphor set beside your Voice Scope and clocks — cohesive, calm, unmistakably on-brand.
+        <div class="tagrow"><span class="tag">GREEN PHOSPHOR</span><span class="tag">FIREFLIES</span><span class="tag">AURORA</span><span class="tag">COHESIVE</span></div>
+      </div>
+    </div>
+
+    <div class="panel blood">
+      <span class="brk tl"></span><span class="brk tr"></span><span class="brk bl"></span><span class="brk br"></span>
+      <div class="tb"><span class="led"></span><span class="name">SNIPER SCOPE · OVERWATCH</span><span class="sp"></span><span class="rid">R3 · BLOOD MOON</span><button class="btn">▶ DEPLOY</button></div>
+      <img class="shot" src="cmp/02-shot.png" alt="Blood Moon in-hub">
+      <div class="cap"><b>The showpiece.</b> The red world throws the green reticle and UI into hard contrast — a feature tile that grabs the eye the moment the hub loads.
+        <div class="tagrow"><span class="tag">HIGH CONTRAST</span><span class="tag">RINGED MOON</span><span class="tag">EMBERS</span><span class="tag">FEVER SCORING</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">both are the identical game + panel — only the world skin differs. say <b>"ship recon"</b> or <b>"ship blood moon"</b> to wire that one into the live hub.</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SNIPER LAB · Three Renditions</title>
+<style>
+  :root{ --g:#41ff7e; --hi:#7dffb0; --dim:#2bd964; --faint:#1c8f46; --amb:#ffd24a; }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    min-height:100vh;color:var(--hi);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    -webkit-font-smoothing:antialiased;letter-spacing:.3px;
+    padding:34px 22px 80px;
+    background:
+      radial-gradient(130% 90% at 50% -12%, rgba(65,255,126,.09), transparent 58%),
+      repeating-linear-gradient(0deg, rgba(65,255,126,.02) 0 1px, transparent 1px 3px),
+      linear-gradient(180deg,#03130b,#020a06 58%,#010604);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1060px;margin:0 auto}
+  .kicker{font-size:11px;letter-spacing:6px;color:var(--faint);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+  .kicker i{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 9px var(--g);animation:bl 1.6s infinite}
+  @keyframes bl{50%{opacity:.3}}
+  h1{font-weight:900;font-size:clamp(24px,4.4vw,40px);letter-spacing:2px;margin:0;color:#f2fff8;
+     text-shadow:0 0 22px rgba(65,255,126,.42),0 0 3px rgba(65,255,126,.5);line-height:1.05}
+  h1 em{font-style:normal;color:var(--g)}
+  .sub{margin:14px 0 0;font-size:13.5px;line-height:1.7;color:var(--dim);max-width:80ch}
+  .sub b{color:var(--hi)}
+  .controls{margin:16px 0 0;font-size:11.5px;letter-spacing:.5px;color:var(--faint);line-height:1.8}
+  .controls b{color:var(--dim)}
+
+  .card{position:relative;margin:34px 0 0;border:1px solid rgba(65,255,126,.22);border-radius:8px;
+    background:linear-gradient(180deg, rgba(9,28,18,.6), rgba(3,13,9,.72));
+    box-shadow:0 0 0 1px rgba(0,0,0,.5) inset, 0 22px 60px rgba(0,0,0,.55);overflow:hidden}
+  .badge{position:absolute;top:-13px;left:0;z-index:6;font-weight:800;font-size:12px;letter-spacing:2px;
+    color:#04170e;background:var(--g);border-radius:3px;padding:4px 11px;box-shadow:0 0 16px rgba(65,255,126,.5)}
+  .cardwrap{position:relative;margin-top:44px}
+  .tb{display:flex;align-items:center;gap:12px;padding:11px 15px;border-bottom:1px solid rgba(65,255,126,.13);
+    background:rgba(3,15,9,.55);font-size:13px;letter-spacing:2px}
+  .tb .name{font-weight:800;color:#f2fff8;text-shadow:0 0 12px rgba(65,255,126,.4)}
+  .tb .tag{font-size:10.5px;letter-spacing:2px;color:var(--faint)}
+  .tb .sp{margin-left:auto}
+  .tb button{font:800 12px ui-monospace,Menlo,monospace;letter-spacing:2px;color:#04170e;background:var(--g);
+    border:0;border-radius:4px;padding:8px 16px;cursor:pointer;box-shadow:0 0 14px rgba(65,255,126,.45)}
+  .tb button:hover{background:var(--hi)}
+  canvas.attract{display:block;width:100%;height:240px;background:#010705;cursor:pointer}
+  @media(max-width:640px){canvas.attract{height:190px}}
+  .cap{padding:13px 16px 15px;font-size:12.5px;line-height:1.7;color:var(--dim);border-top:1px solid rgba(65,255,126,.1);background:rgba(2,10,6,.4)}
+  .cap b{color:var(--hi)} .cap .k{color:var(--amb);font-weight:700;font-size:11px;letter-spacing:1px}
+  .foot{margin:44px 4px 0;font-size:12.5px;color:var(--faint);letter-spacing:.6px;text-align:center;line-height:1.8}
+  .foot b{color:var(--amb)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="kicker"><i></i>ADAM // COMMAND CENTER · GAME STUDIO</p>
+    <h1>SNIPER LAB — <em>THREE RENDITIONS</em></h1>
+    <p class="sub">Your <b>DEEP SCOPE // OVERWATCH</b> rebuilt three ways — same soul, three different worlds. Each card is a <b>live, playable slice</b>: 75-second ops, streak multipliers with callouts, wind + scope sway, FOCUS bullet-time, reload discipline, medals, and a persistent best score per world. Deploy each one, chase a medal, then tell me which world we build out fully.</p>
+    <p class="controls">
+      <b>DESKTOP</b> — move mouse to aim · click / space to fire · wheel to zoom · R reload · SHIFT / F focus (bullet-time) · ESC exit<br>
+      <b>TOUCH</b> — drag to aim · FIRE / FOCUS buttons · + / − zoom · ✕ exit
+    </p>
+  </header>
+
+  <div class="cardwrap">
+    <span class="badge">A</span>
+    <section class="card" id="a">
+      <div class="tb"><span class="name">NIGHT OPS</span><span class="tag">NVG · GHOST PROTOCOL</span>
+        <span class="sp"></span><button onclick="SniperLab.deploy('nvg')">▶ DEPLOY</button></div>
+      <canvas class="attract" id="pv-nvg"></canvas>
+      <div class="cap"><span class="k">THE HOOK —</span> The gritty one. Full night-vision treatment: live film grain, drifting IR dust, and two <b>searchlights sweeping the ridgelines</b>. Patrols and recon drones are easy meat — but <b>cloaked ghosts</b> are nearly invisible until a searchlight sweeps across them or their IR beacon blinks. Time the sweep, hold your breath, take the 260-point shot. Patience play.</div>
+    </section>
+  </div>
+
+  <div class="cardwrap">
+    <span class="badge">B</span>
+    <section class="card" id="b">
+      <div class="tb"><span class="name">THERMAL HUNTER</span><span class="tag">IRONBOW · WHITE-HOT</span>
+        <span class="sp"></span><button onclick="SniperLab.deploy('thermal')">▶ DEPLOY</button></div>
+      <canvas class="attract" id="pv-thermal"></canvas>
+      <div class="cap"><span class="k">THE HOOK —</span> The striking one. A cold indigo world seen through heat-vision — shimmer bands, glowing vents, and targets that burn <b>white-hot against the dark</b>. Runners die to anything, but <b>mech walkers only drop to a core shot</b>: body hits just chip armor and slow them. Precision play — every kill is a marksman's kill.</div>
+    </section>
+  </div>
+
+  <div class="cardwrap">
+    <span class="badge">C</span>
+    <section class="card" id="c">
+      <div class="tb"><span class="name">ORBITAL OVERWATCH</span><span class="tag">STATION DEFENSE · HAL SWARM</span>
+        <span class="sp"></span><button onclick="SniperLab.deploy('orbital')">▶ DEPLOY</button></div>
+      <canvas class="attract" id="pv-orbital"></canvas>
+      <div class="cap"><span class="k">THE HOOK —</span> The pressure one — and it ties into your hub. <b>HAL-red eye drones</b> fall out of deep space toward the station's shield line; every one that gets through breaches the shield, and if it drops, the op ends early. A six-hit <b>MOTHER EYE</b> boss repairs your shield when you crack it. Defense play — misses cost you the wall.</div>
+    </section>
+  </div>
+
+  <p class="foot">— deploy all three, then say <b>"build out A"</b> (or B / C), or mix — <b>"C but with B's core weak-points"</b> — and I'll build the winner into the full game and wire it into the hub —</p>
+</div>
+
+<script src="js/sniperlab.js"></script>
+<script>
+  SniperLab.mountPreview('nvg', document.getElementById('pv-nvg'));
+  SniperLab.mountPreview('thermal', document.getElementById('pv-thermal'));
+  SniperLab.mountPreview('orbital', document.getElementById('pv-orbital'));
+</script>
+</body>
+</html>

@@ -1,0 +1,400 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Command Center — Hover Renditions</title>
+<style>
+  :root{--g:#41ff7e;--hi:#7dffb0;--dim:#2bd964;--faint:#1c8f46;--amb:#ffd24a}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:radial-gradient(120% 90% at 50% 0%,#0d1b0c,#05080a 70%);color:var(--g);font-family:ui-monospace,Menlo,Consolas,monospace;-webkit-text-size-adjust:100%}
+  .wrap{max-width:920px;margin:0 auto;padding:20px 16px 80px}
+  h1{color:var(--hi);letter-spacing:3px;font-size:19px;text-shadow:0 0 10px var(--g);margin:6px 0 2px}
+  .sub{color:var(--dim);font-size:12px;letter-spacing:1px;margin:0 0 6px}
+  .tip{color:var(--amb);font-size:12px;margin:0 0 16px}
+  .nav{position:sticky;top:0;z-index:80;display:flex;gap:8px;flex-wrap:wrap;padding:10px 0;background:linear-gradient(#05080a,#05080aee 72%,transparent)}
+  .nav a{color:var(--hi);border:1px solid var(--faint);border-radius:6px;padding:7px 11px;font-size:12px;letter-spacing:1px;text-decoration:none}
+  .nav a:hover{background:rgba(65,255,126,.12);border-color:var(--hi);box-shadow:0 0 8px rgba(65,255,126,.3)}
+  section.rend{margin:22px 0;scroll-margin-top:60px}
+  .rh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .rh .num{color:var(--amb);font-size:13px}
+  .rh .nm{color:var(--hi);font-size:16px;letter-spacing:2px;text-shadow:0 0 8px var(--g)}
+  .rh .tg{color:var(--dim);font-size:12px}
+</style></head><body>
+<div class="wrap">
+<h1>ADAM // COMMAND CENTER — HOVER RENDITIONS</h1>
+<p class="sub">Three ways for a row/item to "pop" when you point at it · each keeps the panel-lift you already like</p>
+<p class="tip">▸ Hover your mouse over the rows AND the little buttons in each one to feel the difference.</p>
+<nav class="nav"><a href="#r1">01 · RAISED RELIEF</a><a href="#r2">02 · TARGET LOCK</a><a href="#r3">03 · PHOSPHOR GLOW</a></nav>
+<section class="rend" id="r1"><div class="rh"><span class="num">01</span><span class="nm">RAISED RELIEF</span><span class="tg">rows rise like backlit keycaps — emboss + lift + a faint ring</span></div>
+<div id="rr-demo">
+  <style>
+    #rr-demo{
+      --g:#41ff7e; --hi:#7dffb0; --dim:#2bd964; --faint:#1c8f46;
+      --amb:#ffd24a; --red:#ff6b5a; --bg2:#0d1b0c; --bg:#0a1409; --deep:#06100a;
+      --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+      font-family:var(--mono); color:var(--g);
+      background:
+        radial-gradient(120% 90% at 50% 0%, rgba(65,255,126,.06), transparent 60%),
+        var(--deep);
+      padding:22px; border-radius:10px; position:relative; overflow:hidden;
+      display:flex; gap:18px; flex-wrap:wrap;
+    }
+    /* faint CRT scanlines */
+    #rr-demo::after{
+      content:""; position:absolute; inset:0; pointer-events:none; z-index:5;
+      background:repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+      mix-blend-mode:multiply; opacity:.55;
+    }
+    #rr-demo .panel{
+      flex:1 1 240px; min-width:230px;
+      background:
+        radial-gradient(150% 105% at 8% -16%, rgba(65,255,126,.18), transparent 55%),
+        linear-gradient(180deg,var(--bg2),var(--bg));
+      border:1px solid var(--faint); border-radius:7px;
+      display:flex; flex-direction:column; overflow:hidden;
+      transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+    #rr-demo .panel:hover{
+      transform:translateY(-3px) scale(1.015);
+      border-color:var(--dim);
+      box-shadow:0 10px 26px -10px rgba(0,0,0,.7), 0 0 18px rgba(65,255,126,.14);
+    }
+    #rr-demo .tb{
+      display:flex; align-items:center; gap:7px; padding:5px 9px;
+      border-bottom:1px solid var(--faint); background:rgba(65,255,126,.05);
+    }
+    #rr-demo .led{width:9px;height:9px;border-radius:50%;background:var(--g);
+      box-shadow:0 0 8px var(--g); flex:none;}
+    #rr-demo .n{color:var(--hi);font-size:11px;letter-spacing:1px;text-transform:uppercase;}
+    #rr-demo .sp{flex:1;}
+    #rr-demo .s{font-size:9px;color:var(--dim);letter-spacing:1px;}
+    #rr-demo .bd{padding:9px;display:flex;flex-direction:column;gap:6px;}
+
+    /* ---- THE RAISED RELIEF ROW ---- */
+    #rr-demo .row{
+      display:flex; justify-content:space-between; align-items:baseline;
+      font-size:13px; padding:3px 7px; margin:0 -4px; border-radius:5px;
+      border:1px solid transparent;            /* reserves space so ring doesn't shift layout */
+      transition:transform .15s cubic-bezier(.2,.7,.3,1),
+                 background .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    #rr-demo .row .k{color:var(--dim);}
+    #rr-demo .row .v{color:var(--g); text-align:right; transition:color .15s ease, text-shadow .15s ease;}
+    #rr-demo .row .v.big{font-size:18px;color:var(--hi);}
+    #rr-demo .row .v.warn{color:var(--amb);}
+
+    #rr-demo .row:hover{
+      transform:translateY(-2px);
+      background:rgba(65,255,126,.07);
+      border-color:rgba(65,255,126,.28);       /* faint ring, lighter than panel border */
+      box-shadow:
+        0 4px 9px -3px rgba(0,0,0,.6),                 /* drop shadow beneath = raised chip */
+        inset 0 1px 0 0 rgba(125,255,176,.22),          /* top-edge highlight = emboss */
+        inset 0 -1px 0 0 rgba(0,0,0,.35);               /* bottom inset = depth */
+    }
+    #rr-demo .row:hover .v{
+      color:var(--hi);
+      text-shadow:0 0 7px rgba(125,255,176,.45);
+    }
+    #rr-demo .row:active{ transform:translateY(0); box-shadow:inset 0 1px 3px rgba(0,0,0,.5); }
+
+    /* ---- buttons get the same tactile lift ---- */
+    #rr-demo .btns{display:flex;gap:8px;margin-top:4px;}
+    #rr-demo .btn{
+      background:transparent;color:var(--hi);border:1px solid var(--hi);border-radius:5px;
+      font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:5px 11px;cursor:pointer;
+      transition:transform .15s cubic-bezier(.2,.7,.3,1),
+                 background .15s ease, box-shadow .15s ease;
+    }
+    #rr-demo .btn.amb{color:var(--amb);border-color:var(--amb);}
+    #rr-demo .btn:hover{
+      transform:translateY(-2px);
+      background:rgba(65,255,126,.12);
+      box-shadow:0 5px 12px -4px rgba(0,0,0,.6),
+                 inset 0 1px 0 0 rgba(125,255,176,.25),
+                 0 0 12px rgba(125,255,176,.35);
+    }
+    #rr-demo .btn.amb:hover{
+      background:rgba(255,210,74,.12);
+      box-shadow:0 5px 12px -4px rgba(0,0,0,.6),
+                 inset 0 1px 0 0 rgba(255,225,150,.3),
+                 0 0 12px rgba(255,210,74,.35);
+    }
+    #rr-demo .btn:active{transform:translateY(0);box-shadow:inset 0 1px 3px rgba(0,0,0,.5);}
+
+    #rr-demo .hint{flex-basis:100%;font-size:10px;color:var(--dim);letter-spacing:1px;
+      text-align:center;margin-top:2px;opacity:.8;position:relative;z-index:6;}
+
+    @media (prefers-reduced-motion: reduce){
+      #rr-demo .panel,#rr-demo .row,#rr-demo .btn,#rr-demo .row .v{transition:none;}
+      #rr-demo .panel:hover,#rr-demo .row:hover,#rr-demo .btn:hover{transform:none;}
+    }
+  </style>
+
+  <section class="panel">
+    <div class="tb"><span class="led"></span><span class="n">01 DAILY BRIEF</span><span class="sp"></span><span class="s">LIVE</span></div>
+    <div class="bd">
+      <div class="row"><span class="k">UNREAD MAIL</span><span class="v big">201</span></div>
+      <div class="row"><span class="k">FLAGGED</span><span class="v warn">3</span></div>
+      <div class="row"><span class="k">NEXT EVENT</span><span class="v">10:30</span></div>
+      <div class="row"><span class="k">DEADLINES</span><span class="v">2</span></div>
+      <div class="btns">
+        <button class="btn">READY</button>
+        <button class="btn amb">REVIEW</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="tb"><span class="led"></span><span class="n">04 AGENT OPS</span><span class="sp"></span><span class="s">LIVE</span></div>
+    <div class="bd">
+      <div class="row"><span class="k">ACTIVE JOBS</span><span class="v big">7</span></div>
+      <div class="row"><span class="k">QUEUE</span><span class="v">12</span></div>
+      <div class="row"><span class="k">TOKENS / MIN</span><span class="v">1.4k</span></div>
+      <div class="row"><span class="k">ERRORS</span><span class="v warn">1</span></div>
+      <div class="btns">
+        <button class="btn">DEPLOY</button>
+        <button class="btn">PAUSE</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="hint">// hover any row or button — it lifts off the phosphor and rings up</div>
+</div>
+</section>
+<section class="rend" id="r2"><div class="rh"><span class="num">02</span><span class="nm">TARGET LOCK</span><span class="tg">corner brackets snap in + a thin ring + a single scan-sweep</span></div>
+<div id="tl-demo">
+  <h2 class="tl-sr">Interactive demo of the TARGET LOCK row-hover treatment: hover any row or button to see corner brackets snap in, a thin ring fade in, and a phosphor scan-sweep pass once.</h2>
+  <style>
+    #tl-demo{
+      --g:#41ff7e;--hi:#7dffb0;--dim:#2bd964;--faint:#1c8f46;
+      --amb:#ffd24a;--red:#ff6b5a;--bg:#0a1409;--bg2:#0d1b0c;--deep:#06100a;
+      --mono:ui-monospace,"SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
+      font-family:var(--mono);color:var(--g);
+      background:radial-gradient(120% 120% at 50% 0%,#0c1c10,var(--deep) 70%);
+      border:1px solid var(--faint);border-radius:10px;
+      padding:18px 16px 20px;position:relative;overflow:hidden;
+    }
+    #tl-demo .tl-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+    #tl-demo::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;
+      background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0,rgba(0,0,0,.16) 1px,transparent 2px,transparent 3px);
+      mix-blend-mode:multiply;opacity:.5}
+    #tl-demo .tl-hd{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;position:relative;z-index:6}
+    #tl-demo .tl-hd b{font-size:13px;letter-spacing:3px;color:var(--hi);text-shadow:0 0 7px var(--hi)}
+    #tl-demo .tl-hd small{font-size:9px;letter-spacing:2px;color:var(--dim)}
+    #tl-demo .tl-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;position:relative;z-index:6}
+    @media(max-width:520px){#tl-demo .tl-grid{grid-template-columns:1fr}}
+
+    #tl-demo .panel{background:
+        linear-gradient(rgba(65,255,126,.05) 1px,transparent 1px) 0 0/100% 22px,
+        radial-gradient(150% 105% at 8% -16%,rgba(65,255,126,.18),transparent 55%),
+        linear-gradient(180deg,var(--bg2),var(--bg));
+      border:1px solid var(--faint);border-radius:7px;overflow:hidden;
+      transition:transform .16s ease,box-shadow .16s ease;cursor:pointer}
+    #tl-demo .panel:hover{transform:translateY(-3px) scale(1.015);z-index:3;
+      box-shadow:0 10px 28px rgba(0,0,0,.5),0 0 0 1px var(--hi),0 0 22px rgba(65,255,126,.3)}
+    #tl-demo .tb{display:flex;align-items:center;gap:7px;padding:6px 9px;border-bottom:1px solid var(--faint);
+      background:rgba(65,255,126,.05)}
+    #tl-demo .led{width:9px;height:9px;border-radius:50%;background:var(--g);box-shadow:0 0 8px var(--g);
+      flex:none;animation:tl-pulse 1.6s ease-in-out infinite}
+    @keyframes tl-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+    #tl-demo .tb .n{color:var(--hi);font-size:11px;letter-spacing:1px;text-transform:uppercase}
+    #tl-demo .tb .sp{flex:1}
+    #tl-demo .tb .s{font-size:9px;color:var(--dim);letter-spacing:1px}
+    #tl-demo .bd{padding:9px;display:flex;flex-direction:column;gap:5px}
+
+    #tl-demo .row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;
+      padding:4px 8px;margin:0;border-radius:4px;position:relative;cursor:pointer;
+      transition:transform .18s cubic-bezier(.2,.7,.3,1),background .18s ease,box-shadow .18s ease}
+    #tl-demo .row .k{color:var(--dim);letter-spacing:.5px;position:relative;z-index:2}
+    #tl-demo .row .v{color:var(--g);position:relative;z-index:2}
+    #tl-demo .row .v.big{font-size:18px;color:var(--hi)}
+    #tl-demo .row .v.warn{color:var(--amb)}
+    #tl-demo .row .v.down{color:var(--red)}
+
+    #tl-demo .row::before{content:"";position:absolute;inset:0;border-radius:4px;pointer-events:none;z-index:1;
+      box-shadow:inset 0 0 0 1px transparent;opacity:0;transition:opacity .18s ease, box-shadow .18s ease}
+    #tl-demo .row::after{content:"";position:absolute;inset:0;border-radius:4px;pointer-events:none;z-index:3;
+      background:linear-gradient(100deg,transparent 40%,rgba(125,255,176,.28) 50%,transparent 60%);
+      background-size:240% 100%;background-position:120% 0;opacity:0}
+
+    #tl-demo .row:hover{transform:translateY(-2px) scale(1.012);
+      background:rgba(65,255,126,.07);
+      box-shadow:0 6px 14px rgba(0,0,0,.4),0 0 10px rgba(65,255,126,.12)}
+    #tl-demo .row:hover::before{opacity:1;box-shadow:inset 0 0 0 1px rgba(65,255,126,.32),inset 0 1px 0 rgba(125,255,176,.18)}
+    #tl-demo .row:hover::after{animation:tl-sweep .55s ease-out 1}
+    @keyframes tl-sweep{0%{opacity:0;background-position:120% 0}10%{opacity:1}100%{opacity:0;background-position:-120% 0}}
+
+    #tl-demo .brk{position:absolute;width:9px;height:9px;pointer-events:none;z-index:4;
+      opacity:0;transition:opacity .18s ease,transform .2s cubic-bezier(.2,.7,.3,1)}
+    #tl-demo .brk::before,#tl-demo .brk::after{content:"";position:absolute;background:var(--hi);
+      box-shadow:0 0 5px var(--g)}
+    #tl-demo .brk.tlft{top:2px;left:2px;transform:translate(-4px,-4px)}
+    #tl-demo .brk.trgt{top:2px;right:2px;transform:translate(4px,-4px)}
+    #tl-demo .brk.blft{bottom:2px;left:2px;transform:translate(-4px,4px)}
+    #tl-demo .brk.brgt{bottom:2px;right:2px;transform:translate(4px,4px)}
+    #tl-demo .brk.tlft::before,#tl-demo .brk.trgt::before,#tl-demo .brk.blft::before,#tl-demo .brk.brgt::before{width:9px;height:1px;top:0}
+    #tl-demo .brk.tlft::after,#tl-demo .brk.trgt::after,#tl-demo .brk.blft::after,#tl-demo .brk.brgt::after{width:1px;height:9px;left:0}
+    #tl-demo .brk.trgt::before{right:0;left:auto} #tl-demo .brk.trgt::after{right:0;left:auto}
+    #tl-demo .brk.blft::before{bottom:0;top:auto} #tl-demo .brk.blft::after{bottom:0;top:auto}
+    #tl-demo .brk.brgt::before{bottom:0;top:auto;right:0;left:auto} #tl-demo .brk.brgt::after{bottom:0;top:auto;right:0;left:auto}
+    #tl-demo .row:hover .brk{opacity:1;transform:translate(0,0)}
+
+    #tl-demo .acts{display:flex;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid var(--faint)}
+    #tl-demo .btn{background:transparent;color:var(--hi);border:1px solid var(--hi);border-radius:4px;
+      font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:5px 11px;cursor:pointer;
+      position:relative;transition:transform .16s cubic-bezier(.2,.7,.3,1),background .16s ease,box-shadow .16s ease}
+    #tl-demo .btn.amb{color:var(--amb);border-color:var(--amb)}
+    #tl-demo .btn:hover{transform:translateY(-2px);background:rgba(65,255,126,.12);
+      box-shadow:0 5px 12px rgba(0,0,0,.4),0 0 12px rgba(65,255,126,.28)}
+    #tl-demo .btn.amb:hover{background:rgba(255,210,74,.12);box-shadow:0 5px 12px rgba(0,0,0,.4),0 0 12px rgba(255,210,74,.3)}
+    #tl-demo .btn:active{transform:translateY(0)}
+
+    #tl-demo .hint{margin-top:14px;text-align:center;font-size:10px;letter-spacing:2px;color:var(--faint);
+      position:relative;z-index:6}
+    #tl-demo .hint b{color:var(--dim)}
+
+    @media(prefers-reduced-motion:reduce){
+      #tl-demo .panel,#tl-demo .row,#tl-demo .btn,#tl-demo .brk{transition:none}
+      #tl-demo .row:hover::after{animation:none}
+      #tl-demo .row:hover{transform:none}
+      #tl-demo .panel:hover{transform:none}
+    }
+  </style>
+
+  <div class="tl-hd"><b>TARGET LOCK</b><small>// ROW HOVER &mdash; SCI-FI HUD TARGETING RETICLE</small></div>
+
+  <div class="tl-grid">
+    <section class="panel">
+      <div class="tb"><span class="led"></span><span class="n">01 DAILY BRIEF</span><span class="sp"></span><span class="s">LIVE</span></div>
+      <div class="bd">
+        <div class="row"><span class="brk tlft"></span><span class="brk trgt"></span><span class="brk blft"></span><span class="brk brgt"></span><span class="k">UNREAD MAIL</span><span class="v big">201</span></div>
+        <div class="row"><span class="brk tlft"></span><span class="brk trgt"></span><span class="brk blft"></span><span class="brk brgt"></span><span class="k">FLAGGED</span><span class="v warn">3</span></div>
+        <div class="row"><span class="brk tlft"></span><span class="brk trgt"></span><span class="brk blft"></span><span class="brk brgt"></span><span class="k">NEXT EVENT</span><span class="v">10:30</span></div>
+        <div class="row"><span class="brk tlft"></span><span class="brk trgt"></span><span class="brk blft"></span><span class="brk brgt"></span><span class="k">TASKS DUE</span><span class="v">7</span></div>
+        <div class="acts">
+          <button class="btn">READY</button>
+          <button class="btn amb">SNOOZE</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="tb"><span class="led"></span><span class="n">04 AGENT OPS</span><span class="sp"></span><span class="s">ONLINE</span></div>
+      <div class="bd">
+        <div class="row"><span class="brk tlft"></span><span class="brk trgt"></span><span class="brk blft"></span><span class="brk brgt"></span><span class="k">AGENTS UP</span><span class="v big">12</span></div>
+        <div class="row"><span class="brk tlft"></span><span class="brk trgt"></span><span class="brk blft"></span><span class="brk brgt"></span><span class="k">QUEUE</span><span class="v">48</span></div>
+        <div class="row"><span class="brk tlft"></span><span class="brk trgt"></span><span class="brk blft"></span><span class="brk brgt"></span><span class="k">ERRORS</span><span class="v down">2</span></div>
+        <div class="row"><span class="brk tlft"></span><span class="brk trgt"></span><span class="brk blft"></span><span class="brk brgt"></span><span class="k">UPTIME</span><span class="v">99.9%</span></div>
+        <div class="acts">
+          <button class="btn">DEPLOY</button>
+          <button class="btn amb">HOLD</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="hint">HOVER A ROW &mdash; <b>BRACKETS SNAP IN &middot; RING FADES &middot; SCAN-SWEEP PASSES</b></div>
+</div>
+</section>
+<section class="rend" id="r3"><div class="rh"><span class="num">03</span><span class="nm">PHOSPHOR GLOW</span><span class="tg">neon glow pill + left accent bar that lights up</span></div>
+<div id="pg-demo">
+  <style>
+  #pg-demo{--g:#41ff7e;--hi:#7dffb0;--dim:#2bd964;--faint:#1c8f46;--amb:#ffd24a;--red:#ff6b5a;--bg2:#0d1b0c;--bg:#0a1409;--deep:#06100a;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--g);
+    background:var(--deep);padding:22px;border-radius:10px;position:relative;overflow:hidden}
+  #pg-demo::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:40;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);
+    mix-blend-mode:multiply;opacity:.5}
+  #pg-demo .pg-h{font-size:11px;letter-spacing:3px;color:var(--dim);margin:0 0 14px;text-transform:uppercase}
+  #pg-demo .pg-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:560px){#pg-demo .pg-grid{grid-template-columns:1fr}}
+
+  #pg-demo .panel{background:
+      linear-gradient(rgba(65,255,126,.05) 1px,transparent 1px) 0 0/100% 22px,
+      linear-gradient(90deg,rgba(65,255,126,.05) 1px,transparent 1px) 0 0/22px 100%,
+      radial-gradient(150% 105% at 8% -16%,rgba(65,255,126,.20),transparent 55%),
+      linear-gradient(180deg,var(--bg2),var(--bg));
+    border:1px solid var(--faint);border-radius:7px;display:flex;flex-direction:column;overflow:hidden;
+    transition:transform .16s ease,box-shadow .16s ease;cursor:pointer}
+  #pg-demo .panel:hover{transform:translateY(-3px) scale(1.015);
+    box-shadow:0 10px 28px rgba(0,0,0,.5),0 0 0 1px var(--hi),0 0 22px rgba(65,255,126,.3)}
+  #pg-demo .tb{display:flex;align-items:center;gap:7px;padding:5px 9px;border-bottom:1px solid var(--faint);
+    background:rgba(65,255,126,.05)}
+  #pg-demo .led{width:9px;height:9px;border-radius:50%;background:#14361f;flex:none}
+  #pg-demo .led.on{background:var(--g);box-shadow:0 0 8px var(--g)}
+  #pg-demo .tb .n{color:var(--hi);font-size:11px;letter-spacing:1px;text-transform:uppercase}
+  #pg-demo .tb .sp{flex:1}
+  #pg-demo .tb .s{font-size:9px;color:var(--dim);letter-spacing:1px}
+  #pg-demo .bd{padding:9px;display:flex;flex-direction:column;gap:6px}
+
+  /* ---- PHOSPHOR GLOW row treatment ---- */
+  #pg-demo .row{position:relative;display:flex;justify-content:space-between;align-items:baseline;
+    font-size:13px;padding:3px 9px;margin:0 -4px;border-radius:9px;
+    border:1px solid transparent;
+    transition:transform .18s cubic-bezier(.2,.7,.3,1),box-shadow .18s ease,border-color .18s ease,background .18s ease}
+  #pg-demo .row .k{color:var(--dim);transition:color .18s ease}
+  #pg-demo .row .v{color:var(--g);transition:color .18s ease,text-shadow .18s ease}
+  #pg-demo .row .v.big{font-size:18px;color:var(--hi)}
+  #pg-demo .row .v.up{color:var(--g)} #pg-demo .row .v.warn{color:var(--amb)} #pg-demo .row .v.down{color:var(--red)}
+  #pg-demo .row::before{content:"";position:absolute;left:3px;top:50%;transform:translateY(-50%) scaleY(0);
+    width:2px;height:62%;border-radius:2px;background:var(--g);box-shadow:0 0 6px var(--g);
+    transform-origin:center;transition:transform .2s cubic-bezier(.2,.7,.3,1);opacity:.95}
+  #pg-demo .row:hover{transform:translateY(-2px);
+    background:rgba(65,255,126,.06);
+    border-color:rgba(65,255,126,.45);
+    box-shadow:0 4px 14px rgba(0,0,0,.45),0 0 0 1px rgba(65,255,126,.18),0 0 16px rgba(65,255,126,.22),
+      inset 0 1px 0 rgba(125,255,176,.14)}
+  #pg-demo .row:hover::before{transform:translateY(-50%) scaleY(1)}
+  #pg-demo .row:hover .k{color:var(--hi)}
+  #pg-demo .row:hover .v{color:var(--hi);text-shadow:0 0 8px rgba(65,255,126,.6)}
+
+  #pg-demo .btns{display:flex;gap:8px;margin-top:9px}
+  #pg-demo .btn{background:transparent;color:var(--hi);border:1px solid var(--hi);border-radius:5px;
+    padding:5px 12px;font-family:inherit;font-size:11px;letter-spacing:1px;cursor:pointer;
+    transition:transform .16s cubic-bezier(.2,.7,.3,1),box-shadow .16s ease,background .16s ease}
+  #pg-demo .btn.amb{color:var(--amb);border-color:var(--amb)}
+  #pg-demo .btn:hover{transform:translateY(-2px);background:rgba(65,255,126,.12);
+    box-shadow:0 4px 12px rgba(0,0,0,.4),0 0 14px rgba(65,255,126,.4)}
+  #pg-demo .btn.amb:hover{background:rgba(255,210,74,.12);box-shadow:0 4px 12px rgba(0,0,0,.4),0 0 14px rgba(255,210,74,.4)}
+  #pg-demo .btn:active{transform:translateY(0) scale(.97)}
+
+  @media(prefers-reduced-motion:reduce){
+    #pg-demo .panel,#pg-demo .row,#pg-demo .btn,#pg-demo .row::before{transition:none}
+    #pg-demo .panel:hover,#pg-demo .row:hover,#pg-demo .btn:hover{transform:none}
+  }
+  </style>
+
+  <p class="pg-h">Phosphor Glow — hover the rows &amp; buttons</p>
+  <div class="pg-grid">
+
+    <section class="panel">
+      <div class="tb"><span class="led on"></span><span class="n">01 Daily Brief</span><span class="sp"></span><span class="s">LIVE</span></div>
+      <div class="bd">
+        <div class="row"><span class="k">UNREAD MAIL</span><span class="v big">201</span></div>
+        <div class="row"><span class="k">FLAGGED</span><span class="v warn">3</span></div>
+        <div class="row"><span class="k">NEXT EVENT</span><span class="v">10:30</span></div>
+        <div class="row"><span class="k">DUE TODAY</span><span class="v">7</span></div>
+        <div class="btns">
+          <button class="btn">READY</button>
+          <button class="btn amb">REVIEW</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="tb"><span class="led on"></span><span class="n">04 Agent Ops</span><span class="sp"></span><span class="s">LIVE</span></div>
+      <div class="bd">
+        <div class="row"><span class="k">ACTIVE JOBS</span><span class="v big">12</span></div>
+        <div class="row"><span class="k">QUEUE</span><span class="v">4</span></div>
+        <div class="row"><span class="k">ERRORS</span><span class="v down">1</span></div>
+        <div class="row"><span class="k">UPTIME</span><span class="v up">99.9%</span></div>
+        <div class="btns">
+          <button class="btn">DEPLOY</button>
+          <button class="btn amb">PAUSE</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+</section>
+</div></body></html>
