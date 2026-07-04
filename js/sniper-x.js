@@ -304,10 +304,15 @@
     this.buildTerrain();
 
     /* ----- controls runtime ----- */
-    // Touch aim sensitivity: the reticle travels this many times farther than
-    // the finger, so a short drag crosses the whole screen (like turning mouse
-    // sensitivity up high). 1 = 1:1. Bump toward 3 for even less reach needed.
-    this.aimSens = 2.4;
+    // Touch aim sensitivity: the reticle travels aimSens× farther than the
+    // finger, so a short drag crosses the screen (like a high mouse-sensitivity
+    // setting). Three presets, tappable bottom-left; the choice is remembered.
+    this.sensLevels = [{ v: 1.4, name: 'LOW' }, { v: 2.4, name: 'MED' }, { v: 3.4, name: 'HIGH' }];
+    this.sensIdx = 1;                                  // default MED (2.4×)
+    try { var si = parseInt(localStorage.getItem('cc_sniper_sens'), 10);
+      if (si >= 0 && si < this.sensLevels.length) this.sensIdx = si; } catch (e) {}
+    this.aimSens = this.sensLevels[this.sensIdx].v;
+    this._sensPulse = 0;                               // brief highlight after a tap
     this.fireBtn = { active: false, id: -1, x: 0, y: 0, r: 0 };
     this.zoomSlider = { dragging: false, id: -1, x: 0, y: 0, w: 0, h: 0 };
     this.pinch = { active: false, ids: [], startDist: 0, startZoom: 0 };
@@ -554,6 +559,7 @@
 
     // fresh quality state each session + tell the hub to pause its animations
     this._stage = 0; this._ema = 0; this._govT = 0; this.perfScale = 1; PERF.glow = true;
+    this._sensPulse = 0;
     window.CC_GAME_OPEN = true;
     try { document.dispatchEvent(new CustomEvent('game:open')); } catch (e) {}
 
@@ -1018,6 +1024,15 @@
     this.zoomTarget = clamp(fin(this.zoomTarget, 6) + dir, 2, 12);
   };
 
+  /* Tap the AIM SPEED button → cycle LOW → MED → HIGH → LOW; remember it. */
+  Game.prototype.cycleAimSens = function () {
+    this.sensIdx = (this.sensIdx + 1) % this.sensLevels.length;
+    this.aimSens = this.sensLevels[this.sensIdx].v;
+    this._sensPulse = 1;
+    try { localStorage.setItem('cc_sniper_sens', String(this.sensIdx)); } catch (e) {}
+    try { Audio2 && Audio2.ping && Audio2.ping(); } catch (e) {}
+  };
+
   /* ------------------------------------------------------------------ *
    * POINTER HANDLERS — drag-anywhere aim, fire, zoom slider, UI buttons, pinch.
    * ------------------------------------------------------------------ */
@@ -1026,17 +1041,7 @@
     var x = e.clientX, y = e.clientY, id = e.pointerId;
     try { this.canvas.setPointerCapture(id); } catch (err) {}
     Audio2.resume();
-    this.activePointers[id] = { x: x, y: y, role: null };
-
-    // Pinch-zoom detection (two touch pointers)
-    var ids = Object.keys(this.activePointers);
-    if (e.pointerType === 'touch' && ids.length === 2 && !this.pinch.active) {
-      var a = this.activePointers[ids[0]], b = this.activePointers[ids[1]];
-      this.pinch.active = true;
-      this.pinch.ids = ids.slice();
-      this.pinch.startDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-      this.pinch.startZoom = this.zoomTarget;
-    }
+    this.activePointers[id] = { x: x, y: y, role: null, ptype: e.pointerType };
 
     // UI hotspot buttons (gun select, zoom +/-) — test first.
     for (var h = 0; h < this.uiHotspots.length; h++) {
@@ -1070,6 +1075,25 @@
     this.activePointers[id].role = 'drag';
     this.activePointers[id].lastX = x;
     this.activePointers[id].lastY = y;
+
+    // Pinch-zoom starts ONLY when both touch pointers are free aim-drags and
+    // the gun isn't firing. This is what lets you aim WHILE holding FIRE: a
+    // finger on the fire button is role 'fire', so the aim finger is the only
+    // 'drag' → no pinch → it keeps moving the reticle. (The old code treated
+    // any two fingers as a pinch, which froze aiming the moment you fired.)
+    if (e.pointerType === 'touch' && !this.pinch.active && !this.firing) {
+      var dragIds = [];
+      for (var pid in this.activePointers) {
+        if (this.activePointers[pid].role === 'drag') dragIds.push(pid);
+      }
+      if (dragIds.length === 2) {
+        var a = this.activePointers[dragIds[0]], b = this.activePointers[dragIds[1]];
+        this.pinch.active = true;
+        this.pinch.ids = dragIds.slice();
+        this.pinch.startDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        this.pinch.startZoom = this.zoomTarget;
+      }
+    }
   };
 
   Game.prototype.onPointerMove = function (e) {
@@ -1117,7 +1141,15 @@
 
     if (this.pinch.active) {
       var ids = Object.keys(this.activePointers);
-      if (ids.length < 2) this.pinch.active = false;
+      if (ids.length < 2) {
+        this.pinch.active = false;
+        // a finger stayed down to aim — re-seat its drag origin to where it is
+        // now so it doesn't jump from a position captured before the pinch
+        for (var pid in this.activePointers) {
+          var rp = this.activePointers[pid];
+          if (rp.role === 'drag') { rp.lastX = rp.x; rp.lastY = rp.y; }
+        }
+      }
     }
   };
 
@@ -1177,6 +1209,7 @@
     this.shake = Math.max(0, this.shake - dt * 2.4);
     this.flash = Math.max(0, this.flash - dt * 7);
     this.hitMarker = Math.max(0, this.hitMarker - dt * 4);
+    this._sensPulse = Math.max(0, (this._sensPulse || 0) - dt * 1.6);
 
     // Heat cool / overheat recovery
     if (this.gun.heatPerShot) {
@@ -2462,8 +2495,56 @@
     /* ---- FOCUS (bullet-time) button, left of fire ---- */
     this.drawFocusButton(ctx);
 
+    /* ---- AIM SPEED button (bottom-left, where the joystick used to be) ---- */
+    this.drawSensButton(ctx, W, H, pad);
+
     /* ---- Heat / ammo readout above fire ---- */
     this.drawGunStatus(ctx, W, H);
+  };
+
+  /* Tappable aim-speed selector. Cycles LOW / MED / HIGH and shows the current
+     multiplier big, so it's obvious what it changed to. */
+  Game.prototype.drawSensButton = function (ctx, W, H, pad) {
+    var lvl = this.sensLevels[this.sensIdx] || { v: this.aimSens, name: '' };
+    var bw = clamp(W * 0.15, 104, 158), bh = clamp(Math.min(W, H) * 0.12, 56, 78);
+    var bx = pad, by = H - pad - bh;
+    var pulse = this._sensPulse || 0;
+
+    ctx.save();
+    // body
+    ctx.fillStyle = 'rgba(10,22,14,0.66)';
+    ctx.strokeStyle = pulse > 0 ? C.hi : C.green;
+    ctx.lineWidth = pulse > 0 ? 2.4 : 1.6;
+    ctx.shadowColor = C.green; ctx.shadowBlur = (PERF.glow ? 6 : 0) + pulse * 12;
+    this.roundRect(ctx, bx, by, bw, bh, 10); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // label
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = C.dim; ctx.font = '600 10px ' + FONT;
+    ctx.fillText('AIM SPEED', bx + 12, by + 9);
+    ctx.fillStyle = C.faint; ctx.font = '9px ' + FONT;
+    ctx.fillText('TAP', bx + bw - 30, by + 9);
+
+    // big multiplier + level name
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = pulse > 0 ? C.hi : C.cyan; ctx.font = '800 22px ' + FONT;
+    ctx.fillText(lvl.v.toFixed(1) + '×', bx + 12, by + bh * 0.62);
+    ctx.fillStyle = C.dim; ctx.font = '700 11px ' + FONT;
+    ctx.textAlign = 'right';
+    ctx.fillText(lvl.name, bx + bw - 12, by + bh * 0.62);
+
+    // three level pips
+    var pipW = (bw - 24) / 3 - 4;
+    for (var i = 0; i < this.sensLevels.length; i++) {
+      var on = i <= this.sensIdx;
+      ctx.fillStyle = on ? (i === this.sensIdx ? C.green : 'rgba(65,255,126,0.5)') : 'rgba(65,255,126,0.14)';
+      ctx.fillRect(bx + 12 + i * (pipW + 4), by + bh - 10, pipW, 3);
+    }
+    ctx.restore();
+
+    var self = this;
+    this.uiHotspots.push({ kind: 'sens', x: bx, y: by, w: bw, h: bh, action: function () { self.cycleAimSens(); } });
   };
 
   Game.prototype.roundRect = function (ctx, x, y, w, h, r) {
