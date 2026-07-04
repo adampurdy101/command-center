@@ -472,9 +472,14 @@ tick();setInterval(tick,1000);
     const v=row&&row.querySelector('.v');return v?v.textContent.trim():null;
   }
   function buildBrief(){
-    const unread=panelVal('daily brief','UNREAD')||'201';
-    const flagged=panelVal('daily brief','FLAGGED')||'3';
-    const tasks=panelVal('daily brief','TASKS')||'0';
+    // read the same elements app.js writes (the EMAILS row's value is #brief-unread);
+    // '–'/'—' are the pre-load placeholders — treat them as missing
+    const ok=t=>t&&t!=='–'&&t!=='—';
+    const val=(id,key,fb)=>{const el=document.getElementById(id);const t=el?el.textContent.trim():'';
+      if(ok(t))return t; const p=panelVal('daily brief',key); return ok(p)?p:fb;};
+    const unread=val('brief-unread','EMAILS','201');
+    const flagged=val('brief-flagged','FLAGGED','3');
+    const tasks=val('brief-tasks','TASKS','0');
     const tn=parseInt(tasks,10);
     const tphrase=(tn===0||isNaN(tn))?'no open tasks':(tasks+' open task'+(tn===1?'':'s'));
     return pick(OPENERS,lop)+" You have "+unread+" unread messages, "+flagged+" flagged, and "+tphrase+
