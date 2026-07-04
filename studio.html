@@ -223,7 +223,7 @@
         <div class="center">
           <div class="globe-wrap">
             <span class="lab">GLOBAL TRACK SYS · ORBIT 4471</span>
-            <span class="lab2">DRAG TO ROTATE · SCROLL TO ZOOM</span>
+            <span class="lab2">DRAG · ZOOM · CLICK = TARGET</span>
             <canvas id="globe"></canvas>
             <div class="continent" id="continent"></div>
             <div class="readout">
@@ -290,9 +290,25 @@
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
   <script defer src="js/sniper.js"></script>
   <script defer src="js/mission.js"></script>
+  <script defer src="js/globe.js"></script>
   <script defer src="js/effects.js"></script>
   <script defer src="js/backdrop.js"></script>
   <script defer src="js/panels.js"></script>
+  <script>
+  (function(){
+    /* mockup-page heal: never run under the PWA service worker (see js/mobile.js) */
+    if('serviceWorker' in navigator && window.self!==window.top){
+      try{
+        navigator.serviceWorker.getRegistrations().then(function(rs){
+          rs.forEach(function(r){r.unregister();});
+        }).catch(function(){});
+        if(window.caches&&caches.keys)caches.keys().then(function(ks){
+          ks.forEach(function(k){if(k.indexOf('cc-shell')===0)caches.delete(k);});
+        }).catch(function(){});
+      }catch(e){}
+    }
+  })();
+  </script>
   <script>
     (function () {
       function init() {

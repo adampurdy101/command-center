@@ -12,6 +12,22 @@
   "use strict";
   if (!("serviceWorker" in navigator)) return;
 
+  // Never run PWA plumbing inside an embedded preview (design tools, iframes):
+  // the sandbox serves one-shot URLs the worker can't re-fetch, so a claimed
+  // frame goes blank. Heal any frame a previously-registered worker already
+  // controls: unregister, drop our caches, reload once uncontrolled.
+  if (window.self !== window.top) {
+    try {
+      navigator.serviceWorker.getRegistrations().then(function (rs) {
+        rs.forEach(function (r) { r.unregister(); });
+      }).catch(function () {});
+      if (window.caches && caches.keys) caches.keys().then(function (ks) {
+        ks.forEach(function (k) { if (k.indexOf("cc-shell") === 0) caches.delete(k); });
+      }).catch(function () {});
+    } catch (e) {}
+    return;
+  }
+
   // Reload ONCE when a freshly-deployed worker takes control (no manual hard-refresh).
   var refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", function () {

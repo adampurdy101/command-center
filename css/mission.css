@@ -136,14 +136,20 @@
 /* ---------- GLOBE ---------- */
 #hub .globe-wrap{flex:1;position:relative;border:1px solid var(--faint);border-radius:7px;
   background:radial-gradient(circle at 50% 42%,#0c2012,var(--deep) 70%);overflow:hidden;min-height:0}
-#hub .globe-wrap .lab{position:absolute;top:7px;left:10px;font-size:10px;color:var(--dim);letter-spacing:2px;z-index:3}
-#hub .globe-wrap .lab2{position:absolute;top:7px;right:10px;font-size:10px;color:var(--dim);letter-spacing:1px;z-index:3}
+#hub .globe-wrap .lab{position:absolute;top:7px;left:10px;font-size:10px;color:var(--dim);letter-spacing:2px;z-index:3;
+  max-width:46%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hub .globe-wrap .lab2{position:absolute;top:7px;right:10px;font-size:10px;color:var(--dim);letter-spacing:1px;z-index:3;
+  max-width:46%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
 #hub #globe{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
 #hub .globe-wrap .lab,#hub .globe-wrap .lab2,#hub .globe-wrap .readout,#hub .globe-wrap .continent{pointer-events:none}
 #hub .globe-wrap .continent{position:absolute;top:13%;left:0;right:0;text-align:center;z-index:3;
   color:#7dffb0;font-size:18px;letter-spacing:5px;text-shadow:0 0 12px var(--g);opacity:0;transition:opacity .25s}
-#hub .readout{position:absolute;bottom:7px;left:10px;right:10px;display:flex;justify-content:space-between;
+#hub .readout{position:absolute;bottom:7px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;
   font-size:10px;color:var(--faint);letter-spacing:1px;z-index:3}
+#hub .readout span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* mid widths: drop the lower-priority chips so the readout stays one clean line */
+@media (max-width:1250px){ #hub .readout #wx-bkk{display:none} }
+@media (max-width:1050px){ #hub .globe-wrap .lab2{display:none} #hub .readout #wx-home{display:none} }
 
 /* ---------- BOTTOM BAND : VOICE + GAME ---------- */
 #hub .bottom{grid-column:1/4;display:grid;grid-template-columns:1.3fr 1fr;gap:8px;height:170px}

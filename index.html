@@ -22,6 +22,8 @@
   <link rel="stylesheet" href="css/mobile.css" />
   <!-- tasteful always-on polish (bloom, hover-glow, corner brackets, glowing progress edge) -->
   <link rel="stylesheet" href="css/enhance.css" />
+  <!-- cinema pass: deeper panel atmosphere, LED pings, power-on boot, scan sweeps (with js/cinema.js) -->
+  <link rel="stylesheet" href="css/cinema.css" />
   <!-- full-screen email console (opens from the Daily Brief EMAILS line) -->
   <link rel="stylesheet" href="css/email.css" />
   <!-- optional Neon Noir glass theme — inert unless opened with ?noir (js/noir.js) -->
@@ -137,7 +139,7 @@
         <div class="center">
           <div class="globe-wrap">
             <span class="lab">GLOBAL TRACK SYS · ORBIT 4471</span>
-            <span class="lab2">DRAG TO ROTATE · SCROLL TO ZOOM</span>
+            <span class="lab2">DRAG · ZOOM · CLICK = TARGET</span>
             <canvas id="globe"></canvas>
             <div class="continent" id="continent"></div>
             <div class="readout">
@@ -239,10 +241,12 @@
   <!-- geo libs for the globe -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
-  <!-- Sniper Scope // Overwatch — the fullscreen game (window.SniperGame); loads before mission.js so the launcher can see it -->
-  <script defer src="js/sniper.js"></script>
-  <!-- Mission Control interactive layer (globe, voice scope, HAL, sniper launcher) -->
+  <!-- Sniper Scope // Overwatch — ENHANCED ×5, R1 MIDNIGHT RECON (window.SniperGame); loads before mission.js so the launcher can see it. Classic build kept at js/sniper.js -->
+  <script defer src="js/sniper-x.js"></script>
+  <!-- Mission Control interactive layer (voice scope, HAL, sniper launcher) -->
   <script defer src="js/mission.js"></script>
+  <!-- GLOBAL TRACK SYS globe engine v2 (night lights, live seismic + ISS, satellites, aurora, target lock) -->
+  <script defer src="js/globe.js"></script>
   <!-- visual flourishes (heartbeat, HAL eye, boot, ambient, weather, haptics, fullscreen) -->
   <script defer src="js/effects.js"></script>
   <!-- living page backdrop (Grid Chamber 3D background behind the panels) -->
@@ -253,6 +257,8 @@
   <script defer src="js/panels.js"></script>
   <!-- tasteful micro-interactions (readout "update" flicker) -->
   <script defer src="js/enhance.js"></script>
+  <!-- cinema pass driver (panel power-on stagger, roaming scan sweep, backdrop parallax) -->
+  <script defer src="js/cinema.js"></script>
   <!-- full-screen email console (window.EmailConsole) -->
   <script defer src="js/email.js"></script>
   <!-- optional Neon Noir glass theme activator (only runs with ?noir) -->
