@@ -192,35 +192,8 @@
     } catch (e) {}
   }
 
-  /* ============================================================
-     5 · LIVE WEATHER  (Renton + Pattaya, Open-Meteo, no key)
-     ============================================================ */
-  function wxSymbol(code) {
-    if (code === 0) return "☀";
-    if (code <= 2) return "🌤";
-    if (code === 3) return "☁";
-    if (code >= 45 && code <= 48) return "🌫";
-    if (code >= 51 && code <= 67) return "🌧";
-    if (code >= 71 && code <= 77) return "❄";
-    if (code >= 80 && code <= 82) return "🌦";
-    if (code >= 95) return "⛈";
-    return "·";
-  }
-  function loadWeather() {
-    var spots = [
-      { id: "wx-home", label: "RENTON", lat: 47.48, lon: -122.21 },
-      { id: "wx-bkk", label: "PATTAYA", lat: 12.93, lon: 100.88 }
-    ];
-    spots.forEach(function (s) {
-      var url = "https://api.open-meteo.com/v1/forecast?latitude=" + s.lat + "&longitude=" + s.lon +
-        "&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto";
-      fetch(url).then(function (r) { return r.json(); }).then(function (d) {
-        var el = document.getElementById(s.id); if (!el || !d || !d.current) return;
-        var temp = Math.round(d.current.temperature_2m);
-        el.textContent = s.label + " " + temp + "° " + wxSymbol(d.current.weather_code);
-      }).catch(function () {});
-    });
-  }
+  /* Live weather moved to js/weather.js — the richer globe weather station
+     (sun times, feels-like, humidity, wind, UV, AQI, moon, Pattaya clock). */
 
   /* (cursor/device parallax removed by request — the globe and panels stay put) */
 
@@ -338,6 +311,5 @@
   startFullscreen();
   startHaptics();
   startTickers();
-  loadWeather();
-  setInterval(loadWeather, 15 * 60 * 1000);
+  /* weather station is owned by js/weather.js */
 })();

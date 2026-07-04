@@ -142,11 +142,26 @@
             <span class="lab2">DRAG · ZOOM · CLICK = TARGET</span>
             <canvas id="globe"></canvas>
             <div class="continent" id="continent"></div>
-            <div class="readout">
-              <span id="zoomr">ZOOM 1.0×</span>
-              <span id="wx-home" class="wx">RENTON —</span>
-              <span id="wx-bkk" class="wx">PATTAYA —</span>
-              <span>HOME · RENTON</span>
+            <div class="readout" id="readout">
+              <div class="wxstation" id="wxstation" aria-live="polite">
+                <div class="wxcity" data-city="renton">
+                  <div class="wxc-h"><b class="wxc-name">RENTON</b><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span></div>
+                  <div class="wxc-r"><span data-f="feel">feels —</span><span data-f="hum">💧 —</span><span data-f="wind">🌬 —</span></div>
+                  <div class="wxc-r"><span data-f="uv">☀ UV —</span><span data-f="aqi">AQI —</span></div>
+                  <div class="wxc-r wxc-sun"><span data-f="rise">↑ —</span><span data-f="set">↓ —</span><span class="wxc-gold" data-f="gold"></span></div>
+                </div>
+                <div class="wxcity" data-city="pattaya">
+                  <div class="wxc-h"><b class="wxc-name">PATTAYA</b><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span><span class="wxc-clock" data-f="clock"></span></div>
+                  <div class="wxc-r"><span data-f="feel">feels —</span><span data-f="hum">💧 —</span><span data-f="wind">🌬 —</span></div>
+                  <div class="wxc-r"><span data-f="uv">☀ UV —</span><span data-f="aqi">AQI —</span></div>
+                  <div class="wxc-r wxc-sun"><span data-f="rise">↑ —</span><span data-f="set">↓ —</span><span class="wxc-gold" data-f="gold"></span></div>
+                </div>
+              </div>
+              <div class="wxmoon" id="wxmoon">🌙 —</div>
+              <div class="wxchips">
+                <span id="zoomr">ZOOM 1.0×</span>
+                <span class="wxchips-home">HOME · RENTON</span>
+              </div>
             </div>
           </div>
         </div>
@@ -247,8 +262,10 @@
   <script defer src="js/mission.js"></script>
   <!-- GLOBAL TRACK SYS globe engine v2 (night lights, live seismic + ISS, satellites, aurora, target lock) -->
   <script defer src="js/globe.js"></script>
-  <!-- visual flourishes (heartbeat, HAL eye, boot, ambient, weather, haptics, fullscreen) -->
+  <!-- visual flourishes (heartbeat, HAL eye, boot, ambient, haptics, fullscreen) -->
   <script defer src="js/effects.js"></script>
+  <!-- globe weather station: sun times, temps, UV/AQI, moon, Pattaya clock (Open-Meteo) -->
+  <script defer src="js/weather.js"></script>
   <!-- living page backdrop (Grid Chamber 3D background behind the panels) -->
   <script defer src="js/backdrop.js"></script>
   <!-- iPhone motion lightsaber (window.Saber) — launcher injected on iPhone only -->
