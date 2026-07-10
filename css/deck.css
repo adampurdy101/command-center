@@ -29,6 +29,9 @@ html.cc-deck #hub .globe-wrap .lab2,
 html.cc-deck #hub .globe-wrap .wxpin,
 html.cc-deck #hub .globe-wrap .wxfoot,
 html.cc-deck #deck-btn{display:none!important}
+/* deck: the browser must NOT claim any drag direction for scrolling — the whole
+   canvas is free-rotate (fixes the glitchy vertical/diagonal drag on the phone) */
+html.cc-deck #hub #globe{touch-action:none!important}
 /* boot: the globe lifts off the panel and swells to full frame */
 html.cc-deck.dk-boot #hub .globe-wrap{animation:dkBoot .72s cubic-bezier(.16,.84,.33,1.08)}
 @keyframes dkBoot{0%{transform:scale(.58);opacity:.25;filter:brightness(1.9)}
@@ -118,6 +121,17 @@ html.cc-deck.dk-idle #deck .dk-fade{opacity:0!important;pointer-events:none!impo
   box-shadow:0 0 18px rgba(255,210,74,.65);animation:dkPulse 1.6s ease-in-out infinite}
 #deck .dk-alert.on{display:flex}
 @keyframes dkPulse{0%,100%{opacity:.86}50%{opacity:1}}
+
+/* ---- tap-a-LED description caption (bottom-right, clear of both rails) ---- */
+#deck .dk-tip{position:absolute;right:calc(112px + env(safe-area-inset-right));
+  bottom:calc(12px + env(safe-area-inset-bottom));max-width:58vw;
+  display:none;pointer-events:none;text-align:right;
+  background:rgba(2,11,6,.9);border:1px solid rgba(125,247,255,.45);border-radius:7px;
+  padding:7px 11px;font-size:10px;line-height:1.4;color:var(--dhi);
+  box-shadow:0 0 12px rgba(125,247,255,.2)}
+#deck .dk-tip.on{display:block}
+#deck .dk-tip b{color:var(--dcyan);letter-spacing:1.4px}
+#deck .dk-tip .st{color:var(--damb);letter-spacing:1px}
 
 /* ---- cinema briefing card (bottom center; visible while cinema runs) ---- */
 #deck .dk-brief{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);

@@ -391,8 +391,15 @@ cv.addEventListener('touchmove',e=>{
   if(e.touches.length===2&&pinch){e.preventDefault();const d=tdist(e);zoomMul(d/pinch);pinch=d;lastTouch=now();return;}
   if(e.touches.length===1&&tdrag){
     const dx=e.touches[0].clientX-tdrag.x,dy=e.touches[0].clientY-tdrag.y;
-    if(!tdrag.axis&&(Math.abs(dx)>6||Math.abs(dy)>6)){tdrag.axis=Math.abs(dx)>=Math.abs(dy)?'h':'v';tdrag.moved=true;follow=null;}
-    if(tdrag.axis==='h'){e.preventDefault();rotBy(dx,dy,tdrag.r0);lastTouch=now();}
+    if(window.CC_DECK_OPEN){
+      // fullscreen deck: no page to scroll — drag in ANY direction rotates freely
+      if(!tdrag.moved&&(Math.abs(dx)>3||Math.abs(dy)>3)){tdrag.moved=true;follow=null;}
+      e.preventDefault();rotBy(dx,dy,tdrag.r0);lastTouch=now();
+    }else{
+      // small panel: horizontal = rotate, vertical = let the page scroll past it
+      if(!tdrag.axis&&(Math.abs(dx)>6||Math.abs(dy)>6)){tdrag.axis=Math.abs(dx)>=Math.abs(dy)?'h':'v';tdrag.moved=true;follow=null;}
+      if(tdrag.axis==='h'){e.preventDefault();rotBy(dx,dy,tdrag.r0);lastTouch=now();}
+    }
   }},{passive:false});
 cv.addEventListener('touchend',e=>{
   if(e.touches.length===0){

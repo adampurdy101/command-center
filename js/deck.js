@@ -20,7 +20,7 @@ var COARSE=!!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches);
 var R2D=180/Math.PI, D2R=Math.PI/180;
 var wrap=null, deck=null, btn=null, built=false, isOpen=false, booted=false;
 var lastAct=0, idleIv=0, tickIv=0, passIv=0, cine=null, cineTO=0, typeIv=0;
-var bootTO=0, titleTO=0, cascIv=0, cascTO=0, cascSaved=null;   // boot timers — cleared on close
+var bootTO=0, titleTO=0, cascIv=0, cascTO=0, cascSaved=null, tipTO=0;   // boot timers — cleared on close
 var passInfo={rtn:null,pty:null}, overheadLatch=false;
 var G=function(){return window.CC_GLOBE||null;};
 
@@ -81,12 +81,12 @@ function build(){
     '<div class="dk-boot-title" id="dk-boot-title"></div>'+
     '<div class="dk-left dk-fade">'+
       '<div class="dk-panel" id="dk-iss">'+
-        '<div class="dk-h"><span class="led cyan"></span>ISS · LIVE</div>'+
-        '<div class="dk-row"><span>ALT</span><b id="dk-alt">—</b></div>'+
-        '<div class="dk-row"><span>VEL</span><b id="dk-vel">—</b></div>'+
-        '<div class="dk-row"><span>STATE</span><b id="dk-vis">—</b></div>'+
-        '<div class="dk-row"><span>▲ RTN</span><b class="amb" id="dk-rtn">—</b></div>'+
-        '<div class="dk-row"><span>▲ PTY</span><b class="amb" id="dk-pty">—</b></div>'+
+        '<div class="dk-h"><span class="led cyan"></span>ISS · SPACE STATION</div>'+
+        '<div class="dk-row"><span>ALTITUDE</span><b id="dk-alt">—</b></div>'+
+        '<div class="dk-row"><span>SPEED</span><b id="dk-vel">—</b></div>'+
+        '<div class="dk-row"><span>SUNLIGHT</span><b id="dk-vis">—</b></div>'+
+        '<div class="dk-row"><span>OVER RENTON</span><b class="amb" id="dk-rtn">—</b></div>'+
+        '<div class="dk-row"><span>OVER PATTAYA</span><b class="amb" id="dk-pty">—</b></div>'+
         '<button class="dk-btn" id="dk-follow">► FOLLOW</button>'+
       '</div>'+
       '<div class="dk-panel" id="dk-quakes">'+
@@ -100,6 +100,7 @@ function build(){
     '</div>'+
     '<div class="dk-right dk-fade" id="dk-leds"></div>'+
     '<div class="dk-alert" id="dk-alert"></div>'+
+    '<div class="dk-tip" id="dk-tip"></div>'+
     '<div class="dk-brief" id="dk-brief"><div class="t" id="dk-brief-t"></div><div class="b" id="dk-brief-b"></div></div>'+
     '<div class="dk-gate" id="dk-gate">'+
       '<div class="ph"></div>'+
@@ -110,23 +111,37 @@ function build(){
   deck.id='deck';
   wrap.appendChild(deck);
 
-  // LED board
-  var LEDS=[['seis','SEIS'],['sat','SAT'],['iss','ISS'],['aur','AUR'],['arc','ARC'],['term','TERM']];
+  // LED board — [key, short label, friendly name, what it shows]
+  var LEDS=[
+    ['seis','SEIS','SEISMIC','Live earthquakes worldwide (USGS, last 24h). Ring size = how strong.'],
+    ['sat','SAT','SATELLITES','Two satellites circling Earth on their orbit tracks.'],
+    ['iss','ISS','SPACE STATION','The Intl. Space Station — where astronauts live — and its flight path.'],
+    ['aur','AUR','AURORA','The northern & southern lights glowing over the poles.'],
+    ['arc','ARC','TRAVEL ARCS','Glowing routes arcing from home (Renton) out to other cities.'],
+    ['term','TERM','DAY / NIGHT','The real sunlight line — where it is daytime vs night on Earth right now.']];
   var rail=deck.querySelector('#dk-leds');
   LEDS.forEach(function(d){
     var b=el('button','dk-led','<i></i>'+d[1]);b.dataset.k=d[0];
+    b.title=d[2]+' — '+d[3];
     b.addEventListener('click',function(){var g=G();if(!g)return;
-      g.layers[d[0]]=!g.layers[d[0]];g.saveLayers();paintLeds();});
+      g.layers[d[0]]=!g.layers[d[0]];g.saveLayers();paintLeds();
+      showTip('<b>'+d[2]+'</b> — '+d[3]+' <span class="st">· '+(g.layers[d[0]]?'ON':'OFF')+'</span>');});
     rail.appendChild(b);});
   var cbtn=el('button','dk-cinema','▶ CINEMA');cbtn.id='dk-cinema';
-  cbtn.addEventListener('click',function(){cine?stopCinema():startCinema();});
+  cbtn.title='CINEMA — a hands-free tour: the globe flies itself between the newest quake, the ISS, an orbital sunrise, Pattaya and home. Touch anywhere to take back control.';
+  cbtn.addEventListener('click',function(){
+    if(cine)stopCinema();
+    else{startCinema();showTip('<b>CINEMA</b> — hands-free tour: newest quake → space station → sunrise from orbit → Pattaya → home. <span class="st">Touch to stop.</span>');}});
   rail.appendChild(cbtn);
 
   // wiring
   deck.querySelector('#dk-exit').addEventListener('click',close);
   deck.querySelector('#dk-gate-x').addEventListener('click',close);
-  deck.querySelector('#dk-follow').addEventListener('click',function(){
-    var g=G();if(!g)return;g.followISS(!g.isFollowingISS());paintFollow();});
+  var fbtn=deck.querySelector('#dk-follow');
+  fbtn.title='FOLLOW — lock the camera on the ISS so the globe turns to keep it centered as it orbits.';
+  fbtn.addEventListener('click',function(){
+    var g=G();if(!g)return;var on=!g.isFollowingISS();g.followISS(on);paintFollow();
+    showTip('<b>FOLLOW ISS</b> — camera '+(on?'locked on the Space Station; the globe turns to keep it centered.':'released.')+'');});
   deck.querySelector('#dk-wx-rtn').addEventListener('click',function(){var g=G();if(g){var s=g.state();g.flyTo(s.home[0],s.home[1],2.1,1400);}});
   deck.querySelector('#dk-wx-pty').addEventListener('click',function(){var g=G();if(g){var s=g.state();g.flyTo(s.pty[0],s.pty[1],2.1,1400);}});
 
@@ -150,6 +165,10 @@ function paintFollow(){var g=G();if(!g||!deck)return;
   var b=deck.querySelector('#dk-follow');
   b.classList.toggle('on',g.isFollowingISS());
   b.textContent=g.isFollowingISS()?'■ RELEASE':'► FOLLOW';}
+function showTip(html){if(!deck)return;
+  var t=deck.querySelector('#dk-tip');t.innerHTML=html;t.classList.add('on');
+  clearTimeout(tipTO);tipTO=setTimeout(function(){t.classList.remove('on');},3400);
+  lastAct=Date.now();}          // reading a tip counts as activity — don't idle-fade mid-read
 
 /* ---------- open / close / gate ---------- */
 function open(){
@@ -176,8 +195,8 @@ function close(){
   clearInterval(idleIv);clearInterval(tickIv);clearInterval(passIv);idleIv=tickIv=passIv=0;
   // kill any in-flight boot timers and restore the layer mask synchronously,
   // so a fast exit+reopen can never corrupt (or persist) a half-cascaded mask
-  clearInterval(cascIv);clearTimeout(cascTO);clearTimeout(bootTO);clearTimeout(titleTO);
-  cascIv=cascTO=bootTO=titleTO=0;
+  clearInterval(cascIv);clearTimeout(cascTO);clearTimeout(bootTO);clearTimeout(titleTO);clearTimeout(tipTO);
+  cascIv=cascTO=bootTO=titleTO=tipTO=0;
   var gg=G();
   if(gg&&cascSaved){for(var k in cascSaved)gg.layers[k]=cascSaved[k];cascSaved=null;paintLeds();}
   var bt0=deck.querySelector('#dk-boot-title');if(bt0)bt0.classList.remove('on');
@@ -331,17 +350,17 @@ function cineStep(){
   var st=g.state();
   var stops=[];
   var nq=(st.quakes||[]).slice().sort(function(a,b){return b.t-a.t;})[0];
-  if(nq)stops.push({n:'SEISMIC CONTACT',fly:[nq.lon,nq.lat,2.3],dwell:7000,
+  if(nq)stops.push({n:'LATEST EARTHQUAKE',fly:[nq.lon,nq.lat,2.3],dwell:7000,
     body:'M'+nq.m.toFixed(1)+' · '+(nq.place||'—')+'\nDEPTH '+Math.round(nq.depth)+' KM · '+age(nq.t)+' AGO · USGS LIVE'});
-  if(st.iss)stops.push({n:'STATION TRACK',follow:true,dwell:8000,
-    body:'ISS · '+(st.issInfo?Math.round(st.issInfo.alt)+' KM · '+Math.round(st.issInfo.vel).toLocaleString('en-US')+' KM/H':'ACQUIRING')+
+  if(st.iss)stops.push({n:'SPACE STATION',follow:true,dwell:8000,
+    body:'ISS · '+(st.issInfo?Math.round(st.issInfo.alt)+' KM UP · '+Math.round(st.issInfo.vel).toLocaleString('en-US')+' KM/H':'ACQUIRING')+
       '\n'+(st.issInfo&&st.issInfo.vis==='daylight'?'IN SUNLIGHT':'IN EARTH SHADOW')});
-  stops.push({n:'ORBITAL SUNRISE',fly:[((st.sun[0]+88+540)%360)-180,st.sun[1]*0.5,1.15],dwell:6500,
-    body:'CAMERA ON THE TERMINATOR\nWATCH THE LIMB — SUNRISE FROM ORBIT'});
-  stops.push({n:'PATTAYA STATION',fly:[st.pty[0],st.pty[1],2.1],dwell:6000,
-    body:'FORWARD STATION · THAILAND\n'+(document.querySelector('.wxpin[data-city="pattaya"] [data-f="temp"]')||{}).textContent+' · LOCAL '+((document.querySelector('.wxpin[data-city="pattaya"] [data-f="clock"]')||{}).textContent||'')});
-  stops.push({n:'HOME BASE',fly:[st.home[0],st.home[1],2.0],dwell:6000,
-    body:'RENTON · WA · UPLINK NOMINAL\n'+(document.querySelector('.wxpin[data-city="renton"] [data-f="temp"]')||{}).textContent+' · ALL SYSTEMS GREEN'});
+  stops.push({n:'SUNRISE FROM ORBIT',fly:[((st.sun[0]+88+540)%360)-180,st.sun[1]*0.5,1.15],dwell:6500,
+    body:'CAMERA ON THE DAY/NIGHT LINE\nWATCH THE SUN RISE OVER EARTH’S EDGE'});
+  stops.push({n:'PATTAYA · THAILAND',fly:[st.pty[0],st.pty[1],2.1],dwell:6000,
+    body:'YOUR FORWARD CITY\n'+(document.querySelector('.wxpin[data-city="pattaya"] [data-f="temp"]')||{}).textContent+' · LOCAL '+((document.querySelector('.wxpin[data-city="pattaya"] [data-f="clock"]')||{}).textContent||'')});
+  stops.push({n:'HOME · RENTON WA',fly:[st.home[0],st.home[1],2.0],dwell:6000,
+    body:'HOME BASE\n'+(document.querySelector('.wxpin[data-city="renton"] [data-f="temp"]')||{}).textContent+' · ALL SYSTEMS GREEN'});
   // advance by the LAST-PLAYED stop's name — the list is rebuilt each step, so
   // index-based advancement repeats/skips stops when live data appears mid-tour
   var idx=0;
