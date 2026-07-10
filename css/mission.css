@@ -195,11 +195,13 @@
 #hub .wxfoot .wxmoon{color:var(--hi);text-shadow:0 0 6px rgba(125,255,176,.3)}
 #hub .wxfoot .wx{color:var(--hi);text-shadow:0 0 5px rgba(65,255,126,.5)}
 @media (max-width:1050px){ #hub .globe-wrap .lab2{display:none} }
-/* phones: pins shrink to TINY temp tabs ("RTN 74°" / "PTY 84°") on one thin line
-   along the panel's bottom edge with the telemetry — the globe stays the hero.
+/* phones: pins shrink to TINY temp tabs ("RTN 74°" / "PTY 84°") and STACK
+   vertically in the bottom-left corner (RTN on top, PTY below) — each tab is
+   still horizontal, they're just stacked. The globe stays the hero.
    Tap a tab for the full card (which pops upward, transient). */
 @media (max-width:760px){
-  #hub .readout{display:flex;align-items:flex-end;gap:7px;padding:0 9px 6px}
+  #hub .readout{display:flex;flex-direction:column;align-items:flex-start;
+    justify-content:flex-end;gap:4px;padding:0 9px 7px}
   #hub .wxpin{position:relative;bottom:auto;font-size:10px}
   #hub .wxpin[data-side="left"],#hub .wxpin[data-side="right"]{left:auto;right:auto}
   #hub .wxpin-face{position:relative;padding:4px 7px;gap:4px;font-size:10px}
@@ -216,9 +218,9 @@
   #hub .wxpin-card{width:238px;max-width:calc(100vw - 128px)}
   #hub .wxpc-h{flex-wrap:wrap;white-space:normal;row-gap:2px}
   #hub .wxpin-card .wxc-r{flex-wrap:wrap;white-space:normal;overflow:visible;row-gap:2px}
-  /* telemetry shares the line, pushed to the right; the moon truncates politely */
-  #hub .wxfoot{position:static;transform:none;margin-left:auto;max-width:none;
-    flex:1;min-width:0;justify-content:flex-end;font-size:8px}
+  /* telemetry sits on its own thin row beneath the stacked tabs; moon truncates */
+  #hub .wxfoot{position:static;transform:none;margin-left:0;align-self:stretch;
+    max-width:100%;justify-content:flex-start;font-size:8px}
   #hub .wxfoot .wxmoon{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
   #hub .wxfoot #zoomr{display:none}
 }
