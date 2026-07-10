@@ -125,6 +125,11 @@ let sig=0.62;const sigBuf=new Float32Array(44).fill(0.6);  // uplink sparkline
 const VP={cx:0,cy:0,Rd:1,lam0R:0,sinF:0,cosF:1,w:0,h:0};
 const SUN={lonR:0,sin:0,cos:1,lon:0,lat:0};
 
+/* ---------- layer flags (Globe Deck toggles these; persisted) ---------- */
+const LAYERS={seis:true,sat:true,iss:true,aur:true,arc:true,term:true};
+try{const s=JSON.parse(localStorage.getItem('cc_globe_layers')||'null');
+  if(s)for(const k in LAYERS)if(typeof s[k]==='boolean')LAYERS[k]=s[k];}catch(e){}
+
 /* easing */
 function easeC(u){return u<0.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;}
 function easeO(u){return 1-Math.pow(1-u,3);}
@@ -157,11 +162,13 @@ fetch('https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/n
     const c=d3.geoCentroid(f);return c[0]>=-170&&c[0]<=-30&&c[1]>=-58&&c[1]<=75;})};}).catch(()=>{});
 
 /* ISS: live fixes → smooth extrapolation + orbit ground track */
-let fixes=[],issPole=null;
+let fixes=[],issPole=null,issInfo=null;
 function v3v(lon,lat){const la=lat*rad,lo=lon*rad;return [Math.cos(la)*Math.cos(lo),Math.cos(la)*Math.sin(lo),Math.sin(la)];}
 function pollISS(){if(document.hidden)return;
   fetch('https://api.wheretheiss.at/v1/satellites/25544').then(r=>r.json()).then(d=>{
     if(!d||d.latitude==null)return;
+    // real telemetry the HUD/deck shows: altitude km, velocity km/h, sunlit state
+    issInfo={alt:+d.altitude,vel:+d.velocity,vis:d.visibility||'',t:Date.now()};
     const p=[+d.longitude,+d.latitude],t=Date.now();
     if(fixes.length&&Math.abs(fixes[fixes.length-1].p[0]-p[0])<1e-4&&Math.abs(fixes[fixes.length-1].p[1]-p[1])<1e-4)return;
     fixes.push({p:p,t:t}); if(fixes.length>2)fixes.shift();
@@ -190,7 +197,8 @@ function pollQuakes(){if(document.hidden)return;
     .then(r=>r.json()).then(g=>{const f=g.features||[];let mx=0;
       quakes=f.map(q=>{const c=q.geometry.coordinates,m=q.properties.mag||0;mx=Math.max(mx,m);
         const la=c[1]*rad;
-        return {lon:c[0],lat:c[1],lonR:c[0]*rad,slat:Math.sin(la),clat:Math.cos(la),m:m,t:q.properties.time,ph:Math.random()};})
+        return {lon:c[0],lat:c[1],lonR:c[0]*rad,slat:Math.sin(la),clat:Math.cos(la),m:m,t:q.properties.time,ph:Math.random(),
+          place:q.properties.place||'',depth:+c[2]||0,tsu:q.properties.tsunami?1:0};})
         .filter(q=>q.m>=2.5).sort((a,b)=>b.m-a.m).slice(0,70);
       const el=document.getElementById('seis');
       if(el){el.textContent='SEIS '+f.length+' · M'+mx.toFixed(1);
@@ -502,7 +510,7 @@ function draw(ms){
   }
 
   /* ---- satellite orbit tracks: back halves ---- */
-  const satsOn=zoom<2.6;
+  const satsOn=LAYERS.sat&&zoom<2.6;
   function drawTracks(front){ctx.save();ctx.setLineDash([3,7]);
     ctx.strokeStyle=front?'rgba(125,247,255,0.20)':'rgba(125,247,255,0.08)';ctx.lineWidth=front?0.9:0.7;
     ORBITS.forEach(O=>{let started=false;ctx.beginPath();
@@ -535,6 +543,7 @@ function draw(ms){
       ctx.lineWidth=q?0.7:1.1;if(!q){ctx.shadowColor='#7df7ff';ctx.shadowBlur=8;}ctx.stroke();ctx.shadowBlur=0;}catch(e){}}}
 
   /* ---- day/night terminator + warm dusk ring ---- */
+  if(LAYERS.term){
   const anti=[ss[0]+180,-ss[1]];
   try{
     const gc=d3.geoCircle().center(anti);
@@ -544,8 +553,9 @@ function draw(ms){
     ctx.beginPath();path(dc);ctx.strokeStyle='rgba(255,170,80,.085)';ctx.lineWidth=4.5;ctx.stroke();
     ctx.beginPath();path(dc);ctx.strokeStyle='rgba(255,214,130,.14)';ctx.lineWidth=1.3;ctx.stroke();
   }catch(e){}
+  }
   /* ---- sun glint on the day side ---- */
-  if(vis(ss)){const sxy=proj(ss);
+  if(LAYERS.term&&vis(ss)){const sxy=proj(ss);
     const glint=ctx.createRadialGradient(sxy[0],sxy[1],0,sxy[0],sxy[1],Rd*0.55);
     glint.addColorStop(0,'rgba(215,255,230,0.18)');glint.addColorStop(0.35,'rgba(140,255,190,0.08)');glint.addColorStop(1,'rgba(140,255,190,0)');
     ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle=glint;ctx.fillRect(0,0,w,h);ctx.restore();}
@@ -569,6 +579,7 @@ function draw(ms){
   ctx.globalAlpha=1;ctx.restore();
 
   /* ---- aurora ovals ---- */
+  if(LAYERS.aur){
   ctx.save();ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
   const AUR_C=['96,255,170','120,244,255','190,255,210'];
   [GEOMAG_N,GEOMAG_S].forEach(pole=>{
@@ -587,9 +598,10 @@ function draw(ms){
         ctx.beginPath();ctx.moveTo(q0[0],q0[1]);ctx.lineTo(q1[0],q1[1]);ctx.stroke();}
     }});
   ctx.restore();
+  }
 
   /* ---- LIVE SEISMIC (USGS) ---- */
-  if(quakes.length){const nowMs=Date.now();
+  if(LAYERS.seis&&quakes.length){const nowMs=Date.now();
     ctx.font='8px ui-monospace,monospace';
     for(const q of quakes){const p=p3(q.lonR,q.slat,q.clat,0);if(p[2]<=0.01)continue;
       const fresh=Math.max(0.22,1-Math.max(0,nowMs-q.t)/86400000*0.85);
@@ -613,11 +625,11 @@ function draw(ms){
   drawEvents(ms);
 
   /* ---- surface ghost of the travel arcs ---- */
-  ARCS.forEach(a=>{ctx.beginPath();path({type:'LineString',coordinates:a});
+  if(LAYERS.arc)ARCS.forEach(a=>{ctx.beginPath();path({type:'LineString',coordinates:a});
     ctx.strokeStyle='rgba(125,255,176,.22)';ctx.lineWidth=1;ctx.stroke();});
 
   /* ---- ISS predicted ground track ---- */
-  if(issPole){try{ctx.beginPath();path(d3.geoCircle().center(issPole).radius(90)());
+  if(LAYERS.iss&&issPole){try{ctx.beginPath();path(d3.geoCircle().center(issPole).radius(90)());
     ctx.setLineDash([2,6]);ctx.strokeStyle='rgba(191,239,255,.26)';ctx.lineWidth=.8;ctx.stroke();ctx.setLineDash([]);}catch(e){}}
 
   /* ---- city markers ---- */
@@ -702,6 +714,7 @@ function draw(ms){
   }
 
   /* ---- elevated travel arcs + comet packets + launch pulses ---- */
+  if(LAYERS.arc){
   const ARCD=draw.ARCD||(draw.ARCD=ARCS.map(a=>({li:d3.geoInterpolate(a[0],a[1]),h:0.05+0.11*(d3.geoDistance(a[0],a[1])/Math.PI)})));
   function arcPt(A,f){const p=A.li(f),la=p[1]*rad;
     return p3(p[0]*rad,Math.sin(la),Math.cos(la),Math.sin(Math.PI*f)*A.h);}
@@ -731,6 +744,7 @@ function draw(ms){
           ctx.beginPath();ctx.arc(q1[0],q1[1],2.4+au2*3,0,7);ctx.fill();}}}});
     ctx.shadowBlur=0;}
   ctx.restore();
+  }
 
   /* ---- satellites riding the front of their orbits ---- */
   if(satsOn){drawTracks(true);
@@ -764,7 +778,7 @@ function draw(ms){
     ctx.restore();}
 
   /* ---- ISS: smooth marker at altitude + riser ---- */
-  const ip=issPos();
+  const ip=LAYERS.iss?issPos():null;
   if(ip){const la=ip[1]*rad,sl=Math.sin(la),cl=Math.cos(la),lr=ip[0]*rad;
     const g0=p3(lr,sl,cl,0),g1=p3(lr,sl,cl,0.055);
     if(g1[2]>0){
@@ -780,7 +794,10 @@ function draw(ms){
       ctx.fillStyle='#bfefff';ctx.font='9px ui-monospace,monospace';ctx.fillText('ISS',g1[0]+7,g1[1]+3);
       hovers.push({x:g1[0],y:g1[1],key:'ISS',kind:'iss',follow:{type:'iss'},lines:[
         'ISS · INTL SPACE STATION',fmtLL(ip[0],ip[1]),
-        'ALT 408 KM · VEL 7.66 KM/S','CLICK = CAMERA LOCK']});}}
+        // real telemetry from the live fetch (falls back to nominal until first fix)
+        'ALT '+(issInfo?Math.round(issInfo.alt):408)+' KM · VEL '+(issInfo?(issInfo.vel/3600).toFixed(2):'7.66')+' KM/S'
+          +(issInfo&&issInfo.vis?(issInfo.vis==='daylight'?' · SUNLIT':' · SHADOW'):''),
+        'CLICK = CAMERA LOCK']});}}
 
   /* ---- target: amber uplink arc + data callout ---- */
   if(tgt){
@@ -880,5 +897,21 @@ function draw(ms){
   if(cl){if(cName){cl.textContent=cName;cl.style.opacity=Math.min(1,(zoom-1.45)/0.5).toFixed(2);}else cl.style.opacity=0;}
   const zr=document.getElementById('zoomr');if(zr)zr.textContent='ZOOM '+zoom.toFixed(1)+'×';
 }
+
+/* ---------- public API for the Globe Deck (js/deck.js) ---------- */
+window.CC_GLOBE={
+  layers:LAYERS,
+  saveLayers(){try{localStorage.setItem('cc_globe_layers',JSON.stringify(LAYERS));}catch(e){}},
+  flyTo(lon,lat,z,dur){flyTo(lon,lat,z||Math.max(zoom,1.7),dur||1300);lastTouch=now();},
+  setTarget:setTarget,clearTarget:clearTarget,pullBack:pullBack,
+  followISS(on){follow=on?{type:'iss'}:null;cam=null;lastTouch=now();},
+  isFollowingISS(){return !!(follow&&follow.type==='iss');},
+  state(){const ip=issPos();
+    return {iss:ip?[ip[0],ip[1]]:null,issInfo:issInfo,issPole:issPole?issPole.slice():null,
+      quakes:quakes,sun:[SUN.lon,SUN.lat],zoom:zoom,home:HOME.slice(),pty:DESTS.PTY.slice()};},
+  dayState:dayState,
+  distKm(a,b){try{return d3.geoDistance(a,b)*6371;}catch(e){return NaN;}},
+  bump(){lastTouch=now();}
+};
 draw();
 })();

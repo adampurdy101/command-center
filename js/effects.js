@@ -45,7 +45,7 @@
     var ekgLast = 0;
     function frame(now) {
       requestAnimationFrame(frame);
-      if (document.hidden || window.CC_GAME_OPEN) return; // pause when tab hidden / fullscreen game running
+      if (document.hidden || window.CC_GAME_OPEN || window.CC_DECK_OPEN) return; // pause when hidden / game / globe deck
       if (now - ekgLast < 33) return; ekgLast = now; // ~30fps (sweep takes ~3.3s anyway)
       var t = now / 1000;
       var phase = (t % T) / T;                    // 0..1 sweep position (stationary trace)
@@ -85,7 +85,7 @@
     var eyeLast = 0;
     function frame(now) {
       requestAnimationFrame(frame);
-      if (document.hidden || window.CC_GAME_OPEN) return; // pause when tab hidden / fullscreen game running
+      if (document.hidden || window.CC_GAME_OPEN || window.CC_DECK_OPEN) return; // pause when hidden / game / globe deck
       if (now - eyeLast < 50) return; eyeLast = now; // 20fps is ample for a breathing CSS var
       var t = now / 1000;
       var HAL = window.HAL || { speaking: false, level: 0 };

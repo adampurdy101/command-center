@@ -2816,7 +2816,7 @@
       if (self.previewCanvas !== canvasEl) return; // remounted elsewhere
       if (!document.body.contains(canvasEl)) { self.previewRAF = 0; return; }
       self.previewRAF = requestAnimationFrame(frame);
-      if (document.hidden || self._pvVis === false || window.CC_GAME_OPEN) { last = t; return; } // pause when hidden / offscreen / fullscreen game running
+      if (document.hidden || self._pvVis === false || window.CC_GAME_OPEN || window.CC_DECK_OPEN) { last = t; return; } // pause when hidden / offscreen / fullscreen mode running
       if (t - pvLast < 33) return; pvLast = t;     // ~30fps
       if (!last) last = t;
       var dt = Math.min(0.05, Math.max(0, (t - last) / 1000)); last = t;

@@ -63,6 +63,10 @@ html[data-fx] #hub .bottom .panel:first-child{box-shadow:0 16px 40px rgba(0,0,0,
 /* ===== Neon Noir coloring (dark darks, moody contrast) ===== */
 html[data-fx="2"] #hub{--g:#3df58a;--hi:#aeffd0;--dim:#2bd07a}
 html[data-fx="2"] .crt{background:radial-gradient(130% 130% at 50% 8%, #061410, #02080a 72%) !important;filter:contrast(1.08) saturate(1.06)}
+/* Globe Deck takeover: a filter on .crt would become the containing block for the
+   fixed .globe-wrap and clip the fullscreen deck — drop it while the deck is open. */
+html.cc-deck[data-fx] .crt{filter:none}
+html.cc-deck #fxbar{display:none}
 html[data-fx="2"] .crt::before{opacity:.5}
 html[data-fx="2"] .crt::after{background:radial-gradient(120% 120% at 50% 46%, transparent 36%, rgba(0,2,4,.84) 100%) !important}
 html[data-fx="2"] #hub .panel{background:linear-gradient(180deg, rgba(6,18,14,.44), rgba(3,9,8,.56)) !important;-webkit-backdrop-filter:blur(15px) saturate(1.2)!important;backdrop-filter:blur(15px) saturate(1.2)!important;border:1px solid rgba(90,255,170,.22)!important;box-shadow:0 24px 50px rgba(0,0,0,.72), inset 0 1px 0 rgba(140,255,200,.10), inset 0 0 44px rgba(0,0,0,.34)!important}

@@ -1,0 +1,152 @@
+/* ============================================================
+   GLOBE DECK · fullscreen landscape globe mode (js/deck.js)
+   ------------------------------------------------------------
+   Entry: [⤢ DECK] button on the globe panel. The .globe-wrap is
+   CSS-expanded to fixed inset:0 (html.cc-deck) — the engine's own
+   ResizeObserver refits the canvas, zero engine changes.
+   Chrome: top bar, left LIVE rail, right LED rail, alert banner,
+   cinema briefing card, rotate gate. Idle 4s → .dk-idle fades all
+   .dk-fade chrome to nothing (planet full-bleed).
+   ============================================================ */
+
+/* ---- expand button on the small panel ---- */
+#deck-btn{position:absolute;top:5px;right:8px;z-index:5;pointer-events:auto;
+  font-family:inherit;font-size:10px;letter-spacing:1px;cursor:pointer;
+  color:var(--hi,#7dffb0);background:rgba(6,16,10,.78);
+  border:1px solid var(--faint,#1c8f46);border-radius:5px;padding:4px 8px;
+  text-shadow:0 0 5px rgba(65,255,126,.5)}
+#deck-btn:hover{border-color:var(--g,#41ff7e);box-shadow:0 0 9px rgba(65,255,126,.35)}
+/* keep the desktop caption clear of the button */
+html:not(.cc-deck) #hub .globe-wrap .lab2{right:86px}
+
+/* ---- fullscreen takeover ---- */
+html.cc-deck,html.cc-deck body{overflow:hidden!important}
+html.cc-deck #hub .globe-wrap{position:fixed;inset:0;z-index:9500;
+  border:0;border-radius:0;height:auto!important;min-height:0!important;
+  background:radial-gradient(circle at 50% 46%,#0a1f11,#020805 72%)}
+html.cc-deck #hub .globe-wrap .lab,
+html.cc-deck #hub .globe-wrap .lab2,
+html.cc-deck #hub .globe-wrap .wxpin,
+html.cc-deck #hub .globe-wrap .wxfoot,
+html.cc-deck #deck-btn{display:none!important}
+/* boot: the globe lifts off the panel and swells to full frame */
+html.cc-deck.dk-boot #hub .globe-wrap{animation:dkBoot .72s cubic-bezier(.16,.84,.33,1.08)}
+@keyframes dkBoot{0%{transform:scale(.58);opacity:.25;filter:brightness(1.9)}
+  70%{opacity:1}100%{transform:scale(1);opacity:1;filter:none}}
+
+/* ---- deck chrome root ---- */
+#deck{position:absolute;inset:0;display:none;pointer-events:none;z-index:6;
+  font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --dg:#41ff7e;--dhi:#7dffb0;--ddim:#2bd964;--dfaint:#1c8f46;--damb:#ffd24a;--dred:#ff6b5a;--dcyan:#7df7ff}
+html.cc-deck #deck{display:block}
+#deck .dk-fade{transition:opacity .65s ease}
+html.cc-deck.dk-idle #deck .dk-fade{opacity:0!important;pointer-events:none!important}
+
+/* ---- top bar ---- */
+#deck .dk-top{position:absolute;top:calc(4px + env(safe-area-inset-top));left:0;right:0;
+  display:flex;align-items:center;gap:10px;padding:0 calc(10px + env(safe-area-inset-right)) 0 calc(10px + env(safe-area-inset-left));
+  pointer-events:none}
+#deck .dk-title{color:var(--dhi);font-size:11px;letter-spacing:2.4px;
+  text-shadow:0 0 8px rgba(65,255,126,.5);pointer-events:none;white-space:nowrap}
+#deck .dk-title small{color:var(--dfaint);letter-spacing:1.2px;margin-left:8px;font-size:9px}
+#deck .dk-sp{flex:1}
+#deck .dk-exit{pointer-events:auto;cursor:pointer;font-family:inherit;
+  min-width:44px;min-height:32px;font-size:11px;letter-spacing:1px;
+  color:var(--dhi);background:rgba(6,16,10,.8);border:1px solid var(--dfaint);border-radius:6px;padding:5px 12px}
+#deck .dk-exit:hover{border-color:var(--dred);color:var(--dred)}
+
+/* ---- boot title (center, typed) ---- */
+#deck .dk-boot-title{position:absolute;top:18%;left:0;right:0;text-align:center;
+  color:var(--dhi);font-size:16px;letter-spacing:5px;pointer-events:none;
+  text-shadow:0 0 14px rgba(65,255,126,.7);opacity:0;transition:opacity .5s}
+#deck .dk-boot-title.on{opacity:1}
+
+/* ---- left LIVE rail ---- */
+#deck .dk-left{position:absolute;top:calc(38px + env(safe-area-inset-top));bottom:10px;
+  left:calc(8px + env(safe-area-inset-left));width:180px;display:flex;flex-direction:column;gap:6px;
+  overflow-y:auto;pointer-events:none}
+#deck .dk-left::-webkit-scrollbar{display:none}
+#deck .dk-panel{pointer-events:auto;background:rgba(3,10,6,.78);border:1px solid rgba(28,143,70,.55);
+  border-radius:7px;padding:6px 8px;backdrop-filter:blur(2px)}
+#deck .dk-h{display:flex;align-items:center;gap:6px;color:var(--ddim);font-size:9px;letter-spacing:1.6px;margin-bottom:4px}
+#deck .dk-h .led{width:6px;height:6px;border-radius:50%;background:var(--dg);box-shadow:0 0 6px var(--dg)}
+#deck .dk-h .led.cyan{background:var(--dcyan);box-shadow:0 0 6px var(--dcyan)}
+#deck .dk-row{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--ddim);
+  white-space:nowrap;overflow:hidden;line-height:1.5}
+#deck .dk-row b{color:var(--dhi);font-weight:400;text-shadow:0 0 5px rgba(65,255,126,.4)}
+#deck .dk-row .amb{color:var(--damb);text-shadow:0 0 5px rgba(255,210,74,.4)}
+#deck .dk-btn{pointer-events:auto;cursor:pointer;font-family:inherit;width:100%;margin-top:5px;
+  font-size:10px;letter-spacing:1.4px;color:var(--dcyan);background:rgba(6,20,20,.6);
+  border:1px solid rgba(125,247,255,.4);border-radius:5px;padding:6px 0;min-height:30px}
+#deck .dk-btn.on{color:#04140b;background:var(--dcyan);box-shadow:0 0 12px rgba(125,247,255,.5)}
+/* quake rows */
+#deck .dk-q{display:block;width:100%;text-align:left;pointer-events:auto;cursor:pointer;font-family:inherit;
+  background:none;border:0;border-top:1px solid rgba(28,143,70,.28);padding:4px 0 3px;color:var(--ddim);font-size:9px;line-height:1.45}
+#deck .dk-q:first-of-type{border-top:0}
+#deck .dk-q b{color:var(--dhi);font-weight:400;font-size:10px}
+#deck .dk-q.big b{color:var(--damb);text-shadow:0 0 6px rgba(255,210,74,.5)}
+#deck .dk-q .pl{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#deck .dk-q .tsu{color:var(--dred);letter-spacing:1px}
+/* weather chips */
+#deck .dk-wx{display:flex;gap:6px}
+#deck .dk-wx button{flex:1;pointer-events:auto;cursor:pointer;font-family:inherit;font-size:10px;
+  color:var(--dhi);background:rgba(3,10,6,.78);border:1px solid rgba(28,143,70,.55);border-radius:7px;
+  padding:6px 4px;min-height:34px;white-space:nowrap;overflow:hidden}
+#deck .dk-wx button small{display:block;color:var(--ddim);font-size:8px;letter-spacing:1.2px}
+#deck .dk-wx button .amb{color:var(--damb)}
+
+/* ---- right LED rail ---- */
+#deck .dk-right{position:absolute;top:calc(38px + env(safe-area-inset-top));
+  right:calc(8px + env(safe-area-inset-right));width:96px;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+#deck .dk-led{pointer-events:auto;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;
+  font-size:9px;letter-spacing:1.6px;color:var(--ddim);background:rgba(3,10,6,.78);
+  border:1px solid rgba(28,143,70,.55);border-radius:6px;padding:7px 9px;min-height:31px}
+#deck .dk-led i{width:7px;height:7px;border-radius:50%;background:#14361f;flex:none;font-style:normal;transition:background .2s,box-shadow .2s}
+#deck .dk-led.on{color:var(--dhi)}
+#deck .dk-led.on i{background:var(--dg);box-shadow:0 0 8px var(--dg)}
+#deck .dk-cinema{margin-top:5px;pointer-events:auto;cursor:pointer;font-family:inherit;
+  font-size:9px;letter-spacing:1.6px;color:var(--damb);background:rgba(20,14,3,.78);
+  border:1px solid rgba(255,210,74,.5);border-radius:6px;padding:8px 6px;min-height:34px}
+#deck .dk-cinema.on{color:#140c02;background:var(--damb);box-shadow:0 0 14px rgba(255,210,74,.55)}
+
+/* ---- naked-eye / overhead alert banner (never fades) ---- */
+#deck .dk-alert{position:absolute;top:calc(40px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+  display:none;align-items:center;gap:8px;pointer-events:none;
+  white-space:normal;text-align:center;max-width:calc(100vw - 400px);
+  color:#140c02;background:var(--damb);border-radius:6px;padding:6px 14px;
+  font-size:10px;letter-spacing:1.6px;font-weight:600;
+  box-shadow:0 0 18px rgba(255,210,74,.65);animation:dkPulse 1.6s ease-in-out infinite}
+#deck .dk-alert.on{display:flex}
+@keyframes dkPulse{0%,100%{opacity:.86}50%{opacity:1}}
+
+/* ---- cinema briefing card (bottom center; visible while cinema runs) ---- */
+#deck .dk-brief{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  display:none;min-width:250px;max-width:70vw;pointer-events:none;
+  background:rgba(2,11,6,.85);border:1px solid rgba(125,247,255,.4);border-radius:7px;padding:8px 12px}
+#deck .dk-brief.on{display:block}
+#deck .dk-brief .t{color:var(--dcyan);font-size:10px;letter-spacing:2px;margin-bottom:3px;
+  text-shadow:0 0 7px rgba(125,247,255,.5)}
+#deck .dk-brief .b{color:var(--dhi);font-size:10px;line-height:1.55;white-space:pre-line}
+
+/* ---- rotate gate ---- */
+#deck .dk-gate{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;background:rgba(2,8,5,.96);pointer-events:auto;z-index:8}
+#deck .dk-gate.on{display:flex}
+#deck .dk-gate .ph{width:46px;height:78px;border:2px solid var(--dg);border-radius:9px;position:relative;
+  box-shadow:0 0 16px rgba(65,255,126,.4);animation:dkRot 2.2s ease-in-out infinite}
+#deck .dk-gate .ph::after{content:"";position:absolute;bottom:5px;left:50%;transform:translateX(-50%);
+  width:12px;height:3px;border-radius:2px;background:var(--dfaint)}
+@keyframes dkRot{0%,18%{transform:rotate(0)}55%,80%{transform:rotate(90deg)}100%{transform:rotate(90deg)}}
+#deck .dk-gate .gt{color:var(--dhi);font-size:12px;letter-spacing:3px;text-shadow:0 0 9px rgba(65,255,126,.55)}
+#deck .dk-gate .gs{color:var(--ddim);font-size:9px;letter-spacing:1.4px}
+#deck .dk-gate .gx{pointer-events:auto;cursor:pointer;font-family:inherit;margin-top:6px;
+  color:var(--ddim);background:none;border:1px solid var(--dfaint);border-radius:6px;
+  padding:7px 16px;font-size:10px;letter-spacing:1.4px;min-height:34px}
+
+/* ---- small-phone landscape tightening ---- */
+@media (max-height:460px){
+  #deck .dk-left{width:168px;gap:5px}
+  #deck .dk-panel{padding:5px 7px}
+  #deck .dk-row{font-size:9px}
+  #deck .dk-right{width:92px}
+}

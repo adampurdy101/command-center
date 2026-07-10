@@ -193,7 +193,7 @@ tick();setInterval(tick,1000);
 
   function draw(ms){
     requestAnimationFrame(draw);
-    if(document.hidden||!vVis||window.CC_GAME_OPEN) return;
+    if(document.hidden||!vVis||window.CC_GAME_OPEN||window.CC_DECK_OPEN) return;
     const w=cv.width/DPR,h=cv.height/DPR; if(w<30||h<30) return;
     if(ms&&ms-vThrLast<32) return; vThrLast=ms||vThrLast;
     const dt=vpLast?Math.min(0.05,((ms||0)-vpLast)/1000):0.016; vpLast=ms||0; const t=(ms||0)/1000;
