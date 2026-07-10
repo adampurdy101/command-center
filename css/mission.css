@@ -195,16 +195,31 @@
 #hub .wxfoot .wxmoon{color:var(--hi);text-shadow:0 0 6px rgba(125,255,176,.3)}
 #hub .wxfoot .wx{color:var(--hi);text-shadow:0 0 5px rgba(65,255,126,.5)}
 @media (max-width:1050px){ #hub .globe-wrap .lab2{display:none} }
-/* phones: two corner pins can't fit opposite each other, so STACK them bottom-left
-   (full glance info kept), bump the tap target to ~44px, footer moves bottom-right */
+/* phones: pins shrink to TINY temp tabs ("RTN 74°" / "PTY 84°") on one thin line
+   along the panel's bottom edge with the telemetry — the globe stays the hero.
+   Tap a tab for the full card (which pops upward, transient). */
 @media (max-width:760px){
-  #hub .wxpin{bottom:auto}
-  #hub .wxpin[data-city="renton"]{left:9px;right:auto;bottom:74px}
-  #hub .wxpin[data-city="pattaya"]{left:9px;right:auto;bottom:20px}
-  #hub .wxpin-face{padding:9px 11px;min-height:44px;box-sizing:border-box}
+  #hub .readout{display:flex;align-items:flex-end;gap:7px;padding:0 9px 6px}
+  #hub .wxpin{position:relative;bottom:auto;font-size:10px}
+  #hub .wxpin[data-side="left"],#hub .wxpin[data-side="right"]{left:auto;right:auto}
+  #hub .wxpin-face{position:relative;padding:4px 7px;gap:4px;font-size:10px}
+  /* invisible tap-area extender (visual stays tiny, hit box grows) */
+  #hub .wxpin-face::before{content:"";position:absolute;inset:-13px -4px}
+  /* only NAME + TEMP survive on the tab face; everything else lives in the card */
+  #hub .wxpin-face .wxc-sym,#hub .wxpin-face .wxc-next,#hub .wxpin-face .wxc-clock{display:none}
+  #hub .wxpin-face .wxc-temp{font-size:12px}
+  #hub .wxp-name{font-size:0;letter-spacing:0}
+  #hub .wxp-name::after{content:attr(data-abbr);font-size:9px;letter-spacing:1.1px}
+  /* both tabs sit left-of-center, so both cards unfold up-and-RIGHTWARD;
+     rows wrap inside the card instead of spilling past its border */
   #hub .wxpin[data-side="right"] .wxpin-card{left:0;right:auto;transform-origin:bottom left}
-  #hub .wxpin-card{width:210px;max-width:82vw}
-  #hub .wxfoot{left:auto;right:10px;transform:none;max-width:46%;font-size:8px}
+  #hub .wxpin-card{width:238px;max-width:calc(100vw - 128px)}
+  #hub .wxpc-h{flex-wrap:wrap;white-space:normal;row-gap:2px}
+  #hub .wxpin-card .wxc-r{flex-wrap:wrap;white-space:normal;overflow:visible;row-gap:2px}
+  /* telemetry shares the line, pushed to the right; the moon truncates politely */
+  #hub .wxfoot{position:static;transform:none;margin-left:auto;max-width:none;
+    flex:1;min-width:0;justify-content:flex-end;font-size:8px}
+  #hub .wxfoot .wxmoon{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
   #hub .wxfoot #zoomr{display:none}
 }
 
