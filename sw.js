@@ -1,11 +1,11 @@
 /* command-center service worker — minimal + safe.
    Network-first so the live site always wins; cache is only a
    last-resort offline fallback. Old caches are cleared on activate. */
-const CACHE = 'cc-shell-v51';
+const CACHE = 'cc-shell-v52';
 const SHELL = [
   '.', 'index.html',
-  'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css', 'css/enhance.css', 'css/cinema.css', 'css/email.css', 'css/noir.css', 'css/deck.css',
-  'js/mission.js', 'js/globe.js', 'js/deck.js', 'js/effects.js', 'js/weather.js', 'js/panels.js', 'js/mobile.js', 'js/sniper-x.js', 'js/cinema.js', 'js/backdrop.js', 'js/saber.js', 'js/enhance.js', 'js/email.js', 'js/gmail.js', 'js/noir.js', 'js/app.js', 'js/auth.js', 'js/supabase.js', 'js/config.js',
+  'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css', 'css/enhance.css', 'css/cinema.css', 'css/email.css', 'css/noir.css', 'css/deck.css', 'css/board.css',
+  'js/mission.js', 'js/globe.js', 'js/deck.js', 'js/effects.js', 'js/weather.js', 'js/panels.js', 'js/mobile.js', 'js/sniper-x.js', 'js/cinema.js', 'js/backdrop.js', 'js/saber.js', 'js/enhance.js', 'js/email.js', 'js/gmail.js', 'js/noir.js', 'js/app.js', 'js/board.js', 'js/auth.js', 'js/supabase.js', 'js/config.js',
   'manifest.webmanifest', 'icons/icon.svg'
 ];
 
