@@ -30,7 +30,7 @@ async function updateBrief() {
       nextEl.textContent = hasNext ? brief.next_event : "CLEAR · nothing scheduled";
       nextEl.classList.toggle("muted", !hasNext);
     }
-    set("brief-tasks", brief.open_tasks ?? "0");
+    // TASKS row is painted live by js/board.js (real to-do rows), not the digest count
     set("brief-stat", "LIVE");
     if (report) report.onclick = () => alert(brief.digest || "No digest text yet.");
   } else {
@@ -38,7 +38,6 @@ async function updateBrief() {
     set("brief-unread", "201");
     set("brief-flagged", "3");
     set("brief-next", "10:30 · Wall Shops sync");
-    set("brief-tasks", "0");
     set("brief-stat", "DEMO");
     if (report) report.onclick = () =>
       alert("Morning digest will appear here once the 6 AM job writes to Supabase (daily_brief).");

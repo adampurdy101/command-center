@@ -3,9 +3,11 @@
    ------------------------------------------------------------
    The five deck panels (Daily Brief, Markets, Projects, Agent
    Ops, Life Admin) inflate on hover and open a full, richer
-   detail overlay on click. Demo data, structured so it can wire
-   to live sources later. Voice Scope + Defense Grid are left
-   interactive (no detail view).
+   detail overlay on click. Brief / Projects / Agent Ops / Life
+   Admin draw from the LIVE data in window.CC (js/board.js) when
+   it's loaded; Markets is still demo until the market agent is
+   wired. Voice Scope + Defense Grid are left interactive (no
+   detail view).
    ============================================================ */
 (function () {
   "use strict";
@@ -16,16 +18,6 @@
     var pts = vals.map(function (v, i) { return (i / (vals.length - 1) * w).toFixed(1) + "," + (h - (v - min) / span * h).toFixed(1); }).join(" ");
     return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="width:100%;height:' + h + 'px">' +
       '<polyline fill="none" stroke="' + color + '" stroke-width="1.6" points="' + pts + '" style="filter:drop-shadow(0 0 3px ' + color + ')"/></svg>';
-  }
-  function bars(vals, labels, color) {
-    var max = Math.max.apply(null, vals) || 1, n = vals.length, bw = 100 / n;
-    var rects = vals.map(function (v, i) {
-      var bh = v / max * 88, x = i * bw + bw * 0.15, y = 92 - bh;
-      return '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + (bw * 0.7).toFixed(2) + '" height="' + bh.toFixed(2) +
-        '" fill="' + color + '" opacity="0.85"/>' +
-        '<text x="' + (x + bw * 0.35).toFixed(2) + '" y="99" fill="#2bd964" font-size="4" text-anchor="middle">' + (labels[i] || "") + '</text>';
-    }).join("");
-    return '<svg viewBox="0 0 100 100" style="width:100%;height:120px">' + rects + '</svg>';
   }
   function ring(pct, color) {
     var r = 26, c = 2 * Math.PI * r, off = c * (1 - pct / 100);
@@ -40,22 +32,63 @@
       return '<div class="dx-row"><span class="k">' + it[0] + '</span><span class="v ' + (it[2] || "") + '">' + it[1] + '</span></div>';
     }).join("");
   }
+  function txt(id) { var el = document.getElementById(id); return el ? el.textContent.trim() : ""; }
+  function list(items) {
+    return '<div class="dx-list">' + items.map(function (it) {
+      return '<div class="dx-li"><span class="k">' + it[0] + '</span><span class="v ' + (it[2] || "") + '">' + it[1] + '</span></div>';
+    }).join("") + '</div>';
+  }
+  /* live data (js/board.js) — null until it has loaded */
+  function live() { var CC = window.CC; return (CC && CC.data) ? CC : null; }
+  function esc(s) { var CC = window.CC; return CC ? CC.esc(s) : String(s == null ? "" : s); }
+  function tagClass(t) { return (t === "warn" || t === "up" || t === "down") ? t : ""; }
+
+  /* pinned / recent notes card (shared by Brief + Life) */
+  function notesCard(CC, tag) {
+    var notes = CC.data.notes.filter(function (n) { return !tag || (n.tags || []).indexOf(tag) >= 0; }).slice(0, 6);
+    if (!notes.length) return "";
+    return '<div class="dx-card dx-wide"><div class="dx-h">NOTES' + (tag ? " · " + tag.toUpperCase() : "") + '</div><div class="dx-list">' +
+      notes.map(function (n) {
+        return '<div class="dx-li dx-note-li"><span class="k">' + (n.pinned ? "📌 " : "") + esc(n.title) +
+          (n.body ? ' <small class="dx-notes">— ' + esc(n.body) + '</small>' : "") + '</span><span class="v muted">' + CC.fmtWhen(n.updated_at) + '</span></div>';
+      }).join("") + '</div></div>';
+  }
 
   /* ---------- per-panel detail builders ---------- */
   var VIEWS = {
     brief: function () {
-      return '<div class="dx-grid">' +
-        '<div class="dx-card"><div class="dx-h">INBOX</div>' +
-          '<div class="dx-big">' + (txt("brief-unread") || "201") + '<small>unread</small></div>' +
-          rows([["Flagged", txt("brief-flagged") || "3", "warn"], ["Open tasks", txt("brief-tasks") || "0"], ["Newsletters", "44"], ["VIP senders", "5", "up"]]) +
-        '</div>' +
-        '<div class="dx-card"><div class="dx-h">UNREAD · LAST 7 DAYS</div>' + bars([42, 38, 51, 29, 47, 33, 21], ["M", "T", "W", "T", "F", "S", "S"], "#41ff7e") + '</div>' +
-        '<div class="dx-card dx-wide"><div class="dx-h">FLAGGED &amp; AWAITING</div>' +
-          list([["Wall Shops — RFI #214", "due today", "warn"], ["Tesla lemon-law — counsel reply", "2d", "warn"], ["WSH submittal log", "review", ""], ["Mom · POA docs", "in review", "warn"]]) + '</div>' +
-        '<div class="dx-card dx-wide"><div class="dx-h">UPCOMING</div>' +
-          list([["10:30 — Wall Shops sync", "Teams", ""], ["13:00 — Submittal review", "office", ""], ["17:30 — Dog walk", "—", ""], ["06:00 — Morning digest job", "auto", "up"]]) + '</div>' +
-        '</div>' +
-        '<div class="dx-actions"><button class="btn" onclick="alert(\'Digest runs from the 06:00 job (Supabase). On-demand run wires in later.\')">▸ RUN DIGEST NOW</button></div>';
+      var CC = live();
+      var inbox = '<div class="dx-card"><div class="dx-h">INBOX</div>' +
+        '<div class="dx-big">' + (txt("brief-unread") || "–") + '<small>unread</small></div>' +
+        rows([["Flagged", txt("brief-flagged") || "–", "warn"], ["Next event", txt("brief-next") || "—"]]) + '</div>';
+      if (!CC) {
+        return '<div class="dx-grid">' + inbox +
+          '<div class="dx-card"><div class="dx-h">TO-DO</div><div class="dx-note">loading…</div></div></div>';
+      }
+      var open = CC.data.tasks.filter(function (t) { return !t.done; });
+      var done = CC.data.tasks.filter(function (t) { return t.done; }).slice(0, 8);
+      var overdue = open.filter(function (t) { return CC.dueLabel(t.due).cls === "down"; }).length;
+      var c = CC.laneCounts(open);
+      // the strip: three big lane numbers + a proportional bar, so the shape of the day reads instantly
+      var total = open.length || 1;
+      var strip = '<div class="dx-card"><div class="dx-h">TASKS · ' + open.length + ' OPEN' + (overdue ? ' <span class="warn">· ' + overdue + ' OVERDUE</span>' : "") + '</div>' +
+        '<div class="lane-strip">' + CC.LANES.map(function (ln) {
+          return '<div class="ls lane-' + ln.key + '"><span class="led"></span><b>' + c[ln.key] + '</b><span>' + ln.label + '</span></div>';
+        }).join("") + '</div>' +
+        '<div class="lane-bar">' + CC.LANES.map(function (ln) { return '<span class="lane-' + ln.key + '" style="width:' + (c[ln.key] / total * 100) + '%"></span>'; }).join("") + '</div></div>';
+      // three lane columns
+      var lanes = '<div class="dx-lanes">' + CC.LANES.map(function (ln) {
+        var items = open.filter(function (t) { return CC.lane(t) === ln.key; });
+        return '<div class="dx-card dx-lane lane-' + ln.key + '"><div class="dx-h"><span class="led"></span>' + ln.label + ' <small>' + ln.hint + '</small><span class="cnt">' + items.length + '</span></div>' +
+          (items.length ? '<div class="todo">' + items.map(function (t) { return CC.taskRow(t, { detail: true }); }).join("") + '</div>'
+                        : '<div class="dx-note">empty</div>') + '</div>';
+      }).join("") + '</div>';
+      var recent = done.length
+        ? '<div class="dx-card dx-wide dx-done"><div class="dx-h">RECENTLY DONE <small>click ☑ to reopen</small></div><div class="todo">' +
+          done.map(function (t) { return CC.taskRow(t); }).join("") + '</div></div>'
+        : "";
+      return '<div class="dx-grid">' + inbox + strip + '</div>' + lanes + '<div class="dx-grid">' + recent + notesCard(CC) + '</div>' +
+        '<div class="dx-note">NOW = today · NEXT = this week · LATER = when there\'s room. Claude sets the lane when you give it something; say "bump X to now" to move it.</div>';
     },
     markets: function () {
       var wl = [["NVDA", 2.4, [3, 5, 4, 7, 6, 9, 8, 11]], ["VRT", 1.1, [6, 6, 7, 6, 8, 7, 9, 9]], ["NBIS", -3.2, [9, 8, 8, 6, 7, 5, 4, 4]], ["AMD", 0.6, [5, 6, 5, 6, 6, 7, 6, 7]], ["PLTR", 3.8, [4, 5, 6, 6, 8, 9, 10, 12]]];
@@ -67,42 +100,61 @@
         '</div><div class="dx-note">DEMO feed — live quotes wire to the market agent in a later pass.</div>';
     },
     projects: function () {
-      return '<div class="dx-grid">' +
-        '<div class="dx-card"><div class="dx-h">WESTERN STATE HOSPITAL</div><div class="dx-ringrow">' + ring(62, "#41ff7e") + '<div>' + rows([["Phase", "Wall Shops"], ["Deadline", "T−38d", "warn"], ["RFIs open", "7", "warn"], ["Submittals", "23 / 40"]]) + '</div></div></div>' +
-        '<div class="dx-card"><div class="dx-h">MILESTONES</div>' + list([["Demo complete", "done", "up"], ["Rough-in", "done", "up"], ["Wall shops", "62%", "warn"], ["Inspections", "pending", ""], ["Turnover", "T−38d", ""]]) + '</div>' +
-        '<div class="dx-card dx-wide"><div class="dx-h">PROGRESS · 8 WEEKS</div>' + spark([20, 28, 33, 39, 44, 51, 57, 62], 320, 80, "#7dffb0") + '</div>' +
-        '</div>';
+      var CC = live();
+      if (!CC || !CC.data.projects.length) {
+        return '<div class="dx-grid"><div class="dx-card dx-wide"><div class="dx-h">PROJECTS</div><div class="dx-note">' +
+          (CC ? "no active projects — tell Claude what you're working on." : "loading…") + '</div></div></div>';
+      }
+      return '<div class="dx-grid">' + CC.data.projects.map(function (p) {
+        var d = CC.dueLabel(p.deadline), pct = Math.max(0, Math.min(100, p.progress | 0));
+        var items = [["Phase", esc(p.phase || "—")]];
+        if (p.deadline) items.push(["Deadline", d.text + " · " + esc(p.deadline), d.cls]);
+        if (p.notes) items.push(["Notes", esc(p.notes)]);
+        items.push(["Updated", CC.fmtWhen(p.updated_at)]);
+        return '<div class="dx-card dx-wide"><div class="dx-h">' + esc(p.name).toUpperCase() + '</div><div class="dx-ringrow">' +
+          ring(pct, pct ? "#41ff7e" : "#1c8f46") + '<div style="flex:1">' + rows(items) + '</div></div></div>';
+      }).join("") + notesCard(CC, "projects") + '</div>' +
+        '<div class="dx-note">Tell Claude "WSH is at 70%" or "MML deadline is Sept 12" and the bars update.</div>';
     },
     agents: function () {
+      var CC = live();
+      if (!CC) return '<div class="dx-grid"><div class="dx-card dx-wide"><div class="dx-h">AGENTS</div><div class="dx-note">loading…</div></div></div>';
+      var led = function (s) { return /online|run|heartbeat/i.test(s) ? "up" : /err|fail|down/i.test(s) ? "down" : ""; };
+      var agents = CC.data.agents.length
+        ? list(CC.data.agents.map(function (a) { return [esc(a.name) + ' <small class="dx-notes">' + esc(a.kind) + '</small>', esc(a.status) + (a.last_run ? " · " + CC.fmtWhen(a.last_run) : ""), led(a.status)]; }))
+        : '<div class="dx-note">no agents registered.</div>';
+      var log = CC.data.log.length
+        ? CC.data.log.map(function (l) { return "<div>› [" + CC.clock(l.created_at) + "] <b>" + esc(l.agent) + "</b> → " + esc(l.action) + "</div>"; }).join("")
+        : "<div>› quiet.</div>";
       return '<div class="dx-grid">' +
-        '<div class="dx-card dx-wide"><div class="dx-h">AGENTS</div>' +
-          list([["hal-openclaw", "HEARTBEAT · 2m ago", "up"], ["mail-agent", "IDLE · next 06:00", ""], ["market-agent", "RUNNING", "warn"], ["brief-agent", "IDLE", ""]]) + '</div>' +
-        '<div class="dx-card"><div class="dx-h">UPTIME</div><div class="dx-ringrow">' + ring(99, "#41ff7e") + '<div>' + rows([["7-day", "99.4%", "up"], ["Incidents", "0", "up"], ["Avg run", "1.8s"]]) + '</div></div></div>' +
-        '<div class="dx-card dx-wide"><div class="dx-h">OPS LOG</div><div class="dx-log">' +
-          ["[06:00] mail-agent → digest written to supabase", "[09:14] market-agent → quotes refreshed", "[09:31] hal-openclaw → heartbeat ok", "[boot ] hub shell online", "[mail ] standing by for 06:00 PT job"].map(function (l) { return "<div>› " + l + "</div>"; }).join("") + '</div></div>' +
+        '<div class="dx-card dx-wide"><div class="dx-h">AGENTS</div>' + agents + '</div>' +
+        '<div class="dx-card dx-wide"><div class="dx-h">OPS LOG · LATEST FIRST</div><div class="dx-log">' + log + '</div></div>' +
         '</div>';
     },
     life: function () {
+      var CC = live();
+      if (!CC) return '<div class="dx-grid"><div class="dx-card dx-wide"><div class="dx-h">OPEN ITEMS</div><div class="dx-note">loading…</div></div></div>';
+      var items = CC.data.life;
+      var open = items.length
+        ? '<div class="dx-list">' + items.map(function (i) {
+            return '<div class="dx-li"><span class="k">' + esc(i.label) + (i.notes ? ' <small class="dx-notes">— ' + esc(i.notes) + '</small>' : "") +
+              '</span><span class="v ' + tagClass(i.tag) + '">' + esc(i.status || "") + '</span></div>';
+          }).join("") + '</div>'
+        : '<div class="dx-note">nothing tracked — tell Claude.</div>';
+      var attn = items.filter(function (i) { return i.tag === "warn"; }).length;
       return '<div class="dx-grid">' +
-        '<div class="dx-card dx-wide"><div class="dx-h">OPEN ITEMS</div>' +
-          list([["Tesla lemon-law", "awaiting reply", "warn"], ["Mom care / POA", "docs in review", "warn"], ["Skin routine", "step 2 · retinol", ""], ["Dog walk", "17:30", ""], ["Home bills", "all paid", "up"]]) + '</div>' +
-        '<div class="dx-card"><div class="dx-h">THIS WEEK</div><div class="dx-ringrow">' + ring(70, "#ffd24a") + '<div>' + rows([["Done", "7 / 10", "up"], ["Overdue", "1", "warn"], ["Bills due", "0", "up"]]) + '</div></div></div>' +
-        '<div class="dx-card dx-wide"><div class="dx-h">REMINDERS</div>' + list([["Renew passport", "Aug", ""], ["Car service", "T−2w", "warn"], ["Pattaya trip — book flights", "open", ""]]) + '</div>' +
-        '</div>';
+        '<div class="dx-card dx-wide"><div class="dx-h">OPEN ITEMS</div>' + open + '</div>' +
+        '<div class="dx-card"><div class="dx-h">STATUS</div><div class="dx-ringrow">' + ring(items.length ? Math.round((items.length - attn) / items.length * 100) : 100, attn ? "#ffd24a" : "#41ff7e") +
+          '<div>' + rows([["Tracked", items.length], ["Need attention", attn, attn ? "warn" : "up"]]) + '</div></div></div>' +
+        notesCard(CC, "life") + '</div>' +
+        '<div class="dx-note">Tell Claude "Tesla is now in arbitration" and the status flips here.</div>';
     }
   };
-
-  function txt(id) { var el = document.getElementById(id); return el ? el.textContent.trim() : ""; }
-  function list(items) {
-    return '<div class="dx-list">' + items.map(function (it) {
-      return '<div class="dx-li"><span class="k">' + it[0] + '</span><span class="v ' + (it[2] || "") + '">' + it[1] + '</span></div>';
-    }).join("") + '</div>';
-  }
 
   var TITLES = { brief: "01 · DAILY BRIEF", markets: "02 · MARKETS", projects: "03 · PROJECTS", agents: "04 · AGENT OPS", life: "05 · LIFE ADMIN" };
 
   /* ---------- overlay ---------- */
-  var overlay = null;
+  var overlay = null, openKey = null;
   function ensureOverlay() {
     if (overlay) return overlay;
     overlay = document.createElement("div");
@@ -117,13 +169,31 @@
   function open(key) {
     if (!VIEWS[key]) return;
     var o = ensureOverlay();
+    openKey = key;
     o.querySelector(".dx-title").textContent = TITLES[key] || "";
-    o.querySelector(".dx-body").innerHTML = VIEWS[key]();
+    var body = o.querySelector(".dx-body");
+    body.innerHTML = VIEWS[key]();
+    // live to-do ticks inside the detail view
+    var ticks = body.querySelectorAll(".todo-i .tick");
+    for (var i = 0; i < ticks.length; i++) {
+      ticks[i].addEventListener("click", function (e) {
+        e.stopPropagation();
+        var CC = live(); if (!CC) return;
+        var id = +this.closest(".todo-i").getAttribute("data-id");
+        var t = CC.data.tasks.filter(function (x) { return x.id === id; })[0];
+        this.textContent = (t && t.done) ? "☐" : "☑";
+        CC.toggleTask(id, !(t && t.done)).then(function () { if (openKey === key) open(key); });
+      });
+    }
     o.classList.remove("hidden");
     try { navigator.vibrate && navigator.vibrate(10); } catch (e) {}
   }
-  function close() { if (overlay) overlay.classList.add("hidden"); }
+  function close() { openKey = null; if (overlay) overlay.classList.add("hidden"); }
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  // data changed while a detail view is open (Claude wrote a row) → redraw in place
+  document.addEventListener("board:updated", function () {
+    if (openKey && overlay && !overlay.classList.contains("hidden")) open(openKey);
+  });
 
   /* ---------- wire the five deck panels ---------- */
   function keyOf(panel) {
@@ -153,7 +223,11 @@
           panel.setAttribute("title", "Double-tap to open");
         } else {
           panel.setAttribute("title", "Click for detail");
-          panel.addEventListener("click", function () { open(key); });
+          panel.addEventListener("click", function (e) {
+            // the to-do ☐ buttons in the Daily Brief body handle themselves
+            if (e.target && e.target.closest && e.target.closest(".tick")) return;
+            open(key);
+          });
         }
         // don't let the inner "READY ▸" button also open the panel
         var rep = panel.querySelector("#brief-report");
