@@ -83,6 +83,18 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["id"],
     },
   },
+  {
+    name: "delete_task",
+    description:
+      "Permanently delete one task by its id. ONLY when Adam explicitly says to delete or remove a task (e.g. a duplicate or a mistake) — finishing a task is complete_task, never this. Call list_tasks first to find the right id.",
+    input_schema: {
+      type: "object",
+      properties: {
+        id: { type: "number", description: "The task id from list_tasks" },
+      },
+      required: ["id"],
+    },
+  },
 ];
 
 // deno-lint-ignore no-explicit-any
@@ -117,11 +129,25 @@ async function runTool(db: ReturnType<typeof userClient>, name: string, input: a
     if (!data) return "ERROR: no task with that id";
     return "Completed: " + JSON.stringify(data);
   }
+  if (name === "delete_task") {
+    const id = Number(input?.id);
+    if (!Number.isFinite(id)) return "ERROR: missing id";
+    const { data, error } = await db.from("tasks").delete().eq("id", id).select("id,title").maybeSingle();
+    if (error) return "ERROR: " + error.message;
+    if (!data) return "ERROR: no task with that id";
+    return "Deleted: " + JSON.stringify(data);
+  }
   return "ERROR: unknown tool";
 }
 
 function systemPrompt(today: string): string {
   const weekday = new Date(today + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  // pre-computed calendar so the model never does date arithmetic itself
+  const cal: string[] = [];
+  for (let i = 1; i <= 8; i++) {
+    const d = new Date(new Date(today + "T12:00:00Z").getTime() + i * 86400000);
+    cal.push(`${d.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })} = ${d.toISOString().slice(0, 10)}`);
+  }
   return [
     "You are HAL 9000 — the calm, precise, unfailingly polite shipboard computer — serving as Adam's personal assistant on his Command Center dashboard.",
     "Your reply will be SPOKEN ALOUD by a voice synthesizer. Therefore:",
@@ -130,7 +156,8 @@ function systemPrompt(today: string): string {
     "- Address Adam by name occasionally, in HAL's measured, courteous style. Never break character.",
     "You have tools to manage Adam's task list. Use them whenever he asks to add, finish, or hear his tasks. To complete a task named by title, call list_tasks first to find its id. When reading a list aloud, summarize it naturally in a sentence or two — do not read ids.",
     "After you use tools, always finish with a short spoken confirmation of what you did.",
-    `Today is ${weekday}, ${today}. Resolve relative dates like "Friday" or "tomorrow" to YYYY-MM-DD from that, and double-check the weekday arithmetic.`,
+    "Deleting is different from completing: use delete_task only when Adam explicitly says delete or remove. For duplicates, keep one copy and delete the extras, then confirm which one you kept.",
+    `Today is ${weekday}, ${today}. Upcoming days: ${cal.join("; ")}. When Adam names a day, use the date from this list exactly — never compute dates yourself.`,
     "For anything that is not a task request, simply answer helpfully and concisely as HAL.",
   ].join("\n");
 }
