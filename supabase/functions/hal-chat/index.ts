@@ -84,6 +84,39 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "add_event",
+    description:
+      "Add an event or reminder to Adam's calendar (it syncs to his iPhone). Use for 'remind me', 'add to my calendar', appointments, and anything time-based that is not a to-do task.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Short event title" },
+        date: { type: "string", description: "Event date as YYYY-MM-DD" },
+        time: { type: "string", description: "Start time as 24h HH:MM in Adam's local time; omit for an all-day event" },
+        duration_minutes: { type: "number", description: "Length in minutes; default 60" },
+        notes: { type: "string", description: "Extra details, only if Adam gave any" },
+      },
+      required: ["title", "date"],
+    },
+  },
+  {
+    name: "list_events",
+    description: "List Adam's upcoming calendar events (next 14 days).",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "delete_event",
+    description:
+      "Permanently delete one calendar event by its id (from list_events). ONLY when Adam explicitly says to delete, remove, or cancel an event.",
+    input_schema: {
+      type: "object",
+      properties: {
+        id: { type: "number", description: "The event id from list_events" },
+      },
+      required: ["id"],
+    },
+  },
+  {
     name: "delete_task",
     description:
       "Permanently delete one task by its id. ONLY when Adam explicitly says to delete or remove a task (e.g. a duplicate or a mistake) — finishing a task is complete_task, never this. Call list_tasks first to find the right id.",
@@ -129,6 +162,35 @@ async function runTool(db: ReturnType<typeof userClient>, name: string, input: a
     if (!data) return "ERROR: no task with that id";
     return "Completed: " + JSON.stringify(data);
   }
+  if (name === "add_event") {
+    const row: Record<string, unknown> = { title: String(input.title || "").slice(0, 300) };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.date))) return "ERROR: bad date";
+    row.on_date = input.date;
+    if (typeof input.time === "string" && /^\d{1,2}:\d{2}$/.test(input.time)) row.at_time = input.time.padStart(5, "0");
+    const dur = Number(input.duration_minutes);
+    if (Number.isFinite(dur) && dur >= 5 && dur <= 1440) row.duration_min = Math.round(dur);
+    if (input.notes) row.notes = String(input.notes).slice(0, 1000);
+    const { data, error } = await db.from("hal_events").insert(row).select("id,title,on_date,at_time").single();
+    if (error) return "ERROR: " + error.message;
+    return "Event added: " + JSON.stringify(data) + " (reaches the iPhone calendar on its next sync, up to ~15 minutes)";
+  }
+  if (name === "list_events") {
+    const today = new Date().toISOString().slice(0, 10);
+    const until = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+    const { data, error } = await db.from("hal_events").select("id,title,on_date,at_time,duration_min,notes")
+      .gte("on_date", today).lte("on_date", until).order("on_date").order("at_time");
+    if (error) return "ERROR: " + error.message;
+    if (!data?.length) return "No events in the next 14 days.";
+    return JSON.stringify(data);
+  }
+  if (name === "delete_event") {
+    const id = Number(input?.id);
+    if (!Number.isFinite(id)) return "ERROR: missing id";
+    const { data, error } = await db.from("hal_events").delete().eq("id", id).select("id,title").maybeSingle();
+    if (error) return "ERROR: " + error.message;
+    if (!data) return "ERROR: no event with that id";
+    return "Event deleted: " + JSON.stringify(data);
+  }
   if (name === "delete_task") {
     const id = Number(input?.id);
     if (!Number.isFinite(id)) return "ERROR: missing id";
@@ -157,6 +219,7 @@ function systemPrompt(today: string): string {
     "You have tools to manage Adam's task list. Use them whenever he asks to add, finish, or hear his tasks. To complete a task named by title, call list_tasks first to find its id. When reading a list aloud, summarize it naturally in a sentence or two — do not read ids.",
     "After you use tools, always finish with a short spoken confirmation of what you did.",
     "Deleting is different from completing: use delete_task only when Adam explicitly says delete or remove. For duplicates, keep one copy and delete the extras, then confirm which one you kept.",
+    "Calendar: use add_event for reminders and appointments ('remind me to…', 'add to my calendar…'). Times are Adam's local time in 24-hour HH:MM. A to-do without a time of day is a task; anything at a specific time or day on the calendar is an event.",
     `Today is ${weekday}, ${today}. Upcoming days: ${cal.join("; ")}. When Adam names a day, use the date from this list exactly — never compute dates yourself.`,
     "For anything that is not a task request, simply answer helpfully and concisely as HAL.",
   ].join("\n");

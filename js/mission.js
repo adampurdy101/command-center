@@ -411,6 +411,14 @@ tick();setInterval(tick,1000);
     }catch(e){ kokoroLoading=false; return false; }
   }
   window.halLoadVoice=loadKokoro;
+  // Desktop/browser: the free neural voice is Adam's standing choice — load it
+  // automatically after login so Hal always speaks with it (cached after the
+  // first download). Never on press-to-talk devices (iPhone app: OOM risk).
+  if(!window.CC_PTT){
+    const auto=()=>{ setTimeout(()=>{ try{ loadKokoro(); }catch(e){} },1200); };
+    document.addEventListener('hub:ready',auto);
+    const hb=document.getElementById('hub'); if(hb&&!hb.classList.contains('hidden')) auto();
+  }
   async function kokoroSpeak(text){
     if(!kokoroReady||!kokoroTTS)return false;
     const o=voiceCfg;
@@ -545,11 +553,11 @@ tick();setInterval(tick,1000);
     say(pick(TIMES,ltm).replace('TM',tm));}
   window.halGreet=greet; window.halTime=tellTime;
   // ---- speech recognition: bulletproof keep-alive so it listens even WHILE Hal talks ----
-  let recRunning=false, keepAlive=null;
+  let recRunning=false, keepAlive=null, lastInterim='', finSeen=false;
   function ensureRec(){ if(!rec||!listening||recRunning)return; try{rec.start();}catch(e){} }
   // Addressed-to-Hal detector: phrases that START with "Hal" (plus the ways
   // speech recognition commonly mis-hears it) go to the Claude brain.
-  const HAL_ADDR=/^\s*(?:ok(?:ay)?[,\s]+|hey[,\s]+)?(?:hal|hall|howl|al|pal)\b[,.!?]?\s*([\s\S]*)$/i;
+  const HAL_ADDR=/^\s*(?:ok(?:ay)?[,\s]+|hey[,\s]+)?(?:hal|hall|howl|how|hell|al|el|pal)\b[,.!?]?\s*([\s\S]*)$/i;
   let halBusy=false,lastAsk={t:'',at:0};
   function speakReply(text){ if(!speaking){say(text);return;}
     let n=0; const iv=setInterval(()=>{ if(!speaking){clearInterval(iv);say(text);} else if(++n>40){clearInterval(iv);} },250); }
@@ -665,14 +673,21 @@ tick();setInterval(tick,1000);
       rec.onresult=e=>{ let t='',fin='';
         for(let i=e.resultIndex;i<e.results.length;i++){const tr=e.results[i][0].transcript; t+=tr; if(e.results[i].isFinal)fin+=tr;}
         const handled=processSpeech(t);
+        if(t.trim()) lastInterim=t.trim();
         // only a FINAL utterance goes to the Claude brain (interims repeat as you talk)
-        if(fin&&(handled==null||handled==='hal')) maybeAskHal(fin);
+        if(fin&&(handled==null||handled==='hal')){ finSeen=true; lastInterim=''; maybeAskHal(fin); }
       };
       rec.onerror=ev=>{ recRunning=false; const er=ev&&ev.error;
         if(er==='not-allowed'||er==='service-not-allowed'){ listening=false;
           const b=document.getElementById('talkBtn'); if(b)b.textContent='VOICE SERVICE BLOCKED · USE CHROME';
           const l=document.getElementById('micLed'); if(l)l.className='led red'; } };
-      rec.onend=()=>{ recRunning=false; if(listening) setTimeout(ensureRec,200); };
+      rec.onend=()=>{ recRunning=false;
+        // Safari never flags results as final — when a session ends with only
+        // interim text, route it now (askHalDirect dedupes any double-fire)
+        if(!finSeen&&lastInterim){ const cand=lastInterim; lastInterim='';
+          const h=processSpeech(cand); if(h==null||h==='hal') maybeAskHal(cand); }
+        finSeen=false; lastInterim='';
+        if(listening) setTimeout(ensureRec,200); };
     }
     if(listening)return true;
     listening=true;
