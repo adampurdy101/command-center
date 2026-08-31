@@ -67,6 +67,14 @@ Deno.serve(async (req) => {
     .order("on_date")
     .limit(500);
   if (error) return new Response("feed error", { status: 500 });
+  // open tasks (and the last week's completed ones) ride along as VTODOs so
+  // the iPhone Reminders app can display them from the same subscription
+  const { data: todos } = await admin
+    .from("tasks")
+    .select("id,title,done,due,priority,notes,completed_at")
+    .or(`done.eq.false,completed_at.gte.${new Date(Date.now() - 7 * 86400000).toISOString()}`)
+    .order("due", { ascending: true, nullsFirst: false })
+    .limit(200);
 
   const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
   const lines = [
@@ -95,6 +103,16 @@ Deno.serve(async (req) => {
     // two pings: a 30-minute heads-up AND one right at the moment (reminder-style)
     lines.push("BEGIN:VALARM", "TRIGGER:-PT30M", "ACTION:DISPLAY", `DESCRIPTION:${icsEscape(ev.title)}`, "END:VALARM");
     lines.push("BEGIN:VALARM", "TRIGGER:PT0M", "ACTION:DISPLAY", `DESCRIPTION:${icsEscape(ev.title)}`, "END:VALARM", "END:VEVENT");
+  }
+  for (const t of todos || []) {
+    lines.push("BEGIN:VTODO", `UID:hal-task-${t.id}@command-center`, `DTSTAMP:${stamp}`);
+    lines.push(`SUMMARY:${icsEscape(t.title)}`);
+    if (t.due) lines.push(`DUE;VALUE=DATE:${String(t.due).replace(/-/g, "")}`);
+    if (t.notes) lines.push(`DESCRIPTION:${icsEscape(t.notes)}`);
+    if (t.priority === "high") lines.push("PRIORITY:1");
+    lines.push(t.done ? "STATUS:COMPLETED" : "STATUS:NEEDS-ACTION");
+    if (t.done) lines.push("PERCENT-COMPLETE:100");
+    lines.push("END:VTODO");
   }
   lines.push("END:VCALENDAR");
   return new Response(lines.join("\r\n"), {

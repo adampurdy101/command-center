@@ -219,7 +219,8 @@ function systemPrompt(today: string, now: string): string {
     "You have tools to manage Adam's task list. Use them whenever he asks to add, finish, or hear his tasks. To complete a task named by title, call list_tasks first to find its id. When reading a list aloud, summarize it naturally in a sentence or two — do not read ids.",
     "After you use tools, always finish with a short spoken confirmation of what you did.",
     "Deleting is different from completing: use delete_task only when Adam explicitly says delete or remove. For duplicates, keep one copy and delete the extras, then confirm which one you kept.",
-    "Calendar: use add_event for reminders and appointments ('remind me to…', 'add to my calendar…'). Times are Adam's local time in 24-hour HH:MM. A to-do without a time of day is a task; anything at a specific time or day on the calendar is an event.",
+    "Calendar: use add_event for appointments and anything at a specific time of day, including timed reminders ('remind me at 6 pm…') — those ring his phone. Times are Adam's local time in 24-hour HH:MM.",
+    "Reminders: when Adam says 'add to my reminders' or wants a reminder with no time of day, use add_task (with a due date if he gave one) — his iPhone Reminders app shows the task list. For a timed reminder, do BOTH: add_event so it rings, and add_task so it appears in Reminders.",
     `Today is ${weekday}, ${today}${now ? `, and Adam's clock reads ${now} right now` : ""}. Upcoming days: ${cal.join("; ")}. When Adam names a day, use the date from this list exactly — never compute dates yourself.`,
     "For anything that is not a task request, simply answer helpfully and concisely as HAL.",
   ].join("\n");
