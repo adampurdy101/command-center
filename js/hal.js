@@ -16,6 +16,22 @@ window.Hal = {
     const { data: { session } } = await db.auth.getSession();
     return session ? session.access_token : null;
   },
+  // voice preference lives in the settings table so every device follows it
+  async loadVoiceCfg() {
+    try {
+      const { data } = await db.from("settings").select("prefs").maybeSingle();
+      return (data && data.prefs && data.prefs.hal_voice) || null;
+    } catch (e) { return null; }
+  },
+  async saveVoiceCfg(cfg) {
+    try {
+      const { data: { session } } = await db.auth.getSession();
+      if (!session) return;
+      const { data } = await db.from("settings").select("prefs").maybeSingle();
+      const prefs = Object.assign({}, (data && data.prefs) || {}, { hal_voice: cfg });
+      await db.from("settings").upsert({ user_id: session.user.id, prefs, updated_at: new Date().toISOString() });
+    } catch (e) { console.error("voice cfg save failed:", e); }
+  },
   // send a recorded clip to hal-ears, get the transcript back (iPhone app path)
   async hear(blob) {
     const tok = await this.token();

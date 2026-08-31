@@ -6,8 +6,18 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-// deep, calm premade ElevenLabs voice; override with the ELEVENLABS_VOICE_ID secret
-const VOICE_ID = Deno.env.get("ELEVENLABS_VOICE_ID") || "pNInz6obpgDQGcFmaJgB";
+// The widget's voice personas mapped to ElevenLabs premade voices, so the
+// same dropdown choice drives every platform. Fallback: Adam (deep US male).
+const VOICES: Record<string, string> = {
+  am_michael: "flq6f7yk4E4fJM5XTYuZ", // Michael — US male (calm)
+  am_onyx:    "VR6AewLTigWG4xSOukaG", // deep US male (Arnold)
+  am_fenrir:  "TxGEqnHWrfWFTfGW9XjX", // resonant US male (Josh)
+  am_adam:    "pNInz6obpgDQGcFmaJgB", // Adam — US male
+  am_eric:    "cjVigY5qzO86Huf0OWal", // Eric — US male
+  bm_george:  "JBFqnCBsd6RMkjVDRZzb", // George — UK male (measured)
+  bm_daniel:  "onwK4e9ZLuTAKqWW03F9", // Daniel — UK male
+};
+const DEFAULT_VOICE = Deno.env.get("ELEVENLABS_VOICE_ID") || VOICES.am_adam;
 
 const ALLOW = [
   "https://adampurdy101.github.io",
@@ -47,21 +57,41 @@ Deno.serve(async (req) => {
   if (!key) return json(req, { error: "no_tts_key" }, 500);
 
   const body = await req.json().catch(() => ({}));
+
+  // diagnostic: which of the mapped voices actually exist on this account
+  if (body.list === true) {
+    const vr = await fetch("https://api.elevenlabs.io/v2/voices?page_size=100", { headers: { "xi-api-key": key } });
+    const vj = await vr.json().catch(() => ({}));
+    // deno-lint-ignore no-explicit-any
+    const have = new Set(((vj.voices || []) as any[]).map((v) => v.voice_id));
+    const report: Record<string, boolean> = {};
+    for (const [k2, id] of Object.entries(VOICES)) report[k2] = have.has(id);
+    return json(req, { report, total: (vj.voices || []).length });
+  }
+
   const text = String(body.text || "").slice(0, 500).trim();
   if (!text) return json(req, { error: "missing_text" }, 400);
+  const wanted = VOICES[String(body.voice || "")] || DEFAULT_VOICE;
 
-  const r = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}?output_format=mp3_44100_64`,
-    {
-      method: "POST",
-      headers: { "xi-api-key": key, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_flash_v2_5",
-        voice_settings: { stability: 0.55, similarity_boost: 0.7 },
-      }),
-    },
-  );
+  async function tts(voiceId: string): Promise<Response> {
+    return await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_64`,
+      {
+        method: "POST",
+        headers: { "xi-api-key": key, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_flash_v2_5",
+          voice_settings: { stability: 0.55, similarity_boost: 0.7 },
+        }),
+      },
+    );
+  }
+  let r = await tts(wanted);
+  if (!r.ok && wanted !== DEFAULT_VOICE) {
+    console.error("tts voice failed, falling back:", wanted, r.status, await r.text());
+    r = await tts(DEFAULT_VOICE);
+  }
   if (!r.ok) {
     console.error("elevenlabs tts failed:", r.status, await r.text());
     return json(req, { error: "tts_failed" }, 502);

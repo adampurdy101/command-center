@@ -393,7 +393,22 @@ tick();setInterval(tick,1000);
   const VOICE_DEFAULTS={voice:'am_michael',pace:0.9,depth:0.94,reverb:0.18,warmth:5500};
   let voiceCfg=Object.assign({},VOICE_DEFAULTS);
   try{const s=JSON.parse(localStorage.getItem('cc_hal_voice')||'null');if(s)voiceCfg=Object.assign({},VOICE_DEFAULTS,s);}catch(e){}
-  function saveVoiceCfg(){try{localStorage.setItem('cc_hal_voice',JSON.stringify(voiceCfg));}catch(e){}}
+  let vcPush=null;
+  function saveVoiceCfg(){try{localStorage.setItem('cc_hal_voice',JSON.stringify(voiceCfg));}catch(e){}
+    // mirror the choice to the account so every device (iPhone included) follows it
+    clearTimeout(vcPush);
+    vcPush=setTimeout(()=>{try{if(window.Hal&&window.Hal.saveVoiceCfg)window.Hal.saveVoiceCfg(voiceCfg);}catch(e){}},800);}
+  // on login, the account's saved voice wins over this device's local copy
+  document.addEventListener('hub:ready',async()=>{
+    try{
+      // hub:ready can beat the Hal bridge module by a tick — wait for it briefly
+      for(let i=0;i<20&&!(window.Hal&&window.Hal.loadVoiceCfg);i++) await new Promise(r=>setTimeout(r,150));
+      if(!(window.Hal&&window.Hal.loadVoiceCfg))return;
+      const c=await window.Hal.loadVoiceCfg();
+      if(c&&c.voice){ voiceCfg=Object.assign({},VOICE_DEFAULTS,c);
+        try{localStorage.setItem('cc_hal_voice',JSON.stringify(voiceCfg));}catch(e){} } }catch(e){}
+  });
+  window.__halVoiceCfg=()=>voiceCfg;   // test hook
   let kokoroTTS=null,kokoroReady=false,kokoroLoading=false,kokoroCtx=null,kokoroSrc=null;
   function halImpulse(ctx,dur=1.7,decay=2.6){const rate=ctx.sampleRate,len=Math.floor(rate*dur),b=ctx.createBuffer(2,len,rate);
     for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}return b;}
@@ -472,7 +487,7 @@ tick();setInterval(tick,1000);
       if(!tok) return false;
       r=await fetch(HAL_VOICE_URL,{method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
-        body:JSON.stringify({text})});
+        body:JSON.stringify({text,voice:voiceCfg.voice})});
     }
     catch(e){ return false; }
     if(!r.ok) return false;
