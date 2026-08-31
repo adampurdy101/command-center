@@ -72,6 +72,18 @@
 }
 
 /* ============================================================
+   PHONE PORTRAIT  ·  Hal right under the globe
+   The bottom band dissolves (display:contents) so its two panels
+   join the main stack; Voice Scope is ordered directly after the
+   globe, the game drops to the end. Tablets/landscape untouched.
+   ============================================================ */
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 600px) {
+  #hub .bottom { display: contents; }
+  #hub .center { order: -2; }
+  #hub #panel-voice { order: -1; }
+}
+
+/* ============================================================
    TABLET PORTRAIT (iPad-ish)  ·  two-up panels, bigger globe
    ============================================================ */
 @media (pointer: coarse) and (min-width: 700px) and (orientation: portrait) {
