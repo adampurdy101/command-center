@@ -78,6 +78,7 @@ tick();setInterval(tick,1000);
 
   /* ---- mic / talk button wiring (unchanged behaviour) ---- */
   let micTried=false;
+  window.__halMicReset=function(){micTried=false;};   // lets the STOP power-off re-arm WAKE HAL
   const talkBtn0=document.getElementById('talkBtn');
   if(talkBtn0) talkBtn0.addEventListener('click',async()=>{
     const btn=document.getElementById('talkBtn');const led=document.getElementById('micLed');
@@ -465,6 +466,21 @@ tick();setInterval(tick,1000);
     if(speaking){ endSpeak(); } else { window.HAL.speaking=false; window.HAL.level=0; }
   }
   window.halStop=stopSpeaking;
+  // ■ STOP button = full power-off: quiet Hal AND close the microphone, so he
+  // is no longer listening until WAKE HAL is tapped again. (The spoken word
+  // "stop" only interrupts his sentence and keeps listening.)
+  function halShutdown(){
+    stopSpeaking();
+    listening=false; attnUntil=0;
+    if(keepAlive){clearInterval(keepAlive);keepAlive=null;}
+    stopRec();
+    try{window.HAL.listening=false;}catch(e){}
+    if(window.__halMicReset)window.__halMicReset();
+    const b=document.getElementById('talkBtn');
+    if(b&&!window.CC_PTT)b.textContent='WAKE HAL ▸';
+    const l=document.getElementById('micLed'); if(l)l.className='led';
+  }
+  window.halShutdown=halShutdown;
   function endSpeak(){ if(!speaking)return; if(levelIv){clearInterval(levelIv);levelIv=null;}
     speaking=false; window.HAL.speaking=false; window.HAL.level=0; cd=Date.now()+1200; }
   function browserSpeak(text){
@@ -744,7 +760,7 @@ tick();setInterval(tick,1000);
     function reflect(){ $('vcVoice').value=voiceCfg.voice; $('vcPace').value=voiceCfg.pace; $('vcDepth').value=voiceCfg.depth;
       $('vcReverb').value=voiceCfg.reverb; $('vcWarmth').value=voiceCfg.warmth; labels(); updateStatus(); }
     openBtn.addEventListener('click',()=>{ reflect(); cfg.classList.toggle('hidden'); });
-    const sb=$('stopBtn'); if(sb)sb.addEventListener('click',()=>stopSpeaking());
+    const sb=$('stopBtn'); if(sb)sb.addEventListener('click',()=>{ window.CC_PTT?stopSpeaking():halShutdown(); });
     $('vcDone').addEventListener('click',()=>cfg.classList.add('hidden'));
     cfg.addEventListener('click',e=>{ if(e.target===cfg)cfg.classList.add('hidden'); });
     $('vcVoice').addEventListener('change',()=>{voiceCfg.voice=$('vcVoice').value;saveVoiceCfg();updateStatus();});

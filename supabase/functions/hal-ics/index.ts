@@ -92,7 +92,9 @@ Deno.serve(async (req) => {
     }
     lines.push(`SUMMARY:${icsEscape(ev.title)}`);
     if (ev.notes) lines.push(`DESCRIPTION:${icsEscape(ev.notes)}`);
-    lines.push("BEGIN:VALARM", "TRIGGER:-PT30M", "ACTION:DISPLAY", `DESCRIPTION:${icsEscape(ev.title)}`, "END:VALARM", "END:VEVENT");
+    // two pings: a 30-minute heads-up AND one right at the moment (reminder-style)
+    lines.push("BEGIN:VALARM", "TRIGGER:-PT30M", "ACTION:DISPLAY", `DESCRIPTION:${icsEscape(ev.title)}`, "END:VALARM");
+    lines.push("BEGIN:VALARM", "TRIGGER:PT0M", "ACTION:DISPLAY", `DESCRIPTION:${icsEscape(ev.title)}`, "END:VALARM", "END:VEVENT");
   }
   lines.push("END:VCALENDAR");
   return new Response(lines.join("\r\n"), {
