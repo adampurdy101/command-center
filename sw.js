@@ -1,7 +1,7 @@
 /* command-center service worker — minimal + safe.
    Network-first so the live site always wins; cache is only a
    last-resort offline fallback. Old caches are cleared on activate. */
-const CACHE = 'cc-shell-v60';
+const CACHE = 'cc-shell-v61';
 const SHELL = [
   '.', 'index.html',
   'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css', 'css/enhance.css', 'css/cinema.css', 'css/email.css', 'css/noir.css', 'css/deck.css', 'css/board.css',

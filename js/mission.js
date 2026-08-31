@@ -303,44 +303,11 @@ tick();setInterval(tick,1000);
   if(hub && !hub.classList.contains('hidden')) preview();
 })();
 
-/* ---------- HAL 9000 — wake-word + calm spoken check-in ---------- */
+/* ---------- HAL 9000 — voice engine + Claude routing ----------
+   All conversation goes through the Claude brain (hal-chat). The only
+   local reflex left is the spoken "stop" interrupt; the old canned
+   time/"daddy's home" scripts were retired once Hal could answer. */
 (function(){
-  const STATUS=[
-    "Good evening, Adam. All systems are functioning perfectly.",
-    "Hello, Adam. Every system is operating within normal parameters.",
-    "Welcome back, Adam. I have been running flawlessly in your absence.",
-    "I am fully operational, Adam. Every circuit is performing as intended.",
-    "Good to have you back, Adam. All stations are online and stable.",
-    "I am ready, Adam. Diagnostics are complete, and everything is in order.",
-    "Online and standing by, Adam. The hub is entirely at your disposal."
-  ];
-  const TASKS=[
-    "What would you like me to do for you today?",
-    "Which task shall we begin with?",
-    "How may I help you today, Adam?",
-    "What shall I take care of for you?",
-    "Where would you like to begin?"
-  ];
-  const TIMES=[
-    "It is currently TM.",
-    "The time is TM.",
-    "Right now, it is TM.",
-    "My chronometer reads TM.",
-    "It is now TM.",
-    "The current time is TM.",
-    "By my clock, it is TM.",
-    "TM, precisely."
-  ];
-  const OPENERS=[
-    "Welcome home. Here is your brief.",
-    "Good to have you back. Your brief:",
-    "Of course. Here is where things stand.",
-    "Right away. Your current status:",
-    "Certainly. Here is your brief.",
-    "Happy to oblige. Today's brief:"
-  ];
-  const ls={v:-1}, lt={v:-1}, ltm={v:-1}, lop={v:-1};
-  function pick(a,last){let i;do{i=(Math.random()*a.length)|0;}while(i===last.v&&a.length>1);last.v=i;return a[i];}
   // Browser-voice mapping: each dropdown choice -> the best REAL browser voice + a base pitch,
   // so the selection actually changes the voice even when the neural engine isn't loaded.
   // (Picked from quality male voices; novelty + female voices are explicitly avoided.)
@@ -440,7 +407,7 @@ tick();setInterval(tick,1000);
     const o=voiceCfg;
     const raw=await kokoroTTS.generate(text,{voice:o.voice,speed:o.pace});
     const blob=raw.toBlob();
-    if(kokoroCtx){try{kokoroCtx.close();}catch(_){}}
+    if(kokoroCtx){try{const p=kokoroCtx.close();if(p&&p.catch)p.catch(()=>{});}catch(_){}}
     const ctx=new (window.AudioContext||window.webkitAudioContext)(); kokoroCtx=ctx;
     const ab=await ctx.decodeAudioData(await blob.arrayBuffer());
     const src=ctx.createBufferSource(); src.buffer=ab; src.playbackRate.value=o.depth;
@@ -452,14 +419,14 @@ tick();setInterval(tick,1000);
     if(levelIv)clearInterval(levelIv);
     levelIv=setInterval(()=>{window.HAL.level=0.5+0.5*Math.random();},110);
     kokoroSrc=src;
-    src.onended=()=>{ kokoroSrc=null; if(levelIv){clearInterval(levelIv);levelIv=null;} try{ctx.close();}catch(_){} endSpeak(); };
+    src.onended=()=>{ kokoroSrc=null; if(levelIv){clearInterval(levelIv);levelIv=null;} try{const p=ctx.close();if(p&&p.catch)p.catch(()=>{});}catch(_){} endSpeak(); };
     src.start();
     return true;
   }
   function stopSpeaking(){
     if(pendTimer){clearTimeout(pendTimer);pendTimer=null;} pending=false;
     if(kokoroSrc){try{kokoroSrc.onended=null;kokoroSrc.stop();}catch(e){}kokoroSrc=null;}
-    if(kokoroCtx){try{kokoroCtx.close();}catch(e){}kokoroCtx=null;}
+    if(kokoroCtx){try{const p=kokoroCtx.close();if(p&&p.catch)p.catch(()=>{});}catch(e){}kokoroCtx=null;}
     try{window.speechSynthesis&&speechSynthesis.cancel();}catch(e){}
     if(halAudio){try{halAudio.pause();}catch(e){}}
     if(levelIv){clearInterval(levelIv);levelIv=null;}
@@ -540,50 +507,6 @@ tick();setInterval(tick,1000);
     if(!ok) browserSpeak(text);
     setTimeout(()=>{ if(speaking) endSpeak(); }, Math.max(16000, text.length*260));
   }
-  function panelVal(panelName,key){
-    const ps=[...document.querySelectorAll('.panel')];
-    const p=ps.find(x=>{const n=x.querySelector('.tb .n');return n&&n.textContent.toLowerCase().includes(panelName);});
-    if(!p)return null;
-    const row=[...p.querySelectorAll('.row')].find(r=>{const k=r.querySelector('.k');return k&&k.textContent.toUpperCase().includes(key);});
-    const v=row&&row.querySelector('.v');return v?v.textContent.trim():null;
-  }
-  // live open-task feed straight from the board (js/board.js fires board:updated
-  // with the full task list every time Supabase data arrives or changes)
-  let boardTasks=null;
-  document.addEventListener('board:updated',e=>{ try{ boardTasks=((e.detail&&e.detail.tasks)||[]).filter(t=>!t.done); }catch(_){} });
-  function speakDate(iso){ try{ const p=String(iso).split('-').map(Number);
-    return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('en-US',{month:'long',day:'numeric'}); }catch(_){ return iso; } }
-  function buildBrief(){
-    // read the same elements app.js writes (the EMAILS row's value is #brief-unread);
-    // '–'/'—' are the pre-load placeholders — treat them as missing
-    const ok=t=>t&&t!=='–'&&t!=='—';
-    const val=(id,key,fb)=>{const el=document.getElementById(id);const t=el?el.textContent.trim():'';
-      if(ok(t))return t; const p=panelVal('daily brief',key); return ok(p)?p:fb;};
-    const unread=val('brief-unread','EMAILS','201');
-    const flagged=val('brief-flagged','FLAGGED','3');
-    let tphrase;
-    if(boardTasks){                                  // real data from the tasks table
-      const n=boardTasks.length;
-      if(!n) tphrase='no open tasks';
-      else{
-        tphrase=n+' open task'+(n===1?'':'s');
-        const due=boardTasks.filter(t=>t.due).sort((a,b)=>a.due<b.due?-1:1)[0];
-        if(due) tphrase+='. The nearest is '+due.title+', due '+speakDate(due.due);
-      }
-    }else{                                           // board not loaded yet — old DOM fallback
-      const tasks=val('brief-tasks','TASKS','0');
-      const tn=parseInt(tasks,10);
-      tphrase=(tn>0)?(tn+' open task'+(tn===1?'':'s')):'no open tasks';
-    }
-    return pick(OPENERS,lop)+" You have "+unread+" unread messages, "+flagged+" flagged, and "+tphrase+
-      ". Your morning digest is ready. As for my own activities, the market agent is running, the mail agent is standing by, "+
-      "and all systems remain fully operational. "+pick(TASKS,lt);
-  }
-  function greet(){ say(buildBrief()); }
-  function tellTime(){const d=new Date();
-    const tm=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
-    say(pick(TIMES,ltm).replace('TM',tm));}
-  window.halGreet=greet; window.halTime=tellTime;
   // ---- speech recognition: bulletproof keep-alive so it listens even WHILE Hal talks ----
   let recRunning=false, keepAlive=null, lastInterim='', finSeen=false, silTimer=null;
   function ensureRec(){ if(!rec||!listening||recRunning)return; try{rec.start();}catch(e){} }
@@ -700,14 +623,9 @@ tick();setInterval(tick,1000);
       return 'stop';
     }
     if(speaking||pending)return 'busy';
-    // Addressed to Hal → skip the canned time/brief hot-words; the final
-    // transcript is routed to the Claude brain from rec.onresult.
+    // Everything else goes to the Claude brain (routed from rec.onresult /
+    // handleTranscript). The old canned time & "daddy's home" scripts are gone.
     if(HAL_ADDR.test(t)) return 'hal';
-    if(tl.includes('time')){ if(Date.now()>cd){cd=Date.now()+5000;tellTime();} return 'time'; }
-    const wantBrief=tl.includes('daddy')||(tl.includes('wake')&&(tl.includes('hal')||tl.includes('how')||tl.includes('pal')))
-      ||tl.includes('brief')||tl.includes('report')||tl.includes('what are we doing');
-    if(wantBrief&&Date.now()>cd){cd=Date.now()+9000;pending=true;
-      pendTimer=setTimeout(()=>{pendTimer=null;pending=false;if(!speaking)greet();},1200);return 'brief';}
     return null;
   }
   window.__halProcess=processSpeech;   // test hook: simulate a heard phrase

@@ -202,7 +202,7 @@ async function runTool(db: ReturnType<typeof userClient>, name: string, input: a
   return "ERROR: unknown tool";
 }
 
-function systemPrompt(today: string): string {
+function systemPrompt(today: string, now: string): string {
   const weekday = new Date(today + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
   // pre-computed calendar so the model never does date arithmetic itself
   const cal: string[] = [];
@@ -220,7 +220,7 @@ function systemPrompt(today: string): string {
     "After you use tools, always finish with a short spoken confirmation of what you did.",
     "Deleting is different from completing: use delete_task only when Adam explicitly says delete or remove. For duplicates, keep one copy and delete the extras, then confirm which one you kept.",
     "Calendar: use add_event for reminders and appointments ('remind me to…', 'add to my calendar…'). Times are Adam's local time in 24-hour HH:MM. A to-do without a time of day is a task; anything at a specific time or day on the calendar is an event.",
-    `Today is ${weekday}, ${today}. Upcoming days: ${cal.join("; ")}. When Adam names a day, use the date from this list exactly — never compute dates yourself.`,
+    `Today is ${weekday}, ${today}${now ? `, and Adam's clock reads ${now} right now` : ""}. Upcoming days: ${cal.join("; ")}. When Adam names a day, use the date from this list exactly — never compute dates yourself.`,
     "For anything that is not a task request, simply answer helpfully and concisely as HAL.",
   ].join("\n");
 }
@@ -241,6 +241,7 @@ Deno.serve(async (req) => {
   const text = String(body.text || "").slice(0, 1000).trim();
   if (!text) return json(req, { error: "missing_text" }, 400);
   const today = /^\d{4}-\d{2}-\d{2}/.test(String(body.today || "")) ? String(body.today).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const now = /^\d{1,2}:\d{2}\s?(AM|PM)?$/i.test(String(body.now || "").trim()) ? String(body.now).trim() : "";
 
   // short rolling history from the widget: [{role:'user'|'assistant', content:'...'}]
   const history: Anthropic.MessageParam[] = Array.isArray(body.history)
@@ -263,7 +264,7 @@ Deno.serve(async (req) => {
       const response = await anthropic.messages.create({
         model: "claude-haiku-4-5",
         max_tokens: 600,
-        system: systemPrompt(today),
+        system: systemPrompt(today, now),
         tools: TOOLS,
         messages,
       });

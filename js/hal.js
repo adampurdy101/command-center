@@ -60,8 +60,9 @@ window.Hal = {
       const { data: { session } } = await db.auth.getSession();
       if (!session) return "You will need to log in before I can help with that, Adam.";
       const today = new Date().toLocaleDateString("en-CA"); // local YYYY-MM-DD
+      const now = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
       const { data, error } = await db.functions.invoke("hal-chat", {
-        body: { text, today, history: history.slice(-HIST_MAX) },
+        body: { text, today, now, history: history.slice(-HIST_MAX) },
       });
       if (error || !data || !data.reply) {
         console.error("hal-chat error:", error || data);
