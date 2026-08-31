@@ -82,7 +82,9 @@ tick();setInterval(tick,1000);
   if(talkBtn0) talkBtn0.addEventListener('click',async()=>{
     const btn=document.getElementById('talkBtn');const led=document.getElementById('micLed');
     if(window.halUnlock) window.halUnlock();
-    try{if(localStorage.getItem('cc_kokoro_ready')&&window.halLoadVoice)window.halLoadVoice();}catch(e){}
+    // the on-device neural voice is desktop-only: loading it inside the iPhone
+    // app exhausts memory and iOS kills the whole app
+    try{if(!window.CC_PTT&&localStorage.getItem('cc_kokoro_ready')&&window.halLoadVoice)window.halLoadVoice();}catch(e){}
     if(window.halPTT){ window.halPTT(); return; }   // press-to-talk devices (iPhone app)
     if(micTried) return;
     micTried=true; btn.textContent='REQUESTING MIC…';
@@ -377,7 +379,11 @@ tick();setInterval(tick,1000);
   function stopRec(){if(rec){try{rec.stop();}catch(e){}}}
   const HAL_VOICE_URL='https://fzsfizqkolkxkorgvtcl.supabase.co/functions/v1/hal-voice';
   let levelIv=null, halAudio=null;
-  function ensureAudio(){if(!halAudio){halAudio=new Audio();halAudio.preload='auto';}return halAudio;}
+  function ensureAudio(){if(!halAudio){halAudio=new Audio();halAudio.preload='auto';
+    try{halAudio.setAttribute('playsinline','');}catch(e){}}return halAudio;}
+  // the big on-device voice model must never load inside the iPhone app (OOM crash);
+  // clear any old "auto-load it" flag that a previous visit may have left behind
+  try{ if(window.CC_PTT) localStorage.removeItem('cc_kokoro_ready'); }catch(e){}
   // play a tiny silent clip on a user tap to unlock audio playback (esp. iOS) without speaking
   window.halUnlock=function(){try{const a=ensureAudio();a.muted=true;
     a.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
@@ -472,7 +478,13 @@ tick();setInterval(tick,1000);
     levelIv=setInterval(()=>{ if(a.paused||a.ended){if(levelIv){clearInterval(levelIv);levelIv=null;}}
       else {window.HAL.level=0.55+0.45*Math.random();} },110);
     a.src=url;
-    try{ await a.play(); }catch(e){ if(levelIv){clearInterval(levelIv);levelIv=null;} URL.revokeObjectURL(url); return false; }
+    try{ await a.play(); }
+    catch(e){
+      // iOS sometimes rejects the first programmatic play after a src swap — retry once
+      await new Promise(res=>setTimeout(res,250));
+      try{ await a.play(); }
+      catch(e2){ if(levelIv){clearInterval(levelIv);levelIv=null;} URL.revokeObjectURL(url); return false; }
+    }
     return true;
   }
   async function say(text){
@@ -481,7 +493,7 @@ tick();setInterval(tick,1000);
     speaking=true; window.HAL.speaking=true; window.HAL.level=1;
     try{speechSynthesis&&speechSynthesis.cancel();}catch(e){}
     let ok=false;
-    if(kokoroReady){ try{ ok=await kokoroSpeak(text); }catch(e){ ok=false; } }
+    if(kokoroReady&&!window.CC_PTT){ try{ ok=await kokoroSpeak(text); }catch(e){ ok=false; } }
     // press-to-talk devices (iPhone app): prefer the server voice — the
     // built-in one is weak/unreliable there; browser voice stays the fallback
     if(!ok&&window.CC_PTT){ try{ ok=await elevenSpeak(text); }catch(e){ ok=false; } }
