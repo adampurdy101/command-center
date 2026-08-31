@@ -270,7 +270,7 @@ tick();setInterval(tick,1000);
     if(state!=='speak'){
       const hint=window.CC_PTT
         ?(state==='listen'?'● RECORDING · TAP THE BUTTON WHEN DONE':'TAP THE BUTTON, SPEAK, TAP AGAIN — HAL ANSWERS')
-        :(state==='listen'?'LISTENING · SAY “HAL, …” · “DADDY’S HOME” · “STOP”':'TAP “WAKE HAL”, THEN SAY “DADDY’S HOME”');
+        :(state==='listen'?'LISTENING · START WITH “HAL, …” · “STOP” HALTS ME':'TAP “WAKE HAL”, THEN JUST TALK');
       const a=0.3+0.13*Math.sin(t*1.8);
       c.save();c.font='9px '+VFONT;c.textAlign='center';c.fillStyle=rgba(P.hi,a.toFixed(2));c.fillText(hint,(X0+X1)/2,13);c.restore();}
     if(S.wake>0){c.save();c.globalCompositeOperation='lighter';const wr=(1-S.wake)*Math.max(w,h)*0.98;
@@ -497,6 +497,7 @@ tick();setInterval(tick,1000);
   }
   async function say(text){
     if(speaking)return;
+    lastSaid=text;                 // echo guard: don't route Hal's own voice back to him
     banner(text);
     speaking=true; window.HAL.speaking=true; window.HAL.level=1;
     try{speechSynthesis&&speechSynthesis.cancel();}catch(e){}
@@ -553,7 +554,7 @@ tick();setInterval(tick,1000);
     say(pick(TIMES,ltm).replace('TM',tm));}
   window.halGreet=greet; window.halTime=tellTime;
   // ---- speech recognition: bulletproof keep-alive so it listens even WHILE Hal talks ----
-  let recRunning=false, keepAlive=null, lastInterim='', finSeen=false;
+  let recRunning=false, keepAlive=null, lastInterim='', finSeen=false, silTimer=null;
   function ensureRec(){ if(!rec||!listening||recRunning)return; try{rec.start();}catch(e){} }
   // Addressed-to-Hal detector: phrases that START with "Hal" (plus the ways
   // speech recognition commonly mis-hears it) go to the Claude brain.
@@ -578,6 +579,23 @@ tick();setInterval(tick,1000);
     const q=(m[1]||'').trim();
     return askHalDirect(q||'Hello, Hal.');
   }
+  // One routing decision for every finished utterance (final result, silence
+  // timeout, or session end). "Hal, …" always routes; for 15s after WAKE HAL
+  // is pressed anything routes (matches the iPhone tap-and-talk habit).
+  let attnUntil=0, lastSaid='';
+  window.__halWake=()=>{attnUntil=Date.now()+15000;};
+  function routeUtterance(raw){
+    const cand=(raw||'').trim(); if(!cand) return;
+    const h=processSpeech(cand);
+    if(h!==null&&h!=='hal') return;                     // hot word or busy — handled
+    const m=cand.match(HAL_ADDR);
+    if(m){ askHalDirect((m[1]||'').trim()||'Hello, Hal.'); return; }
+    if(Date.now()<attnUntil&&Date.now()>cd){            // attention window, not right after Hal spoke
+      if(lastSaid&&lastSaid.toLowerCase().includes(cand.toLowerCase().slice(0,40))) return; // his own echo
+      askHalDirect(cand);
+    }
+  }
+  window.__halRoute=routeUtterance;                     // test hook
 
   /* ---- press-to-talk (iPhone app & any device without live recognition) ----
      Tap → record. Tap again → clip goes to hal-ears for transcription, then
@@ -664,6 +682,7 @@ tick();setInterval(tick,1000);
   window.__halProcess=processSpeech;   // test hook: simulate a heard phrase
   window.__halAsk=maybeAskHal;         // test hook: simulate a final "Hal, …" phrase
   window.halStart=function(){
+    attnUntil=Date.now()+15000;   // right after waking, ANY sentence goes to Hal — no wake word needed
     try{const warm=new SpeechSynthesisUtterance(' ');warm.volume=0;speechSynthesis.speak(warm);}catch(e){}
     if(!SR)return false;
     if(!rec){
@@ -672,20 +691,21 @@ tick();setInterval(tick,1000);
       rec.onstart=()=>{recRunning=true;};
       rec.onresult=e=>{ let t='',fin='';
         for(let i=e.resultIndex;i<e.results.length;i++){const tr=e.results[i][0].transcript; t+=tr; if(e.results[i].isFinal)fin+=tr;}
-        const handled=processSpeech(t);
+        processSpeech(t);                                       // live "heard" display + hot words
         if(t.trim()) lastInterim=t.trim();
-        // only a FINAL utterance goes to the Claude brain (interims repeat as you talk)
-        if(fin&&(handled==null||handled==='hal')){ finSeen=true; lastInterim=''; maybeAskHal(fin); }
+        if(fin){ finSeen=true; lastInterim=''; clearTimeout(silTimer); routeUtterance(fin); return; }
+        // Safari never flags finals — route after ~1.6s of silence instead
+        clearTimeout(silTimer);
+        silTimer=setTimeout(()=>{ if(lastInterim&&!speaking&&!pending){ const c=lastInterim; lastInterim=''; routeUtterance(c); } },1600);
       };
       rec.onerror=ev=>{ recRunning=false; const er=ev&&ev.error;
         if(er==='not-allowed'||er==='service-not-allowed'){ listening=false;
           const b=document.getElementById('talkBtn'); if(b)b.textContent='VOICE SERVICE BLOCKED · USE CHROME';
           const l=document.getElementById('micLed'); if(l)l.className='led red'; } };
-      rec.onend=()=>{ recRunning=false;
-        // Safari never flags results as final — when a session ends with only
-        // interim text, route it now (askHalDirect dedupes any double-fire)
-        if(!finSeen&&lastInterim){ const cand=lastInterim; lastInterim='';
-          const h=processSpeech(cand); if(h==null||h==='hal') maybeAskHal(cand); }
+      rec.onend=()=>{ recRunning=false; clearTimeout(silTimer);
+        // a session that ends with only interim text still gets routed
+        // (askHalDirect dedupes any double-fire with the silence timer)
+        if(!finSeen&&lastInterim){ const cand=lastInterim; lastInterim=''; routeUtterance(cand); }
         finSeen=false; lastInterim='';
         if(listening) setTimeout(ensureRec,200); };
     }
