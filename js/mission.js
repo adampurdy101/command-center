@@ -471,6 +471,12 @@ tick();setInterval(tick,1000);
     const row=[...p.querySelectorAll('.row')].find(r=>{const k=r.querySelector('.k');return k&&k.textContent.toUpperCase().includes(key);});
     const v=row&&row.querySelector('.v');return v?v.textContent.trim():null;
   }
+  // live open-task feed straight from the board (js/board.js fires board:updated
+  // with the full task list every time Supabase data arrives or changes)
+  let boardTasks=null;
+  document.addEventListener('board:updated',e=>{ try{ boardTasks=((e.detail&&e.detail.tasks)||[]).filter(t=>!t.done); }catch(_){} });
+  function speakDate(iso){ try{ const p=String(iso).split('-').map(Number);
+    return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('en-US',{month:'long',day:'numeric'}); }catch(_){ return iso; } }
   function buildBrief(){
     // read the same elements app.js writes (the EMAILS row's value is #brief-unread);
     // '–'/'—' are the pre-load placeholders — treat them as missing
@@ -479,9 +485,20 @@ tick();setInterval(tick,1000);
       if(ok(t))return t; const p=panelVal('daily brief',key); return ok(p)?p:fb;};
     const unread=val('brief-unread','EMAILS','201');
     const flagged=val('brief-flagged','FLAGGED','3');
-    const tasks=val('brief-tasks','TASKS','0');
-    const tn=parseInt(tasks,10);
-    const tphrase=(tn===0||isNaN(tn))?'no open tasks':(tasks+' open task'+(tn===1?'':'s'));
+    let tphrase;
+    if(boardTasks){                                  // real data from the tasks table
+      const n=boardTasks.length;
+      if(!n) tphrase='no open tasks';
+      else{
+        tphrase=n+' open task'+(n===1?'':'s');
+        const due=boardTasks.filter(t=>t.due).sort((a,b)=>a.due<b.due?-1:1)[0];
+        if(due) tphrase+='. The nearest is '+due.title+', due '+speakDate(due.due);
+      }
+    }else{                                           // board not loaded yet — old DOM fallback
+      const tasks=val('brief-tasks','TASKS','0');
+      const tn=parseInt(tasks,10);
+      tphrase=(tn>0)?(tn+' open task'+(tn===1?'':'s')):'no open tasks';
+    }
     return pick(OPENERS,lop)+" You have "+unread+" unread messages, "+flagged+" flagged, and "+tphrase+
       ". Your morning digest is ready. As for my own activities, the market agent is running, the mail agent is standing by, "+
       "and all systems remain fully operational. "+pick(TASKS,lt);
