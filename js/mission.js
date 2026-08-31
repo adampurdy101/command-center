@@ -494,6 +494,26 @@ tick();setInterval(tick,1000);
   // ---- speech recognition: bulletproof keep-alive so it listens even WHILE Hal talks ----
   let recRunning=false, keepAlive=null;
   function ensureRec(){ if(!rec||!listening||recRunning)return; try{rec.start();}catch(e){} }
+  // Addressed-to-Hal detector: phrases that START with "Hal" (plus the ways
+  // speech recognition commonly mis-hears it) go to the Claude brain.
+  const HAL_ADDR=/^\s*(?:ok(?:ay)?[,\s]+|hey[,\s]+)?(?:hal|hall|howl|al|pal)\b[,.!?]?\s*([\s\S]*)$/i;
+  let halBusy=false,lastAsk={t:'',at:0};
+  function speakReply(text){ if(!speaking){say(text);return;}
+    let n=0; const iv=setInterval(()=>{ if(!speaking){clearInterval(iv);say(text);} else if(++n>40){clearInterval(iv);} },250); }
+  async function maybeAskHal(raw){
+    const m=raw.trim().match(HAL_ADDR); if(!m) return;
+    let q=(m[1]||'').trim(); if(!q) q='Hello, Hal.';
+    const now=Date.now();
+    if(halBusy||(q===lastAsk.t&&now-lastAsk.at<4000)) return;   // ignore duplicate finals
+    lastAsk={t:q,at:now};
+    if(!(window.Hal&&window.Hal.ask)) return;
+    halBusy=true;
+    try{ window.HAL.level=Math.max(window.HAL.level||0,0.3);
+      const reply=await window.Hal.ask(q);
+      if(reply) speakReply(reply);
+    }catch(e){ console.error('hal ask failed:',e); }
+    halBusy=false;
+  }
   function processSpeech(t){
     const heard=document.getElementById('heard');
     if(heard&&t.trim()){heard.textContent='heard:  “'+t.trim()+'”';heard.style.opacity='1';
@@ -507,6 +527,9 @@ tick();setInterval(tick,1000);
       return 'stop';
     }
     if(speaking||pending)return 'busy';
+    // Addressed to Hal → skip the canned time/brief hot-words; the final
+    // transcript is routed to the Claude brain from rec.onresult.
+    if(HAL_ADDR.test(t)) return 'hal';
     if(tl.includes('time')){ if(Date.now()>cd){cd=Date.now()+5000;tellTime();} return 'time'; }
     const wantBrief=tl.includes('daddy')||(tl.includes('wake')&&(tl.includes('hal')||tl.includes('how')||tl.includes('pal')))
       ||tl.includes('brief')||tl.includes('report')||tl.includes('what are we doing');
@@ -515,6 +538,7 @@ tick();setInterval(tick,1000);
     return null;
   }
   window.__halProcess=processSpeech;   // test hook: simulate a heard phrase
+  window.__halAsk=maybeAskHal;         // test hook: simulate a final "Hal, …" phrase
   window.halStart=function(){
     try{const warm=new SpeechSynthesisUtterance(' ');warm.volume=0;speechSynthesis.speak(warm);}catch(e){}
     if(!SR)return false;
@@ -522,7 +546,12 @@ tick();setInterval(tick,1000);
       try{rec=new SR();}catch(e){return false;}
       rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
       rec.onstart=()=>{recRunning=true;};
-      rec.onresult=e=>{ let t=''; for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript; processSpeech(t); };
+      rec.onresult=e=>{ let t='',fin='';
+        for(let i=e.resultIndex;i<e.results.length;i++){const tr=e.results[i][0].transcript; t+=tr; if(e.results[i].isFinal)fin+=tr;}
+        const handled=processSpeech(t);
+        // only a FINAL utterance goes to the Claude brain (interims repeat as you talk)
+        if(fin&&(handled==null||handled==='hal')) maybeAskHal(fin);
+      };
       rec.onerror=ev=>{ recRunning=false; const er=ev&&ev.error;
         if(er==='not-allowed'||er==='service-not-allowed'){ listening=false;
           const b=document.getElementById('talkBtn'); if(b)b.textContent='VOICE SERVICE BLOCKED · USE CHROME';
