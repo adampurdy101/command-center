@@ -9,6 +9,18 @@
    ============================================================ */
 const DPR = Math.min(window.devicePixelRatio || 1, (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) ? 1.25 : 1.75);
 window.HAL = {speaking:false, level:0};
+
+/* Apple blocks live speech recognition inside installed (home-screen) web
+   apps: it "listens" but never hears. There we switch to press-to-talk —
+   record a clip, transcribe it server-side (hal-ears), answer as usual.
+   Set localStorage cc_force_ptt=1 to test the press-to-talk mode anywhere. */
+window.CC_PTT=(function(){
+  try{ if(localStorage.getItem('cc_force_ptt')==='1') return true; }catch(e){}
+  const SRok=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const standalone=(window.navigator.standalone===true)||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
+  return !SRok || (ios&&standalone);
+})();
 function fit(cv){const r=cv.getBoundingClientRect();cv.width=Math.max(2,r.width*DPR);cv.height=Math.max(2,r.height*DPR);return cv.getContext('2d');}
 
 /* ---------- clocks ---------- */
@@ -71,6 +83,7 @@ tick();setInterval(tick,1000);
     const btn=document.getElementById('talkBtn');const led=document.getElementById('micLed');
     if(window.halUnlock) window.halUnlock();
     try{if(localStorage.getItem('cc_kokoro_ready')&&window.halLoadVoice)window.halLoadVoice();}catch(e){}
+    if(window.halPTT){ window.halPTT(); return; }   // press-to-talk devices (iPhone app)
     if(micTried) return;
     micTried=true; btn.textContent='REQUESTING MIC…';
     let stream=null;
@@ -253,7 +266,9 @@ tick();setInterval(tick,1000);
     c.save();c.strokeStyle=rgba(P.faint,0.5);c.lineWidth=1;for(let x=X0;x<X1;x+=26){const lng=((x-X0)%104<26);c.beginPath();c.moveTo(x,8);c.lineTo(x,8+(lng?6:3));c.stroke();}c.restore();
     c.save();c.strokeStyle=rgba(P.g,0.18);c.lineWidth=1;c.beginPath();c.moveTo(BAY,8);c.lineTo(BAY,h-8);c.stroke();c.restore();
     if(state!=='speak'){
-      const hint=state==='listen'?'LISTENING · SAY “DADDY’S HOME” · “TIME” · “STOP”':'TAP “WAKE HAL”, THEN SAY “DADDY’S HOME”';
+      const hint=window.CC_PTT
+        ?(state==='listen'?'● RECORDING · TAP THE BUTTON WHEN DONE':'TAP THE BUTTON, SPEAK, TAP AGAIN — HAL ANSWERS')
+        :(state==='listen'?'LISTENING · SAY “HAL, …” · “DADDY’S HOME” · “STOP”':'TAP “WAKE HAL”, THEN SAY “DADDY’S HOME”');
       const a=0.3+0.13*Math.sin(t*1.8);
       c.save();c.font='9px '+VFONT;c.textAlign='center';c.fillStyle=rgba(P.hi,a.toFixed(2));c.fillText(hint,(X0+X1)/2,13);c.restore();}
     if(S.wake>0){c.save();c.globalCompositeOperation='lighter';const wr=(1-S.wake)*Math.max(w,h)*0.98;
@@ -438,7 +453,13 @@ tick();setInterval(tick,1000);
   }
   async function elevenSpeak(text){
     let r;
-    try{ r=await fetch(HAL_VOICE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})}); }
+    try{
+      const tok=window.Hal&&window.Hal.token?await window.Hal.token():null;
+      if(!tok) return false;
+      r=await fetch(HAL_VOICE_URL,{method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+        body:JSON.stringify({text})});
+    }
     catch(e){ return false; }
     if(!r.ok) return false;
     if((r.headers.get('content-type')||'').indexOf('audio')<0) return false;
@@ -461,6 +482,9 @@ tick();setInterval(tick,1000);
     try{speechSynthesis&&speechSynthesis.cancel();}catch(e){}
     let ok=false;
     if(kokoroReady){ try{ ok=await kokoroSpeak(text); }catch(e){ ok=false; } }
+    // press-to-talk devices (iPhone app): prefer the server voice — the
+    // built-in one is weak/unreliable there; browser voice stays the fallback
+    if(!ok&&window.CC_PTT){ try{ ok=await elevenSpeak(text); }catch(e){ ok=false; } }
     if(!ok) browserSpeak(text);
     setTimeout(()=>{ if(speaking) endSpeak(); }, Math.max(16000, text.length*260));
   }
@@ -517,9 +541,7 @@ tick();setInterval(tick,1000);
   let halBusy=false,lastAsk={t:'',at:0};
   function speakReply(text){ if(!speaking){say(text);return;}
     let n=0; const iv=setInterval(()=>{ if(!speaking){clearInterval(iv);say(text);} else if(++n>40){clearInterval(iv);} },250); }
-  async function maybeAskHal(raw){
-    const m=raw.trim().match(HAL_ADDR); if(!m) return;
-    let q=(m[1]||'').trim(); if(!q) q='Hello, Hal.';
+  async function askHalDirect(q){
     const now=Date.now();
     if(halBusy||(q===lastAsk.t&&now-lastAsk.at<4000)) return;   // ignore duplicate finals
     lastAsk={t:q,at:now};
@@ -531,6 +553,71 @@ tick();setInterval(tick,1000);
     }catch(e){ console.error('hal ask failed:',e); }
     halBusy=false;
   }
+  async function maybeAskHal(raw){
+    const m=raw.trim().match(HAL_ADDR); if(!m) return;
+    const q=(m[1]||'').trim();
+    return askHalDirect(q||'Hello, Hal.');
+  }
+
+  /* ---- press-to-talk (iPhone app & any device without live recognition) ----
+     Tap → record. Tap again → clip goes to hal-ears for transcription, then
+     straight to Hal. No wake word needed: a tap IS addressing him. */
+  function handleTranscript(text){
+    const heard=document.getElementById('heard');
+    if(heard&&text){heard.textContent='heard:  “'+text+'”';heard.style.opacity='1';
+      clearTimeout(heard._to);heard._to=setTimeout(()=>{heard.style.opacity='0';},4000);}
+    const r=processSpeech(text);                      // hot words still win (stop/time/brief)
+    if(r!==null&&r!=='hal') return;
+    const m=text.trim().match(HAL_ADDR);              // strip a spoken "Hal," if present
+    askHalDirect(m?((m[1]||'').trim()||'Hello, Hal.'):text.trim());
+  }
+  window.__halHandleTranscript=handleTranscript;      // test hook
+  if(window.CC_PTT)(function(){
+    let ptRec=null,ptStream=null,ptChunks=[],ptBusy=false;
+    const IDLE='TALK TO HAL · TAP, SPEAK, TAP';
+    function label(t){const b=document.getElementById('talkBtn'); if(b)b.textContent=t;}
+    function led(cls){const l=document.getElementById('micLed'); if(l)l.className='led '+cls;}
+    function reset(){label(IDLE);led('amb');window.HAL.listening=false;}
+    document.addEventListener('hub:ready',()=>{if(!ptRec)label(IDLE);});
+    if(document.getElementById('talkBtn'))label(IDLE);
+    window.halPTT=async function(){
+      if(ptBusy) return;
+      if(ptRec){ try{ptRec.stop();}catch(e){reset();} return; }        // second tap → finish
+      let stream=null;
+      try{ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+      catch(err){ const n=(err&&err.name)||'';
+        label(n==='NotAllowedError'||n==='SecurityError'?'MIC BLOCKED · ALLOW IN SETTINGS':'MIC ERROR · TAP TO RETRY');
+        led('red'); return; }
+      let rec=null,mime='';
+      if(window.MediaRecorder){
+        for(const m of ['audio/mp4','audio/webm;codecs=opus','audio/webm'])
+          if(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m)){mime=m;break;}
+        try{ rec=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream); }catch(e){ rec=null; }
+      }
+      if(!rec){ label('RECORDER N/A ON THIS DEVICE'); led('red');
+        try{stream.getTracks().forEach(t=>t.stop());}catch(e){} return; }
+      ptRec=rec; ptStream=stream; ptChunks=[];
+      rec.ondataavailable=e=>{ if(e.data&&e.data.size)ptChunks.push(e.data); };
+      rec.onerror=()=>{ try{stream.getTracks().forEach(t=>t.stop());}catch(e){} ptRec=null; ptStream=null; reset(); };
+      rec.onstop=async()=>{
+        try{stream.getTracks().forEach(t=>t.stop());}catch(e){}
+        const blob=new Blob(ptChunks,{type:rec.mimeType||mime||'audio/mp4'});
+        ptRec=null; ptStream=null; window.HAL.listening=false;
+        if(blob.size<2000){ reset(); return; }                          // accidental tap
+        ptBusy=true; label('THINKING…'); led('amb');
+        let text=null;
+        try{ text=window.Hal&&window.Hal.hear?await window.Hal.hear(blob):null; }catch(e){}
+        ptBusy=false; reset();
+        if(!text){ label('COULD NOT HEAR · TAP TO RETRY'); return; }
+        handleTranscript(text);
+      };
+      try{ rec.start(); }catch(e){ ptRec=null; ptStream=null;
+        try{stream.getTracks().forEach(t=>t.stop());}catch(_){} reset(); return; }
+      window.HAL.listening=true; window.HAL.level=Math.max(window.HAL.level||0,0.2);
+      label('● RECORDING — TAP AGAIN WHEN DONE'); led('on');
+      setTimeout(()=>{ if(ptRec===rec){ try{rec.stop();}catch(e){} } },30000); // safety cap
+    };
+  })();
   function processSpeech(t){
     const heard=document.getElementById('heard');
     if(heard&&t.trim()){heard.textContent='heard:  “'+t.trim()+'”';heard.style.opacity='1';

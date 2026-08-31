@@ -4,12 +4,39 @@
 //  Nothing secret lives here — the Anthropic key stays server-side.
 // ============================================================
 import { db } from "./supabase.js";
+import { CONFIG } from "./config.js";
 
 const HIST_MAX = 8;                 // rolling short-term memory sent with each ask
 const history = [];                 // [{role:'user'|'assistant', content}]
 
 window.Hal = {
   busy: false,
+  // current login token, for the voice/ears endpoints that need a raw fetch
+  async token() {
+    const { data: { session } } = await db.auth.getSession();
+    return session ? session.access_token : null;
+  },
+  // send a recorded clip to hal-ears, get the transcript back (iPhone app path)
+  async hear(blob) {
+    const tok = await this.token();
+    if (!tok) return null;
+    const ext = (blob.type || "").includes("mp4") ? "m4a" : (blob.type || "").includes("webm") ? "webm" : "audio";
+    const fd = new FormData();
+    fd.append("file", blob, "speech." + ext);
+    try {
+      const r = await fetch(CONFIG.SUPABASE_URL + "/functions/v1/hal-ears", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + tok },
+        body: fd,
+      });
+      if (!r.ok) { console.error("hal-ears http", r.status); return null; }
+      const j = await r.json().catch(() => null);
+      return j && j.text ? String(j.text) : null;
+    } catch (e) {
+      console.error("hal-ears threw:", e);
+      return null;
+    }
+  },
   async ask(text) {
     if (this.busy) return null;
     this.busy = true;
