@@ -36,6 +36,8 @@
   <link rel="stylesheet" href="css/deck.css" />
   <!-- live to-do / project / life rows (js/board.js) -->
   <link rel="stylesheet" href="css/board.css" />
+  <!-- 06 Bills panel + the tap-to-enlarge calendar (js/bills.js) -->
+  <link rel="stylesheet" href="css/calendar.css" />
 </head>
 <body>
   <!-- branded power-on splash / boot sequence (paints instantly, no white flash) -->
@@ -94,6 +96,7 @@
           <canvas id="ekg-sys" class="ekg" width="92" height="30"></canvas>
         </div>
         <div class="tools">
+          <button id="cal-btn" type="button" title="Open the calendar — bills, Hal's events, to-do due dates">▦ CALENDAR</button>
           <span class="amb-wrap">
             <button id="amb-btn" type="button" title="Ambient sound — hover for volume">♪ HUM</button>
             <span class="amb-pop">
@@ -115,7 +118,8 @@
             <div class="bd" id="brief-bd">
               <div class="row mail-launch" id="brief-emails" role="button" tabindex="0" title="Open email console"><span class="k">EMAILS</span><span class="v big" id="brief-unread">–</span><span class="v go" style="font-size:12px;margin-left:7px;color:var(--hi)">▸</span></div>
               <div class="row"><span class="k">FLAGGED</span><span class="v warn" id="brief-flagged">–</span></div>
-              <div class="row"><span class="k">NEXT EVENT</span><span class="v" id="brief-next" style="font-size:11px">—</span></div>
+              <div class="row cal-launch" id="brief-next-row" role="button" tabindex="0" title="Open the calendar"><span class="k">NEXT EVENT</span><span class="v" id="brief-next" style="font-size:11px">—</span></div>
+              <div class="row cal-launch" id="brief-bills-row" role="button" tabindex="0" title="Open the calendar"><span class="k">BILLS</span><span class="v" id="brief-bills" style="font-size:11px">–</span></div>
               <div class="row"><span class="k">TASKS</span><span class="v" id="brief-tasks">–</span></div>
               <div class="row"><span class="k" style="font-size:10px">MORNING DIGEST · 06:00</span><button class="btn" id="brief-report" style="padding:2px 8px;font-size:10px">READY ▸</button></div>
             </div>
@@ -197,16 +201,9 @@
               <div class="row" style="margin-top:auto;font-size:10px"><span class="k">UPTIME</span><span class="v">99.4%</span></div>
             </div>
           </section>
-          <section class="panel" id="panel-health" style="flex:1.7">
-            <div class="tb"><span class="led on"></span><span class="n">06 Health</span><span class="sp"></span><span class="s">DEMO</span></div>
-            <div class="bd" style="gap:3px">
-              <canvas class="ekg hr-ekg" width="120" height="20" style="width:100%;height:17px;display:block;opacity:.9" aria-hidden="true"></canvas>
-              <div class="row"><span class="k">RESTING HR</span><span class="v big">58<small style="font-size:10px;color:var(--dim);margin-left:3px">BPM</small></span></div>
-              <div class="row"><span class="k">SLEEP</span><span class="v">7h 12m · <span class="up">84</span></span></div>
-              <div class="row"><span class="k">STEPS</span><span class="v">6,420</span></div>
-              <div class="row"><span class="k">WEIGHT</span><span class="v">178.4<small style="font-size:10px;color:var(--dim);margin:0 3px">LB</small><span class="down">▼0.6</span></span></div>
-              <div class="row"><span class="k">MEDS</span><span class="v warn">2 DUE · 18:00</span></div>
-            </div>
+          <section class="panel" id="panel-bills" style="flex:1.7" title="Tap to open the calendar">
+            <div class="tb"><span class="led amb"></span><span class="n">06 Bills</span><span class="sp"></span><span class="s" id="bills-stat">…</span></div>
+            <div class="bd" id="bills-bd" style="gap:3px"><div class="row"><span class="k muted">loading your Bill Calendar…</span></div></div>
           </section>
         </div>
 
@@ -298,6 +295,8 @@
   <script type="module" src="js/app.js"></script>
   <!-- live board: tasks / projects / agents / life items from Supabase, realtime (window.CC) -->
   <script type="module" src="js/board.js"></script>
+  <!-- bills from the Bill Calendar app + Hal's events + task due dates → 06 Bills panel, Daily Brief rows, calendar overlay (window.CCal) -->
+  <script type="module" src="js/bills.js"></script>
   <!-- Gmail bridge for the email console (window.Gmail → Supabase edge functions) -->
   <script type="module" src="js/gmail.js"></script>
   <!-- Hal bridge for the voice assistant (window.Hal → hal-chat edge function) -->

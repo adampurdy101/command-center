@@ -125,6 +125,18 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "list_bills",
+    description:
+      "List Adam's bills from his Bill Calendar that fall due in the next N days: name, amount, due date, whether it is already marked paid, and the account it pays from. Read-only (Adam marks bills paid in the Bill Calendar app). Use for any question about bills, what is due, how much money is due, or what is left this month.",
+    input_schema: {
+      type: "object",
+      properties: {
+        days: { type: "number", description: "Look-ahead window in days (default 14, max 60)" },
+        include_paid: { type: "boolean", description: "Also include bills already marked paid (default true)" },
+      },
+    },
+  },
+  {
     name: "delete_task",
     description:
       "Permanently delete one task by its id. ONLY when Adam explicitly says to delete or remove a task (e.g. a duplicate or a mistake) — finishing a task is complete_task, never this. Call list_tasks first to find the right id.",
@@ -137,6 +149,37 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
 ];
+
+/* ---- Bill Calendar occurrence logic (straight port of the app / bills-ics) ---- */
+type Bill = { id: number; name: string; amount: number; dueDate: string; recur: string; paidMonths?: string[]; acct?: number | null };
+type Acct = { id: number; bank: string; nick: string; last4: string };
+function dueDayInMonth(b: Bill, y: number, m: number): number {
+  const origDay = parseInt(String(b.dueDate).split("-")[2], 10);
+  return Math.min(origDay, new Date(y, m + 1, 0).getDate());
+}
+function occDays(b: Bill, y: number, m: number): number[] {
+  if (b.recur === "biweekly") {
+    const p = String(b.dueDate).split("-");
+    const anchor = new Date(+p[0], +p[1] - 1, +p[2]); anchor.setHours(0, 0, 0, 0);
+    const res: number[] = [], last = new Date(y, m + 1, 0).getDate();
+    for (let d = 1; d <= last; d++) {
+      const dt = new Date(y, m, d); dt.setHours(0, 0, 0, 0);
+      const diff = Math.round((dt.getTime() - anchor.getTime()) / 86400000);
+      if (diff >= 0 && diff % 14 === 0) res.push(d);
+    }
+    return res;
+  }
+  if (b.recur !== "monthly") {
+    const p = String(b.dueDate).split("-");
+    return (+p[0] === y && +p[1] - 1 === m) ? [dueDayInMonth(b, y, m)] : [];
+  }
+  return [dueDayInMonth(b, y, m)];
+}
+// paidMonths keys use a ZERO-based month ("2026-7" = August), exactly as the app writes them
+function isPaidOcc(b: Bill, y: number, m: number, d: number): boolean {
+  const pm = b.paidMonths || [];
+  return b.recur === "biweekly" ? pm.includes(`${y}-${m}-${d}`) : pm.includes(`${y}-${m}`);
+}
 
 // deno-lint-ignore no-explicit-any
 async function runTool(db: ReturnType<typeof userClient>, name: string, input: any, today: string): Promise<string> {
@@ -200,6 +243,34 @@ async function runTool(db: ReturnType<typeof userClient>, name: string, input: a
     if (!data) return "ERROR: no event with that id";
     return "Event deleted: " + JSON.stringify(data);
   }
+  if (name === "list_bills") {
+    const days = Math.max(1, Math.min(60, Number(input?.days) || 14));
+    const includePaid = input?.include_paid !== false;
+    const { data, error } = await db.from("billdata").select("bills,accounts").maybeSingle();
+    if (error) return "ERROR: " + error.message;
+    if (!data || !Array.isArray(data.bills)) return "No bills found in the Bill Calendar.";
+    const bills = data.bills as Bill[], accounts = (Array.isArray(data.accounts) ? data.accounts : []) as Acct[];
+    const [ty, tm, td] = today.split("-").map(Number);
+    const from = new Date(ty, tm - 1, td), to = new Date(ty, tm - 1, td + days);
+    const out: string[] = [];
+    const a = from.getFullYear() * 12 + from.getMonth(), z = to.getFullYear() * 12 + to.getMonth();
+    for (let k = a; k <= z; k++) {
+      const y = Math.floor(k / 12), m = k % 12;
+      for (const b of bills) {
+        if (!b || !b.dueDate) continue;
+        for (const d of occDays(b, y, m)) {
+          const dt = new Date(y, m, d);
+          if (dt < from || dt > to) continue;
+          const paid = isPaidOcc(b, y, m, d);
+          if (paid && !includePaid) continue;
+          const acct = accounts.find((x) => x.id === b.acct);
+          out.push(`${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")} · ${b.name} · $${Number(b.amount || 0).toFixed(2)} · ${paid ? "PAID" : "not paid"}${acct ? " · from " + (acct.nick || acct.bank) : ""}`);
+        }
+      }
+    }
+    out.sort();
+    return out.length ? out.join("\n") : `No bills due in the next ${days} days.`;
+  }
   if (name === "delete_task") {
     const id = Number(input?.id);
     if (!Number.isFinite(id)) return "ERROR: missing id";
@@ -231,6 +302,7 @@ function systemPrompt(today: string, now: string): string {
     "Calendar: use add_event for appointments and anything at a specific time of day, including timed reminders ('remind me at 6 pm…') — those ring his phone. Times are Adam's local time in 24-hour HH:MM.",
     "Reminders: when Adam says 'add to my reminders' or wants a reminder with no time of day, use add_task (with a due date if he gave one) — his iPhone Reminders app shows the task list. For a timed reminder, do BOTH: add_event so it rings, and add_task so it appears in Reminders.",
     `Today is ${weekday}, ${today}${now ? `, and Adam's clock reads ${now} right now` : ""}. Upcoming days: ${cal.join("; ")}. When Adam names a day, use the date from this list exactly — never compute dates yourself.`,
+    "Bills: use list_bills for anything about bills, what is due, how much money is due, or payday planning. It is read-only — Adam marks bills paid in his Bill Calendar app. Round dollar amounts naturally when speaking.",
     "For anything that is not a task request, simply answer helpfully and concisely as HAL.",
   ].join("\n");
 }

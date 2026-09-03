@@ -23,13 +23,7 @@ async function updateBrief() {
   if (brief) {
     set("brief-unread", brief.unread ?? "–");
     set("brief-flagged", brief.flagged ?? "0");
-    // an empty next-event reads as a data gap — show a calm "all clear" instead of a lonely dash
-    const nextEl = document.getElementById("brief-next");
-    if (nextEl) {
-      const hasNext = brief.next_event != null && String(brief.next_event).trim() !== "";
-      nextEl.textContent = hasNext ? brief.next_event : "CLEAR · nothing scheduled";
-      nextEl.classList.toggle("muted", !hasNext);
-    }
+    // NEXT EVENT and BILLS rows are painted by js/bills.js from Hal's calendar + the Bill Calendar
     // TASKS row is painted live by js/board.js (real to-do rows), not the digest count
     set("brief-stat", "LIVE");
     if (report) report.onclick = () => alert(brief.digest || "No digest text yet.");
@@ -37,7 +31,6 @@ async function updateBrief() {
     // clearly-labeled demo numbers until the 06:00 job is wired
     set("brief-unread", "201");
     set("brief-flagged", "3");
-    set("brief-next", "10:30 · Wall Shops sync");
     set("brief-stat", "DEMO");
     if (report) report.onclick = () =>
       alert("Morning digest will appear here once the 6 AM job writes to Supabase (daily_brief).");
