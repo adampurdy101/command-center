@@ -78,9 +78,13 @@
    globe, the game drops to the end. Tablets/landscape untouched.
    ============================================================ */
 @media (pointer: coarse) and (orientation: portrait) and (max-width: 600px) {
-  #hub .bottom { display: contents; }
-  #hub .center { order: -2; }
-  #hub #panel-voice { order: -1; }
+  /* both side columns dissolve too, so every panel is its own flex child and can be
+     ordered freely: globe → Voice Scope · HAL → Bills → Daily Brief → the rest */
+  #hub .bottom, #hub .col { display: contents; }
+  #hub .center { order: -3; }
+  #hub #panel-voice { order: -2; }
+  #hub #panel-bills { order: -1; }
+  #hub .deck > .panel, #hub .col > .panel { flex: none !important; }
 }
 
 /* ============================================================
