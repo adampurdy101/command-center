@@ -14,3 +14,20 @@ verify_jwt = true
 
 [functions.gmail-action]
 verify_jwt = true
+
+# ---- Hal (voice assistant) ----
+[functions.hal-chat]
+verify_jwt = true
+
+[functions.hal-voice]
+verify_jwt = true
+
+[functions.hal-ears]
+verify_jwt = true
+
+# Apple Calendar fetches the ICS feed with no headers — it is protected by the HMAC
+# token in the URL instead. NOTE: every dashboard / MCP redeploy of hal-ics flips
+# "Verify JWT" back ON; re-toggle it OFF (Edge Functions → hal-ics → Settings) or the
+# iPhone subscription starts getting 401s.
+[functions.hal-ics]
+verify_jwt = false

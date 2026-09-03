@@ -6,6 +6,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+// only the owner (plus any ids in HAL_ALLOWED_USERS) may spend the ElevenLabs quota
+const OWNER_IDS = new Set(
+  ["30cbcbfa-7261-47de-8c91-3d97557fc5f9", ...(Deno.env.get("HAL_ALLOWED_USERS") || "").split(",")]
+    .map((s) => s.trim()).filter(Boolean),
+);
 // The widget's voice personas mapped to ElevenLabs premade voices, so the
 // same dropdown choice drives every platform. Fallback: Adam (deep US male).
 const VOICES: Record<string, string> = {
@@ -52,6 +57,7 @@ Deno.serve(async (req) => {
   });
   const { data, error } = await db.auth.getUser();
   if (error || !data?.user) return json(req, { error: "unauthorized" }, 401);
+  if (!OWNER_IDS.has(data.user.id)) return json(req, { error: "forbidden" }, 403);
 
   const key = Deno.env.get("ELEVENLABS_API_KEY");
   if (!key) return json(req, { error: "no_tts_key" }, 500);

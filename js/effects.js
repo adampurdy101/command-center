@@ -201,36 +201,27 @@
      7 · FULLSCREEN  (enter + explicit exit; graceful fallback)
      ============================================================ */
   function startFullscreen() {
-    var enter = document.getElementById("fs-btn"), exit = document.getElementById("fs-exit");
+    var enter = document.getElementById("fs-btn");
+    if (!enter) return;
     var root = document.documentElement;
     var canFS = !!(root.requestFullscreen || root.webkitRequestFullscreen);
     function inFS() { return document.fullscreenElement || document.webkitFullscreenElement; }
     function doEnter() { try { (root.requestFullscreen || root.webkitRequestFullscreen).call(root); } catch (e) {} }
     function doExit() { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {} }
-    // remove any leftover floating exit button from a previous build
-    var stray = document.getElementById("fs-exit-fixed");
-    if (stray && stray.parentNode) stray.parentNode.removeChild(stray);
 
     function sync() {
       var f = !!inFS();
-      // ONE in-bar button, right where ⤢ FULLSCREEN was: it flips to a lit-green
-      // ⤡ EXIT FULLSCREEN while fullscreen, blended into the top bar.
-      if (enter) {
-        enter.style.display = canFS ? "" : "none";
-        enter.textContent = f ? "⤡ EXIT FULLSCREEN" : "⤢ FULLSCREEN";
-        enter.title = f ? "Click to exit fullscreen" : "Enter fullscreen";
-        enter.classList.toggle("fs-on", f);
-      }
-      if (exit) exit.style.display = "none";   // legacy 2nd button stays unused
+      // ONE in-bar button: it flips to a lit-green ⤡ EXIT FULLSCREEN while fullscreen
+      enter.textContent = f ? "⤡ EXIT FULLSCREEN" : "⤢ FULLSCREEN";
+      enter.title = f ? "Click to exit fullscreen" : "Enter fullscreen";
+      enter.classList.toggle("fs-on", f);
     }
     if (!canFS) {
-      // iPhone Safari has no Fullscreen API — hide both; install-to-home-screen gives full screen
-      if (enter) enter.style.display = "none";
-      if (exit) exit.style.display = "none";
+      // iPhone Safari has no Fullscreen API — hide the button; install-to-home-screen gives full screen
+      enter.style.display = "none";
       return;
     }
-    if (enter) enter.addEventListener("click", function () { inFS() ? doExit() : doEnter(); });
-    if (exit) exit.addEventListener("click", doExit);
+    enter.addEventListener("click", function () { inFS() ? doExit() : doEnter(); });
     // Esc always exits (covers cases where the native hint is missed)
     document.addEventListener("keydown", function (e) { if ((e.key === "Escape" || e.key === "Esc") && inFS()) doExit(); });
     document.addEventListener("fullscreenchange", sync);
@@ -243,7 +234,7 @@
      ============================================================ */
   function startHaptics() {
     if (!coarse || !navigator.vibrate) return;
-    ["talkBtn", "restartBtn", "fs-btn", "fs-exit", "amb-btn", "voiceCfgBtn", "stopBtn"].forEach(function (id) {
+    ["talkBtn", "fs-btn", "amb-btn", "voiceCfgBtn", "stopBtn", "sniperBtn", "deck-btn"].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.addEventListener("pointerdown", function () { try { navigator.vibrate(8); } catch (e) {} });
     });

@@ -157,9 +157,19 @@ if(window.topojson){
     .then(r=>r.json()).then(w=>{land=topojson.feature(w,w.objects.countries);landFeats=land.features||[];
       borders=topojson.mesh(w,w.objects.countries,(a,b)=>a!==b);}).catch(()=>{});
 }
-fetch('https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_50m_admin_1_states_provinces.geojson')
-  .then(r=>r.json()).then(g=>{admin1={type:'FeatureCollection',features:(g.features||[]).filter(f=>{
-    const c=d3.geoCentroid(f);return c[0]>=-170&&c[0]<=-30&&c[1]>=-58&&c[1]<=75;})};}).catch(()=>{});
+/* State / province borders (Americas only — that is all the hub draws) are only visible
+   past 1.5× zoom, so they load lazily on the first zoom-in, from a compact pre-filtered
+   copy in the repo (data/admin1-americas.json, ~65 KB over the wire) instead of the
+   full 2.3 MB Natural Earth file on every page load. */
+let admin1Req=false;
+function loadAdmin1(){
+  if(admin1Req)return; admin1Req=true;
+  fetch('data/admin1-americas.json').then(r=>{if(!r.ok)throw new Error('admin1 '+r.status);return r.json();})
+    .then(g=>{admin1=g;})
+    .catch(()=>fetch('https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_50m_admin_1_states_provinces.geojson')
+      .then(r=>r.json()).then(g=>{admin1={type:'FeatureCollection',features:(g.features||[]).filter(f=>{
+        const c=d3.geoCentroid(f);return c[0]>=-170&&c[0]<=-30&&c[1]>=-58&&c[1]<=75;})};}).catch(()=>{}));
+}
 
 /* ISS: live fixes → smooth extrapolation + orbit ground track */
 let fixes=[],issPole=null,issInfo=null;
@@ -541,6 +551,7 @@ function draw(ms){
     ctx.strokeStyle='rgba(65,255,126,.18)';ctx.lineWidth=2.6;ctx.stroke();
     ctx.shadowColor='#41ff7e';ctx.shadowBlur=11;ctx.strokeStyle='#7dffb0';ctx.lineWidth=1;ctx.stroke();ctx.shadowBlur=0;}
   if(borders){ctx.beginPath();path(borders);ctx.strokeStyle='rgba(125,255,176,.32)';ctx.lineWidth=.4;ctx.stroke();}
+  if(zoom>1.5&&!admin1)loadAdmin1();
   if(admin1&&zoom>1.5){ctx.beginPath();path(admin1);ctx.strokeStyle='rgba(125,255,176,.24)';ctx.lineWidth=.35;ctx.stroke();}
 
   /* ---- radar sweep ---- */

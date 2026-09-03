@@ -81,7 +81,7 @@ tick();setInterval(tick,1000);
   window.__halMicReset=function(){micTried=false;};   // lets the STOP power-off re-arm WAKE HAL
   const talkBtn0=document.getElementById('talkBtn');
   if(talkBtn0) talkBtn0.addEventListener('click',async()=>{
-    const btn=document.getElementById('talkBtn');const led=document.getElementById('micLed');
+    const btn=document.getElementById('talkBtn');
     if(window.halUnlock) window.halUnlock();
     // the on-device neural voice is desktop-only: loading it inside the iPhone
     // app exhausts memory and iOS kills the whole app
@@ -94,17 +94,15 @@ tick();setInterval(tick,1000);
       stream=await navigator.mediaDevices.getUserMedia({audio:true});
     }catch(err){
       micTried=false;
-      if(led)led.className='led red';
       const n=(err&&err.name)||'error';
       btn.textContent=(n==='NotAllowedError'||n==='SecurityError')?'MIC BLOCKED · ALLOW IN BROWSER'
         :(n==='NotFoundError')?'NO MIC FOUND':('MIC ERROR · '+n);
       return;
     }
     try{stream.getTracks().forEach(t=>t.stop());}catch(e){}
-    if(led)led.className='led amb';
     const started=window.halStart&&window.halStart();
     try{window.HAL.listening=!!started;}catch(e){}
-    btn.textContent=started?'LISTENING ● SAY “DADDY’S HOME”':'VOICE N/A · OPEN IN CHROME';
+    btn.textContent=started?'LISTENING ● JUST TALK':'VOICE N/A · OPEN IN CHROME';
   });
 
   /* ---- synthetic spectrum (driven by the live HAL level) ---- */
@@ -168,16 +166,26 @@ tick();setInterval(tick,1000);
     c.fillStyle='rgba(255,255,255,0.82)';c.beginPath();c.ellipse(-rr*0.32,-rr*0.36,rr*0.13,rr*0.08,-0.6,0,TAU);c.fill();
     c.restore();
   }
+  // the two bar gradients depend only on the canvas geometry — build them once per size,
+  // not 56 times per frame (28 bars × 2)
+  function barGrads(c,baseY,maxH){
+    const key=baseY+'|'+maxH; let g=S.grads;
+    if(!g||g.key!==key){
+      const bg=c.createLinearGradient(0,baseY,0,baseY-maxH);
+      bg.addColorStop(0,'rgba(20,120,60,0.95)');bg.addColorStop(0.2,'rgba(65,255,126,1)');bg.addColorStop(0.36,'rgba(190,255,110,1)');bg.addColorStop(0.46,'rgba(255,188,64,1)');bg.addColorStop(0.58,'rgba(255,102,32,1)');bg.addColorStop(0.72,'rgba(255,48,24,1)');bg.addColorStop(1,'rgba(255,34,18,1)');
+      const gg=c.createLinearGradient(0,baseY,0,baseY-maxH);gg.addColorStop(0,'rgba(65,255,126,0.4)');gg.addColorStop(0.8,'rgba(255,180,80,0.85)');gg.addColorStop(1,'rgba(255,60,30,1)');
+      g=S.grads={key,bg,gg};
+    }
+    return g;
+  }
   function barRedline(c,x,barw,baseY,bt,e,maxH,b){
     const bh=baseY-bt; if(bh<1)return;
     const heat=Math.max(0,(e-0.28)/0.72);
-    const bg=c.createLinearGradient(0,baseY,0,baseY-maxH);
-    bg.addColorStop(0,'rgba(20,120,60,0.95)');bg.addColorStop(0.2,'rgba(65,255,126,1)');bg.addColorStop(0.36,'rgba(190,255,110,1)');bg.addColorStop(0.46,'rgba(255,188,64,1)');bg.addColorStop(0.58,'rgba(255,102,32,1)');bg.addColorStop(0.72,'rgba(255,48,24,1)');bg.addColorStop(1,'rgba(255,34,18,1)');
-    c.fillStyle=bg;c.fillRect(x-barw/2,bt,barw,bh);
+    const G=barGrads(c,baseY,maxH);
+    c.fillStyle=G.bg;c.fillRect(x-barw/2,bt,barw,bh);
     c.fillStyle='rgba(3,14,9,0.8)';for(let y=baseY-8;y>bt;y-=8)c.fillRect(x-barw/2,y,barw,2.2);
     c.save();c.globalCompositeOperation='lighter';c.globalAlpha=0.12+e*0.3;
-    const gg=c.createLinearGradient(0,baseY,0,baseY-maxH);gg.addColorStop(0,'rgba(65,255,126,0.4)');gg.addColorStop(0.8,'rgba(255,180,80,0.85)');gg.addColorStop(1,'rgba(255,60,30,1)');
-    c.fillStyle=gg;c.shadowColor=heat>0.28?'rgba(255,60,30,1)':rgba(ACC,1);c.shadowBlur=e*(9+heat*12);c.fillRect(x-barw/2,bt,barw,bh);c.restore();
+    c.fillStyle=G.gg;c.shadowColor=heat>0.28?'rgba(255,60,30,1)':rgba(ACC,1);c.shadowBlur=e*(9+heat*12);c.fillRect(x-barw/2,bt,barw,bh);c.restore();
     const capCol=heat>0.32?'255,40,20':(heat>0.1?'255,140,48':ACC);
     c.save();c.globalCompositeOperation='lighter';
     c.fillStyle=rgba(capCol,Math.min(1,0.55+e*0.6).toFixed(3));c.shadowColor=rgba(capCol,1);c.shadowBlur=9+heat*12;c.fillRect(x-barw/2-1,bt-4.8-heat*4,barw+2,2.8+heat*2);
@@ -285,7 +293,7 @@ tick();setInterval(tick,1000);
 })();
 
 /* ---------- SNIPER SCOPE // OVERWATCH launcher (replaces Defense Grid) ----------
-   The rich game lives in js/sniper.js (window.SniperGame). Here we just show the
+   The rich game lives in js/sniper-x.js (window.SniperGame). Here we just show the
    idle scope preview in the bottom panel's #game canvas and deploy it fullscreen
    when the panel / its button is tapped. ------------------------------------- */
 (function(){
@@ -398,7 +406,8 @@ tick();setInterval(tick,1000);
   // automatically after login so Hal always speaks with it (cached after the
   // first download). Never on press-to-talk devices (iPhone app: OOM risk).
   if(!window.CC_PTT){
-    const auto=()=>{ setTimeout(()=>{ try{ loadKokoro(); }catch(e){} },1200); };
+    // give the globe data, weather and live board a few seconds first, then take an idle slot
+    const auto=()=>{ setTimeout(()=>{ const idle=window.requestIdleCallback||setTimeout; idle(()=>{ try{ loadKokoro(); }catch(e){} }); },5000); };
     document.addEventListener('hub:ready',auto);
     const hb=document.getElementById('hub'); if(hb&&!hb.classList.contains('hidden')) auto();
   }
@@ -445,7 +454,6 @@ tick();setInterval(tick,1000);
     if(window.__halMicReset)window.__halMicReset();
     const b=document.getElementById('talkBtn');
     if(b&&!window.CC_PTT)b.textContent='WAKE HAL ▸';
-    const l=document.getElementById('micLed'); if(l)l.className='led';
   }
   window.halShutdown=halShutdown;
   function endSpeak(){ if(!speaking)return; if(levelIv){clearInterval(levelIv);levelIv=null;}
@@ -568,8 +576,7 @@ tick();setInterval(tick,1000);
     let ptRec=null,ptStream=null,ptChunks=[],ptBusy=false;
     const IDLE='TALK TO HAL · TAP, SPEAK, TAP';
     function label(t){const b=document.getElementById('talkBtn'); if(b)b.textContent=t;}
-    function led(cls){const l=document.getElementById('micLed'); if(l)l.className='led '+cls;}
-    function reset(){label(IDLE);led('amb');window.HAL.listening=false;}
+    function reset(){label(IDLE);window.HAL.listening=false;}
     document.addEventListener('hub:ready',()=>{if(!ptRec)label(IDLE);});
     if(document.getElementById('talkBtn'))label(IDLE);
     window.halPTT=async function(){
@@ -578,15 +585,14 @@ tick();setInterval(tick,1000);
       let stream=null;
       try{ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
       catch(err){ const n=(err&&err.name)||'';
-        label(n==='NotAllowedError'||n==='SecurityError'?'MIC BLOCKED · ALLOW IN SETTINGS':'MIC ERROR · TAP TO RETRY');
-        led('red'); return; }
+        label(n==='NotAllowedError'||n==='SecurityError'?'MIC BLOCKED · ALLOW IN SETTINGS':'MIC ERROR · TAP TO RETRY'); return; }
       let rec=null,mime='';
       if(window.MediaRecorder){
         for(const m of ['audio/mp4','audio/webm;codecs=opus','audio/webm'])
           if(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m)){mime=m;break;}
         try{ rec=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream); }catch(e){ rec=null; }
       }
-      if(!rec){ label('RECORDER N/A ON THIS DEVICE'); led('red');
+      if(!rec){ label('RECORDER N/A ON THIS DEVICE');
         try{stream.getTracks().forEach(t=>t.stop());}catch(e){} return; }
       ptRec=rec; ptStream=stream; ptChunks=[];
       rec.ondataavailable=e=>{ if(e.data&&e.data.size)ptChunks.push(e.data); };
@@ -596,7 +602,7 @@ tick();setInterval(tick,1000);
         const blob=new Blob(ptChunks,{type:rec.mimeType||mime||'audio/mp4'});
         ptRec=null; ptStream=null; window.HAL.listening=false;
         if(blob.size<2000){ reset(); return; }                          // accidental tap
-        ptBusy=true; label('THINKING…'); led('amb');
+        ptBusy=true; label('THINKING…');
         let text=null;
         try{ text=window.Hal&&window.Hal.hear?await window.Hal.hear(blob):null; }catch(e){}
         ptBusy=false; reset();
@@ -606,7 +612,7 @@ tick();setInterval(tick,1000);
       try{ rec.start(); }catch(e){ ptRec=null; ptStream=null;
         try{stream.getTracks().forEach(t=>t.stop());}catch(_){} reset(); return; }
       window.HAL.listening=true; window.HAL.level=Math.max(window.HAL.level||0,0.2);
-      label('● RECORDING — TAP AGAIN WHEN DONE'); led('on');
+      label('● RECORDING — TAP AGAIN WHEN DONE');
       setTimeout(()=>{ if(ptRec===rec){ try{rec.stop();}catch(e){} } },30000); // safety cap
     };
   })();
@@ -649,8 +655,7 @@ tick();setInterval(tick,1000);
       };
       rec.onerror=ev=>{ recRunning=false; const er=ev&&ev.error;
         if(er==='not-allowed'||er==='service-not-allowed'){ listening=false;
-          const b=document.getElementById('talkBtn'); if(b)b.textContent='VOICE SERVICE BLOCKED · USE CHROME';
-          const l=document.getElementById('micLed'); if(l)l.className='led red'; } };
+          const b=document.getElementById('talkBtn'); if(b)b.textContent='VOICE SERVICE BLOCKED · USE CHROME'; } };
       rec.onend=()=>{ recRunning=false; clearTimeout(silTimer);
         // a session that ends with only interim text still gets routed
         // (askHalDirect dedupes any double-fire with the silence timer)

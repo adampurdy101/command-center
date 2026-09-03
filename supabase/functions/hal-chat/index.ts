@@ -14,6 +14,14 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
+/* ---- who may talk to Hal (every call spends the Anthropic budget) ----
+   The owner's account, plus any ids in the optional HAL_ALLOWED_USERS secret
+   (comma-separated). Anyone else who signs up gets a polite refusal. */
+const OWNER_IDS = new Set(
+  ["30cbcbfa-7261-47de-8c91-3d97557fc5f9", ...(Deno.env.get("HAL_ALLOWED_USERS") || "").split(",")]
+    .map((s) => s.trim()).filter(Boolean),
+);
+
 /* ---- CORS (origin-allowlisted; reflects the caller when allowed) ---- */
 const ALLOW = [
   "https://adampurdy101.github.io",
@@ -131,7 +139,7 @@ const TOOLS: Anthropic.Tool[] = [
 ];
 
 // deno-lint-ignore no-explicit-any
-async function runTool(db: ReturnType<typeof userClient>, name: string, input: any): Promise<string> {
+async function runTool(db: ReturnType<typeof userClient>, name: string, input: any, today: string): Promise<string> {
   if (name === "add_task") {
     const row: Record<string, unknown> = { title: String(input.title || "").slice(0, 300), source: "hal" };
     if (input.due && /^\d{4}-\d{2}-\d{2}$/.test(String(input.due))) row.due = input.due;
@@ -175,8 +183,9 @@ async function runTool(db: ReturnType<typeof userClient>, name: string, input: a
     return "Event added: " + JSON.stringify(data) + " (reaches the iPhone calendar on its next sync, up to ~15 minutes)";
   }
   if (name === "list_events") {
-    const today = new Date().toISOString().slice(0, 10);
-    const until = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+    // `today` is Adam's LOCAL date from the page — the server's UTC date is already
+    // tomorrow after 5 PM Pacific and would hide this evening's events
+    const until = new Date(new Date(today + "T12:00:00Z").getTime() + 14 * 86400000).toISOString().slice(0, 10);
     const { data, error } = await db.from("hal_events").select("id,title,on_date,at_time,duration_min,notes")
       .gte("on_date", today).lte("on_date", until).order("on_date").order("at_time");
     if (error) return "ERROR: " + error.message;
@@ -218,7 +227,7 @@ function systemPrompt(today: string, now: string): string {
     "- Address Adam by name occasionally, in HAL's measured, courteous style. Never break character.",
     "You have tools to manage Adam's task list. Use them whenever he asks to add, finish, or hear his tasks. To complete a task named by title, call list_tasks first to find its id. When reading a list aloud, summarize it naturally in a sentence or two — do not read ids.",
     "After you use tools, always finish with a short spoken confirmation of what you did.",
-    "Deleting is different from completing: use delete_task only when Adam explicitly says delete or remove. For duplicates, keep one copy and delete the extras, then confirm which one you kept.",
+    "Deleting is different from completing: use delete_task only when Adam explicitly says delete or remove. For duplicates, keep one copy and delete the extras, then confirm which one you kept. The same explicit-delete rule applies to delete_event.",
     "Calendar: use add_event for appointments and anything at a specific time of day, including timed reminders ('remind me at 6 pm…') — those ring his phone. Times are Adam's local time in 24-hour HH:MM.",
     "Reminders: when Adam says 'add to my reminders' or wants a reminder with no time of day, use add_task (with a due date if he gave one) — his iPhone Reminders app shows the task list. For a timed reminder, do BOTH: add_event so it rings, and add_task so it appears in Reminders.",
     `Today is ${weekday}, ${today}${now ? `, and Adam's clock reads ${now} right now` : ""}. Upcoming days: ${cal.join("; ")}. When Adam names a day, use the date from this list exactly — never compute dates yourself.`,
@@ -234,6 +243,7 @@ Deno.serve(async (req) => {
   const db = userClient(jwt);
   const { data: userData, error: userErr } = await db.auth.getUser();
   if (userErr || !userData?.user) return json(req, { error: "unauthorized" }, 401);
+  if (!OWNER_IDS.has(userData.user.id)) return json(req, { error: "forbidden", reply: "I am sorry. This assistant is reserved for Adam." }, 403);
 
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) return json(req, { reply: "I am sorry, Adam. My cognitive circuits are not yet connected. The Anthropic key is missing on the server." });
@@ -281,7 +291,7 @@ Deno.serve(async (req) => {
         const results: Anthropic.ToolResultBlockParam[] = [];
         for (const block of response.content) {
           if (block.type !== "tool_use") continue;
-          const out = await runTool(db, block.name, block.input);
+          const out = await runTool(db, block.name, block.input, today);
           results.push({ type: "tool_result", tool_use_id: block.id, content: out });
         }
         messages.push({ role: "user", content: results });

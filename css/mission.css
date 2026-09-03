@@ -62,8 +62,7 @@
 #hub .amb-wrap:hover .amb-pop,#hub .amb-wrap:focus-within .amb-pop{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
 #hub .amb-pop .amb-ico{color:var(--dim);font-size:12px;line-height:1}
 #hub #amb-vol{width:108px;height:16px;cursor:pointer;vertical-align:middle;accent-color:var(--g);background:transparent}
-/* fullscreen is ONE button living in the top bar; #fs-exit (legacy 2nd button) stays hidden */
-#hub #fs-exit{display:none}
+/* fullscreen is ONE button living in the top bar (effects.js flips its label) */
 /* fixed width so the label can flip FULLSCREEN <-> EXIT FULLSCREEN without nudging LOG OUT */
 #hub .tools #fs-btn{min-width:138px;text-align:center;
   transition:background .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease}
@@ -293,9 +292,6 @@
 
 /* ---- ambient toggle active state ---- */
 #hub #amb-btn.active{color:var(--hi);border-color:var(--hi);box-shadow:0 0 8px rgba(65,255,126,.4)}
-
-/* ---- exit-fullscreen button (hidden until in fullscreen; effects.js toggles) ---- */
-#hub #fs-exit{display:none}
 
 /* ---- weather chips in the globe readout ---- */
 #hub .readout .wx{color:var(--hi);text-shadow:0 0 5px rgba(65,255,126,.5);white-space:nowrap}

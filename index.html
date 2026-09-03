@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#0a1409" />
+  <!-- open the connections the hub needs first, in parallel with the HTML parse -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://fzsfizqkolkxkorgvtcl.supabase.co" crossorigin />
+  <link rel="dns-prefetch" href="https://api.open-meteo.com" />
   <link rel="manifest" href="manifest.webmanifest" />
   <!-- iOS / iPadOS standalone home-screen app -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -100,7 +105,6 @@
             </span>
           </span>
           <button id="fs-btn" type="button" title="Enter fullscreen">⤢ FULLSCREEN</button>
-          <button id="fs-exit" type="button" title="Exit fullscreen">⤡ EXIT FULLSCREEN</button>
           <button id="logout-btn" class="logout">LOG OUT</button>
         </div>
       </header>

@@ -1,5 +1,5 @@
 /* =============================================================================
-   DEEP SCOPE // OVERWATCH  —  js/sniper.js
+   DEEP SCOPE // OVERWATCH  —  js/sniper-x.js
    A green-phosphor CRT sniper-scope shooter for the ADAM // COMMAND CENTER hub.
 
    Public interface (drops into the hub):
@@ -81,7 +81,8 @@
       } catch (e) { enabled = false; ctx = null; }
       return ctx;
     }
-    function resume() { var c = ensure(); if (c && c.state === 'suspended') { try { c.resume(); } catch (e) {} } }
+    // 'interrupted' (an iOS call / Siri / alarm) must resume too, not just 'suspended'
+    function resume() { var c = ensure(); if (c && c.state !== 'running') { try { c.resume(); } catch (e) {} } }
 
     // Filtered noise burst (used for cracks, explosions, mechanical chatter).
     function noise(dur, vol, type, freq, q, decay) {
@@ -117,6 +118,9 @@
 
     return {
       resume: resume,
+      // park the audio thread when the game closes — a running context burns battery and
+      // keeps iOS's audio session (the user's music) interrupted after EXIT
+      suspend: function () { if (ctx && ctx.state === 'running') { try { ctx.suspend(); } catch (e) {} } },
       setEnabled: function (b) { enabled = b; },
       isEnabled: function () { return enabled; },
       // Gun shots ----------------------------------------------------
@@ -137,6 +141,7 @@
       // Feedback -----------------------------------------------------
       ping: function () { tone(1600, 2200, 0.08, 0.22, 'sine'); },
       headshot: function () { tone(2200, 900, 0.16, 0.26, 'triangle'); },
+      focus: function () { tone(520, 1180, 0.28, 0.22, 'sine'); },   // FOCUS / FEVER engage
       explosion: function () {
         tone(140, 30, 0.7, 0.5, 'sawtooth');
         noise(0.8, 0.6, 'lowpass', 700, 0.6, 0.7);
@@ -326,7 +331,10 @@
     this.previewT = 0;
 
     /* bound handlers (stable refs for add/removeEventListener) */
-    this._onResize = function () { self.fit(); };
+    this._onResize = function () {   // coalesce the burst of resize events (iOS fires several per rotation) into one refit
+      if (self._rzRaf) return;
+      self._rzRaf = requestAnimationFrame(function () { self._rzRaf = 0; if (window.CC_GAME_OPEN) self.fit(); });
+    };
     this._onKey = function (e) { self.onKey(e); };
     this._onWheel = function (e) { self.onWheel(e); };
   }
@@ -390,7 +398,7 @@
       'background:rgba(8,20,13,0.7)', 'color:' + C.green,
       'border:1px solid ' + C.faint, 'border-radius:8px',
       'font:600 13px/1 ' + FONT, 'letter-spacing:1px',
-      'padding:9px 14px', 'cursor:pointer', 'backdrop-filter:blur(4px)'
+      'padding:9px 14px', 'cursor:pointer'
     ].join(';');
     exit.addEventListener('click', function (e) { e.preventDefault(); self.close(); });
     ov.appendChild(exit);
@@ -403,7 +411,7 @@
       'background:rgba(8,20,13,0.7)', 'color:' + C.dim,
       'border:1px solid ' + C.faint, 'border-radius:8px',
       'font:600 12px/1 ' + FONT, 'letter-spacing:1px',
-      'padding:9px 12px', 'cursor:pointer', 'backdrop-filter:blur(4px)'
+      'padding:9px 12px', 'cursor:pointer'
     ].join(';');
     snd.addEventListener('click', function (e) {
       e.preventDefault();
@@ -444,7 +452,7 @@
 
     this.overlay = ov;
     this.canvas = cv;
-    this.ctx = cv.getContext('2d', { alpha: true });
+    this.ctx = cv.getContext('2d', { alpha: false });   // the sky covers every pixel — skip the per-frame alpha blend
     this.built = true;
 
     // Pointer events on the canvas drive ALL touch controls.
@@ -472,6 +480,8 @@
     var dprCap = this.isTouchDevice() ? 1.5 : 2;
     var dpr = Math.min(dprCap, window.devicePixelRatio || 1) * (this.perfScale || 1);
     if (!isFinite(dpr) || dpr <= 0) dpr = 1;
+    // nothing changed → keep the canvas and every baked cache exactly as they are
+    if (W === this.W && H === this.H && dpr === this.dpr && this.canvas.width === Math.floor(W * dpr)) return;
     this.W = W; this.H = H; this.dpr = dpr;
     this.canvas.width = Math.floor(W * dpr);
     this.canvas.height = Math.floor(H * dpr);
@@ -553,7 +563,6 @@
     } catch (e) { /* iOS Safari etc — overlay still covers viewport, gate enforces landscape */ }
 
     window.addEventListener('resize', this._onResize);
-    window.addEventListener('orientationchange', this._onResize);
     window.addEventListener('keydown', this._onKey);
     this.canvas.addEventListener('wheel', this._onWheel, { passive: false });
 
@@ -591,12 +600,19 @@
     document.body.style.overflow = '';
 
     window.removeEventListener('resize', this._onResize);
-    window.removeEventListener('orientationchange', this._onResize);
     window.removeEventListener('keydown', this._onKey);
     this.canvas.removeEventListener('wheel', this._onWheel);
     this.activePointers = {};
     this.fireBtn.active = false; this.zoomSlider.dragging = false;
     this.pinch.active = false;
+
+    // free the ~9 full-screen scratch canvases (30–100 MB on a phone / iPad — the kind of
+    // memory that gets the installed app killed) and park the audio engine; fit() and the
+    // cache keys rebuild all of it on the next DEPLOY
+    this._sky = this._rc = this._rcBack = this._vig = this._crt = null;
+    this._skyKey = this._rcKey = this._fxKey = null;
+    try { this.canvas.width = this.canvas.height = 1; } catch (e) {}
+    try { Audio2.suspend(); } catch (e) {}
 
     // let the hub resume its animations
     window.CC_GAME_OPEN = false;
@@ -614,6 +630,7 @@
     this.aimX = this.cx; this.aimY = this.cy;
     this.recoil = 0; this.vibe = 0; this.shake = 0; this.flash = 0; this.hitMarker = 0;
     this.heat = 0; this.overheated = false; this.spin = 0;
+    this.gun = null;            // forces a fresh magazine — setGun() is a no-op if the rifle was already selected
     this.setGun('rifle');
     this.spawnTimer = 1.0; this.killsThisWave = 0;
     this.startWave(1);
@@ -1500,7 +1517,7 @@
         seg.push([bxx, byy]);
         while (byy < horizon - 12) { byy += rand(16, 34); bxx += rand(-26, 26); seg.push([bxx, byy]); }
         wx.bolt = seg;
-        try { if (Audio2 && Audio2.explosion) setTimeout(function () { try { Audio2.explosion(); } catch (e) {} }, rand(150, 500)); } catch (e) {}
+        try { if (Audio2 && Audio2.explosion) setTimeout(function () { if (!window.CC_GAME_OPEN) return; try { Audio2.explosion(); } catch (e) {} }, rand(150, 500)); } catch (e) {}
       }
       if (wx.flash > 0) {
         ctx.save(); ctx.globalAlpha = wx.flash * 0.22; ctx.fillStyle = '#cfeeff'; ctx.fillRect(0, 0, W, horizon + 20); ctx.restore();
@@ -2774,6 +2791,9 @@
     var dt = Math.min(0.05, Math.max(0, rawDt));
 
     try { this.update(dt); } catch (e) { /* keep running */ }
+    // behind the opaque rotate gate nothing is visible: draw one frame, then idle
+    if (this.portraitBlocked && this._gateDrawn) { this.rafId = requestAnimationFrame(function (tt) { self.loop(tt); }); return; }
+    this._gateDrawn = !!this.portraitBlocked;
     try { this.render(); } catch (e) { try { this.ctx.restore(); } catch (e2) {} }
 
     // ---- adaptive quality governor ----

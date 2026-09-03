@@ -100,7 +100,7 @@ export async function load() {
   // open first, then by lane (NOW → NEXT → LATER), then soonest due, then oldest
   D.tasks.sort((x, y) => (x.done - y.done) || (laneRank[lane(x)] - laneRank[lane(y)]) ||
     ((x.due || "9999") < (y.due || "9999") ? -1 : (x.due || "9999") > (y.due || "9999") ? 1 : 0) ||
-    (x.created_at < y.created_at ? -1 : 1));
+    (x.created_at < y.created_at ? -1 : x.created_at > y.created_at ? 1 : 0));
   paint();
   document.dispatchEvent(new CustomEvent("board:updated", { detail: D }));
 }

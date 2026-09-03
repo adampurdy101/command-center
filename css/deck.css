@@ -70,7 +70,7 @@ html.cc-deck.dk-idle #deck .dk-fade{opacity:0!important;pointer-events:none!impo
   overflow-y:auto;pointer-events:none}
 #deck .dk-left::-webkit-scrollbar{display:none}
 #deck .dk-panel{pointer-events:auto;background:rgba(3,10,6,.78);border:1px solid rgba(28,143,70,.55);
-  border-radius:7px;padding:6px 8px;backdrop-filter:blur(2px)}
+  border-radius:7px;padding:6px 8px}
 #deck .dk-h{display:flex;align-items:center;gap:6px;color:var(--ddim);font-size:9px;letter-spacing:1.6px;margin-bottom:4px}
 #deck .dk-h .led{width:6px;height:6px;border-radius:50%;background:var(--dg);box-shadow:0 0 6px var(--dg)}
 #deck .dk-h .led.cyan{background:var(--dcyan);box-shadow:0 0 6px var(--dcyan)}

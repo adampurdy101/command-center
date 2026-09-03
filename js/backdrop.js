@@ -84,13 +84,26 @@
     var hb = ctx.createLinearGradient(0, HOR - 44, 0, HOR + 44);
     hb.addColorStop(0, 'rgba(65,255,126,0)'); hb.addColorStop(0.5, 'rgba(125,255,176,0.26)'); hb.addColorStop(1, 'rgba(65,255,126,0)');
     ctx.fillStyle = hb; ctx.fillRect(0, HOR - 44, W, 88);
-    ctx.strokeStyle = C.hi; ctx.globalAlpha = 0.7; ctx.shadowColor = C.g; ctx.shadowBlur = 18; ctx.lineWidth = 1.8;
+    /* bright horizon line + a tight glow band (a gradient, not shadowBlur — that blurred a
+       full-width line on every frame) */
+    var hg = ctx.createLinearGradient(0, HOR - 10, 0, HOR + 10);
+    hg.addColorStop(0, 'rgba(65,255,126,0)'); hg.addColorStop(0.5, 'rgba(65,255,126,.5)'); hg.addColorStop(1, 'rgba(65,255,126,0)');
+    ctx.fillStyle = hg; ctx.globalAlpha = 0.7; ctx.fillRect(0, HOR - 10, W, 20);
+    ctx.strokeStyle = C.hi; ctx.lineWidth = 1.8;
     ctx.beginPath(); ctx.moveTo(0, HOR); ctx.lineTo(W, HOR); ctx.stroke();
     ctx.restore();
   }
 
   /* ---------- the Grid Chamber scene ---------- */
   var emb = [];
+  /* one pre-rendered glow sprite for every ember — drawImage is far cheaper than a
+     shadowBlur pass per particle (that was up to ~90 blurs a frame on desktop) */
+  var EMBER = (function () {
+    var s = document.createElement('canvas'); s.width = s.height = 12;
+    var g = s.getContext('2d'), rg = g.createRadialGradient(6, 6, 0, 6, 6, 6);
+    rg.addColorStop(0, 'rgba(125,255,176,1)'); rg.addColorStop(0.3, 'rgba(125,255,176,.75)'); rg.addColorStop(1, 'rgba(65,255,126,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, 12, 12); return s;
+  })();
   function scene(t, dt) {
     /* base vertical wash */
     var g = ctx.createLinearGradient(0, 0, 0, H);
@@ -107,7 +120,7 @@
       var e = emb[i]; e.age += dt; e.y += e.vy * dt; e.x += e.vx * dt;
       if (e.y < -6 || e.age > e.life) { emb.splice(i, 1); continue; }
       ctx.globalAlpha = Math.max(0, 1 - e.age / e.life) * 0.8 * (0.5 + 0.5 * Math.sin(t * 3 + e.ph));
-      ctx.fillStyle = C.hi; ctx.shadowColor = C.g; ctx.shadowBlur = 6; ctx.fillRect(e.x, e.y, 1.8, 1.8);
+      ctx.drawImage(EMBER, e.x - 6, e.y - 6);
     }
     ctx.restore();
   }

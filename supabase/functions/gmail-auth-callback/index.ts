@@ -4,6 +4,14 @@
 // the browser back to the dashboard.
 import { verifyState, exchangeCode, saveRefreshToken, APP_URL } from "./shared.ts";
 
+// The Gmail token may only ever be filed under the owner's account. Without this, anyone
+// holding a login on this project could mint a consent link whose signed state carries
+// THEIR id, hand it to the owner, and end up with the owner's mailbox token.
+const OWNER_IDS = new Set(
+  ["30cbcbfa-7261-47de-8c91-3d97557fc5f9", ...(Deno.env.get("HAL_ALLOWED_USERS") || "").split(",")]
+    .map((s) => s.trim()).filter(Boolean),
+);
+
 function back(status: "connected" | "error", reason = ""): Response {
   const u = new URL(APP_URL);
   u.searchParams.set("gmail", status);
@@ -23,6 +31,7 @@ Deno.serve(async (req) => {
 
   const v = await verifyState(state);                   // CSRF + uid, 5-min expiry
   if (!v) return back("error", "bad_state");
+  if (!OWNER_IDS.has(v.uid)) return back("error", "forbidden");
 
   try {
     const tok = await exchangeCode(code);

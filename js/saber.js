@@ -65,7 +65,7 @@
   var buzz, buzzG, fizz, fizzHP, fizzG, swReson, swResonG;
   var tremLFO, tremDepth, vibLFO, vibDepth, vibDepth2;
   var swNoise, swooshBP, swooshGain, crNoise, crackleBP, crackleGain;
-  var clashBufs = null, noisePink, silentEl;
+  var clashBufs = null, snapBuf = null, noisePink, silentEl, statusIv = 0, lastAppliedSwing = -1;
 
   /* soft-clip curve for the "electrical" grit Burtt's layered tone has */
   function makeCurve(amount) {
@@ -139,18 +139,19 @@
     crNoise.connect(crackleBP); crackleBP.connect(crackleGain); crackleGain.connect(master);
 
     clashBufs = [makeNoise(0.4, true), makeNoise(0.4, true), makeNoise(0.4, true)];
+    snapBuf = makeNoise(0.6, true);   // ignite / power-off hiss — built once, not per ignition
 
     osc1.start(); osc2.start(); sub.start(); buzz.start(); tremLFO.start(); vibLFO.start(); swNoise.start(); crNoise.start(); fizz.start();
     applyTypeParams();
   }
 
   function ensureAudio() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    if (ctx) { if (ctx.state !== 'running') ctx.resume(); return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     ctx = new AC();
-    ctx.onstatechange = function () { if (opened && ctx.state === 'suspended') { var p = ctx.resume(); if (p && p.then) p.then(nudgeSession); else nudgeSession(); } };
+    ctx.onstatechange = function () { if (opened && ctx.state !== 'running') { var p = ctx.resume(); if (p && p.then) p.then(nudgeSession); else nudgeSession(); } };
     buildGraph();
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state !== 'running') ctx.resume();
   }
 
   function applyTypeParams() {
@@ -210,7 +211,7 @@
     crackleGain.gain.setTargetAtTime(cur.crackle * 0.08, now, 0.15);
     if (fizzG) fizzG.gain.setTargetAtTime(cur.fizz, now, 0.15);
     /* snap-hiss */
-    var nb = ctx.createBufferSource(); nb.buffer = makeNoise(0.6, true);
+    var nb = ctx.createBufferSource(); nb.buffer = snapBuf || makeNoise(0.6, true);
     var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.9;
     bp.frequency.setValueAtTime(300, now); bp.frequency.exponentialRampToValueAtTime(3200, now + 0.22);
     var g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(0.55, now + 0.04); g.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
@@ -229,7 +230,7 @@
     if (swResonG) swResonG.gain.setTargetAtTime(0, now, 0.08);
     osc1.frequency.setTargetAtTime(baseF * 0.6, now, 0.08); osc2.frequency.setTargetAtTime(baseF * 0.6, now, 0.08);
     if (buzz) buzz.frequency.setTargetAtTime(baseF * 1.2, now, 0.08);
-    var nb = ctx.createBufferSource(); nb.buffer = makeNoise(0.6, true);
+    var nb = ctx.createBufferSource(); nb.buffer = snapBuf || makeNoise(0.6, true);
     var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.9;
     bp.frequency.setValueAtTime(2600, now); bp.frequency.exponentialRampToValueAtTime(280, now + 0.3);
     var g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(0.35, now + 0.03); g.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
@@ -335,7 +336,8 @@
     /* swing smoothing — fast attack so the whoosh tracks the swing, decay when input stops */
     smoothSwing += (swingInput - smoothSwing) * Math.min(1, dt * 18);
     swingInput *= Math.max(0, 1 - dt * 2.5);
-    applyMotion(smoothSwing);
+    // only re-schedule the 9 audio ramps when the swing actually moved (was 540 events/s at rest)
+    if (Math.abs(smoothSwing - lastAppliedSwing) > 0.004) { lastAppliedSwing = smoothSwing; applyMotion(smoothSwing); }
 
     bladeAnim += (bladeTarget - bladeAnim) * Math.min(1, dt * (bladeTarget > bladeAnim ? 10 : 8));
     clashFlash = Math.max(0, clashFlash - dt * 3.2);
@@ -429,7 +431,7 @@
     s.textContent =
       '#saber{position:fixed;inset:0;z-index:9999;background:#02060a;display:flex;touch-action:none;-webkit-user-select:none;user-select:none;overscroll-behavior:none}' +
       '#saber.hidden{display:none}#saber canvas{position:absolute;inset:0;width:100%;height:100%;display:block}' +
-      '#saber .sb-btn{position:absolute;z-index:2;background:rgba(4,13,9,.55);color:' + GREEN + ';border:1px solid ' + hexA(GREEN, 0.5) + ';border-radius:8px;font:600 13px/1 ui-monospace,Menlo,monospace;letter-spacing:1px;padding:11px 13px;min-width:44px;min-height:44px;cursor:pointer;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);text-shadow:0 0 6px ' + hexA(GREEN, 0.7) + '}' +
+      '#saber .sb-btn{position:absolute;z-index:2;background:rgba(4,13,9,.55);color:' + GREEN + ';border:1px solid ' + hexA(GREEN, 0.5) + ';border-radius:8px;font:600 13px/1 ui-monospace,Menlo,monospace;letter-spacing:1px;padding:11px 13px;min-width:44px;min-height:44px;cursor:pointer;text-shadow:0 0 6px ' + hexA(GREEN, 0.7) + '}' +
       '#saber .sb-btn:active{background:' + hexA(GREEN, 0.18) + '}' +
       '#saber #saber-exit{top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));font-size:18px;z-index:6}' +
       '#saber #saber-rotate{position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;text-align:center;background:#02060a;color:' + hexA(GREEN, 0.92) + ';font:600 15px/1.7 ui-monospace,Menlo,monospace;letter-spacing:3px;text-shadow:0 0 12px ' + hexA(GREEN, 0.7) + '}' +
@@ -474,12 +476,10 @@
     if (window.visualViewport) window.visualViewport.addEventListener('resize', function () { resize(); checkOrient(); }, { passive: true });
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) { if (ctx && ctx.state === 'running') ctx.suspend(); if (silentEl) { try { silentEl.pause(); } catch (e) {} } }
-      else if (opened) { if (ctx && ctx.state === 'suspended') { var p = ctx.resume(); if (p && p.then) p.then(nudgeSession); else nudgeSession(); } acquireWake(); }
+      else if (opened) { if (ctx && ctx.state !== 'running') { var p = ctx.resume(); if (p && p.then) p.then(nudgeSession); else nudgeSession(); } acquireWake(); }
     }, { passive: true });
     window.addEventListener('pagehide', function () { if (ctx && ctx.state === 'running') ctx.suspend(); if (silentEl) { try { silentEl.pause(); } catch (e) {} } });
 
-    /* status line: tells you whether the gyro is actually driving the sound */
-    setInterval(updateStatus, 250);
   }
 
   function updateStatus() {
@@ -527,6 +527,7 @@
      ============================================================ */
   function open() {
     buildOverlay(); wrap.classList.remove('hidden'); opened = true; dirty = true;
+    if (!statusIv) statusIv = setInterval(updateStatus, 250);   /* gyro status line, only while open */
     ensureAudio(); acquireWake(); lockPortrait(); resize(); checkOrient();
     var b = document.getElementById('saber-type'); if (b) b.textContent = cur.name + ' ▸';
     setHint(); updateStatus();
@@ -538,6 +539,7 @@
     smoothSwing = 0; swingInput = 0;
     if (wrap) wrap.classList.add('hidden');
     opened = false; if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    if (statusIv) { clearInterval(statusIv); statusIv = 0; }
     if (silentEl) { try { silentEl.pause(); } catch (e) {} }
     setTimeout(function () { if (!opened && ctx && ctx.state === 'running') ctx.suspend(); }, 700);
   }
