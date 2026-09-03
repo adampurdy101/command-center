@@ -34,6 +34,7 @@ function fmtTime(t) {                       // "14:00:00" → "2:00 PM"
 }
 
 const S = { bills: [], accounts: [], events: [], hasBills: false, loaded: false, ready: false };
+const touched = new Set();   // occurrences marked paid/unpaid this session — kept visible so a tap can be undone
 let channel = null, pollTimer = null;
 
 // ---------- occurrence logic: a straight port of the Bill Calendar app ----------
@@ -138,6 +139,10 @@ function paintPanel() {
   const overdue = occ.filter((o) => !o.paid && o.date < t0);
   const upcoming = occ.filter((o) => o.date >= t0);
   const rows = overdue.concat(upcoming).slice(0, 6);
+  // a bill you just ticked would otherwise vanish (paid + in the past) — keep it on the
+  // panel so one more tap undoes it
+  occ.forEach((o) => { if (touched.has(o.billId + "|" + o.key) && !rows.includes(o)) rows.push(o); });
+  rows.sort((p, q) => p.date - q.date);
   const soon = occ.filter((o) => !o.paid && o.date < addDays(t0, 8)).length;   // unpaid within 7 days, overdue included
   if (stat) stat.textContent = overdue.length ? `${overdue.length} OVERDUE` : soon ? `${soon} DUE · 7D` : "CLEAR · 7D";
   setLed(overdue.length ? "red" : soon ? "amb" : "on");
@@ -173,6 +178,7 @@ async function setPaid(billId, key, paid) {
   if (!b) return false;
   // paint the new state right away, then let the database confirm it
   const before = (b.paidMonths || []).slice();
+  touched.add(String(billId) + "|" + key);
   const pm = before.filter((k) => k !== key); if (paid) pm.push(key);
   b.paidMonths = pm; paint();
   const { data, error } = await db.rpc("bill_set_paid", { p_bill_id: Number(billId), p_key: key, p_paid: !!paid });

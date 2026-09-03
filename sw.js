@@ -14,7 +14,7 @@
      for one load once). The version bump above precaches the new set
      atomically and reloads the page; a hard refresh bypasses all this.
    · cross-origin (CDN libs, Supabase, weather): untouched. */
-const CACHE = 'cc-shell-v67';
+const CACHE = 'cc-shell-v68';
 const SHELL = [
   '.', 'index.html',
   'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css', 'css/enhance.css', 'css/cinema.css', 'css/email.css', 'css/noir.css', 'css/deck.css', 'css/board.css', 'css/calendar.css',
