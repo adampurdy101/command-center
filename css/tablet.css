@@ -138,6 +138,29 @@
   html[data-fx="2"] .crt { filter: none; }
 }
 
+/* iPad mini portrait (744px) sits under mission.css's ≤760px phone block, which squeezes the
+   weather pins into tiny stacked tabs. The mini's globe is 712px wide here — give it the full
+   corner pins and the centred telemetry footer, exactly as the 11" and 13" get them. */
+@media (pointer: coarse) and (orientation: portrait) and (min-width: 700px) and (max-width: 760px) and (min-height: 601px) {
+  #hub .readout { display: block; padding: 0; }
+  #hub .wxpin { position: absolute; bottom: 24px; font-size: 11px; }
+  #hub .wxpin[data-side="left"]  { left: 9px; right: auto; }
+  #hub .wxpin[data-side="right"] { right: 9px; left: auto; }
+  #hub .wxpin-face { position: static; padding: 5px 9px; gap: 6px; font-size: 11px; }
+  #hub .wxpin-face::before { content: none; }
+  #hub .wxpin-face .wxc-sym, #hub .wxpin-face .wxc-next, #hub .wxpin-face .wxc-clock { display: inline; }
+  #hub .wxpin-face .wxc-temp { font-size: 14px; }
+  #hub .wxp-name { font-size: inherit; letter-spacing: 1.4px; }
+  #hub .wxp-name::after { content: none; }
+  #hub .wxpin[data-side="right"] .wxpin-card { left: auto; right: 0; transform-origin: bottom right; }
+  #hub .wxpin-card { width: 232px; max-width: 76vw; }
+  #hub .wxpc-h { flex-wrap: nowrap; white-space: nowrap; }
+  #hub .wxpin-card .wxc-r { flex-wrap: nowrap; white-space: nowrap; }
+  #hub .wxfoot { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); margin-left: 0; align-self: auto;
+    max-width: calc(100% - 300px); justify-content: center; font-size: 9px; }
+  #hub .wxfoot #zoomr { display: inline; }
+}
+
 /* 13" iPad portrait: a third column — Brief double-width, Markets beside the work panels */
 @media (pointer: coarse) and (orientation: portrait) and (min-width: 980px) and (min-height: 601px) {
   #hub .deck {
