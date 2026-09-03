@@ -1,0 +1,49 @@
+// ============================================================
+//  APP  ·  auth boot + live data wiring for Mission Control
+//  ------------------------------------------------------------
+//  The rich interface (clock, cities, globe, Voice Scope, HAL,
+//  Defense Grid) is owned by js/mission.js. This module only:
+//    1. boots Supabase auth (login ⇄ hub)
+//    2. fills the Daily Brief panel with live data after login
+// ============================================================
+import { initAuth } from "./auth.js";
+import { db } from "./supabase.js";
+
+// ---------- Daily Brief · live from Supabase (demo fallback) ----------
+async function updateBrief() {
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.textContent = val; };
+  let brief = null;
+  try {
+    const { data } = await db.from("daily_brief")
+      .select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
+    brief = data;
+  } catch (_) { /* table may not exist yet — fall back to demo */ }
+
+  const report = document.getElementById("brief-report");
+  if (brief) {
+    set("brief-unread", brief.unread ?? "–");
+    set("brief-flagged", brief.flagged ?? "0");
+    // NEXT EVENT and BILLS rows are painted by js/bills.js from Hal's calendar + the Bill Calendar
+    // TASKS row is painted live by js/board.js (real to-do rows), not the digest count
+    set("brief-stat", "LIVE");
+    if (report) report.onclick = () => alert(brief.digest || "No digest text yet.");
+  } else {
+    // clearly-labeled demo numbers until the 06:00 job is wired
+    set("brief-unread", "201");
+    set("brief-flagged", "3");
+    set("brief-stat", "DEMO");
+    if (report) report.onclick = () =>
+      alert("Morning digest will appear here once the 6 AM job writes to Supabase (daily_brief).");
+  }
+}
+
+// ---------- boot ----------
+initAuth();
+
+let hubStarted = false;
+document.addEventListener("hub:ready", () => {
+  if (hubStarted) return;
+  hubStarted = true;
+  updateBrief();
+});
+document.addEventListener("hub:left", () => { hubStarted = false; });

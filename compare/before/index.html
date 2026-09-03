@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#0a1409" />
+  <!-- open the connections the hub needs first, in parallel with the HTML parse -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://fzsfizqkolkxkorgvtcl.supabase.co" crossorigin />
+  <link rel="dns-prefetch" href="https://api.open-meteo.com" />
+  <!-- iOS / iPadOS standalone home-screen app -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="COMMAND" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png" />
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+  <title>OLD VERSION · ADAM // COMMAND CENTER</title>
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/mission.css" />
+  <link rel="stylesheet" href="css/mobile.css" />
+  <!-- tasteful always-on polish (bloom, hover-glow, corner brackets, glowing progress edge) -->
+  <link rel="stylesheet" href="css/enhance.css" />
+  <!-- cinema pass: deeper panel atmosphere, LED pings, power-on boot, scan sweeps (with js/cinema.js) -->
+  <link rel="stylesheet" href="css/cinema.css" />
+  <!-- full-screen email console (opens from the Daily Brief EMAILS line) -->
+  <link rel="stylesheet" href="css/email.css" />
+  <!-- optional Neon Noir glass theme — inert unless opened with ?noir (js/noir.js) -->
+  <link rel="stylesheet" href="css/noir.css" />
+  <!-- fullscreen Globe Deck (opens from the ⤢ DECK button on the globe panel) -->
+  <link rel="stylesheet" href="css/deck.css" />
+  <!-- live to-do / project / life rows (js/board.js) -->
+  <link rel="stylesheet" href="css/board.css" />
+  <!-- 06 Bills panel + the tap-to-enlarge calendar (js/bills.js) -->
+  <link rel="stylesheet" href="css/calendar.css" />
+</head>
+<body>
+  <!-- branded power-on splash / boot sequence (paints instantly, no white flash) -->
+  <div id="boot">
+    <div class="boot-inner">
+      <div class="boot-globe"></div>
+      <div class="boot-title">ADAM // COMMAND CENTER</div>
+      <div class="boot-log" id="boot-log"></div>
+      <div class="boot-bar"><span></span></div>
+    </div>
+  </div>
+
+  <!-- chassis corner bolts -->
+  <span class="bolt tl"></span><span class="bolt tr"></span>
+  <span class="bolt bl"></span><span class="bolt br"></span>
+
+  <main class="crt">
+
+    <!-- ============ LOGIN ============ -->
+    <div id="login-screen">
+      <div class="login-wrap">
+        <div class="login-box">
+          <h1>COMMAND CENTER</h1>
+          <p class="sub">AUTHORIZED ACCESS ONLY</p>
+          <form id="login-form">
+            <label for="login-email">EMAIL</label>
+            <input id="login-email" type="email" autocomplete="email" placeholder="you@example.com" />
+            <label for="login-password">PASSWORD</label>
+            <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" />
+            <div class="actions">
+              <button id="login-submit" type="submit" class="btn">LOG IN ▸</button>
+            </div>
+          </form>
+          <div id="login-msg" class="msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ HUB · MISSION CONTROL ============ -->
+    <div id="hub" class="hidden">
+
+      <!-- living page backdrop (Grid Chamber) — sits behind the opaque panels, glows in the gutters -->
+      <canvas id="page-bg" aria-hidden="true"></canvas>
+
+      <header class="hdr">
+        <div class="title">ADAM // COMMAND CENTER<canvas id="ekg-title" class="ekg ekg-inline" width="74" height="22"></canvas><small id="callsign-sub">RENTON · WA — MISSION CONTROL</small></div>
+        <div class="cities" id="cities"></div>
+        <div class="spacer"></div>
+        <div class="clock">
+          <div class="times"><span class="time" id="clk">--:--:--</span><span class="time12" id="clk12">--:-- --</span></div>
+          <div class="date" id="dt">—</div>
+        </div>
+        <div class="master">
+          <span class="led on"></span>
+          <span class="lab">SYSTEM<br>ONLINE</span>
+          <canvas id="ekg-sys" class="ekg" width="92" height="30"></canvas>
+        </div>
+        <div class="tools">
+          <button id="cal-btn" type="button" title="Open the calendar — bills, Hal's events, to-do due dates">▦ CALENDAR</button>
+          <span class="amb-wrap">
+            <button id="amb-btn" type="button" title="Ambient sound — hover for volume">♪ HUM</button>
+            <span class="amb-pop">
+              <span class="amb-ico">▁</span>
+              <input id="amb-vol" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Ambient hum volume" />
+              <span class="amb-ico">▆</span>
+            </span>
+          </span>
+          <button id="fs-btn" type="button" title="Enter fullscreen">⤢ FULLSCREEN</button>
+          <button id="logout-btn" class="logout">LOG OUT</button>
+        </div>
+      </header>
+
+      <div class="deck">
+        <!-- LEFT -->
+        <div class="col">
+          <section class="panel" id="panel-brief" style="flex:2.6">
+            <div class="tb"><span class="led on"></span><span class="n">01 Daily Brief</span><span class="sp"></span><span class="s" id="brief-stat">…</span></div>
+            <div class="bd" id="brief-bd">
+              <div class="row mail-launch" id="brief-emails" role="button" tabindex="0" title="Open email console"><span class="k">EMAILS</span><span class="v big" id="brief-unread">–</span><span class="v go" style="font-size:12px;margin-left:7px;color:var(--hi)">▸</span></div>
+              <div class="row"><span class="k">FLAGGED</span><span class="v warn" id="brief-flagged">–</span></div>
+              <div class="row cal-launch" id="brief-next-row" role="button" tabindex="0" title="Open the calendar"><span class="k">NEXT EVENT</span><span class="v" id="brief-next" style="font-size:11px">—</span></div>
+              <div class="row cal-launch" id="brief-bills-row" role="button" tabindex="0" title="Open the calendar"><span class="k">BILLS</span><span class="v" id="brief-bills" style="font-size:11px">–</span></div>
+              <div class="row"><span class="k">TASKS</span><span class="v" id="brief-tasks">–</span></div>
+              <div class="row"><span class="k" style="font-size:10px">MORNING DIGEST · 06:00</span><button class="btn" id="brief-report" style="padding:2px 8px;font-size:10px">READY ▸</button></div>
+            </div>
+          </section>
+          <section class="panel" style="flex:.6">
+            <div class="tb"><span class="led amb"></span><span class="n">02 Markets</span><span class="sp"></span><span class="s">DEMO</span></div>
+            <div class="bd">
+              <div class="row"><span class="k">NVDA</span><span class="v up">+2.4%</span></div>
+              <div class="row"><span class="k">VRT</span><span class="v up">+1.1%</span></div>
+              <div class="row"><span class="k">NBIS</span><span class="v down">−3.2%</span></div>
+              <div class="row"><span class="k">AMD</span><span class="v up">+0.6%</span></div>
+              <svg class="spark" viewBox="0 0 200 30" preserveAspectRatio="none"><polyline fill="none" stroke="#41ff7e" stroke-width="1.4" points="0,24 22,18 44,21 66,12 88,16 110,8 132,12 154,5 176,9 200,3"/></svg>
+            </div>
+          </section>
+          <section class="panel" style="flex:1">
+            <div class="tb"><span class="led amb"></span><span class="n">05 Life Admin</span><span class="sp"></span><span class="s">DEMO</span></div>
+            <div class="bd" style="gap:4px">
+              <div class="row"><span class="k">Tesla lemon-law</span><span class="v warn">OPEN</span></div>
+              <div class="row"><span class="k">Skin routine</span><span class="v">DONE</span></div>
+              <div class="row"><span class="k">Mom · POA</span><span class="v warn">WAIT</span></div>
+              <div class="row"><span class="k">Dog walk</span><span class="v">17:00</span></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- CENTER : GLOBE -->
+        <div class="center">
+          <div class="globe-wrap">
+            <span class="lab">GLOBAL TRACK SYS · ORBIT 4471</span>
+            <span class="lab2">DRAG · ZOOM · CLICK = TARGET</span>
+            <canvas id="globe"></canvas>
+            <div class="continent" id="continent"></div>
+            <div class="readout" id="readout">
+              <!-- corner weather pins: collapsed badge -> hover-peek / click-pin / tap-open full card -->
+              <div class="wxpin" data-city="renton" data-side="left">
+                <button class="wxpin-face" type="button" aria-expanded="false" aria-label="Renton weather — expand">
+                  <span class="wxp-name" data-abbr="RTN">RENTON</span><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span><span class="wxc-next" data-f="next">↓ —</span>
+                </button>
+                <div class="wxpin-card" role="group" aria-label="Renton weather detail">
+                  <div class="wxpc-h"><b>RENTON · WA</b><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span></div>
+                  <div class="wxc-r"><span data-f="feel">feels —</span><span data-f="hum">💧 —</span><span data-f="wind">🌬 —</span></div>
+                  <div class="wxc-r"><span data-f="uv">☀ UV —</span><span data-f="aqi">AQI —</span></div>
+                  <div class="wxc-r wxc-sun"><span data-f="rise">↑ —</span><span data-f="set">↓ —</span><span class="wxc-gold" data-f="gold"></span></div>
+                </div>
+              </div>
+              <div class="wxpin" data-city="pattaya" data-side="right">
+                <button class="wxpin-face" type="button" aria-expanded="false" aria-label="Pattaya weather — expand">
+                  <span class="wxp-name" data-abbr="PTY">PATTAYA</span><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span><span class="wxc-next" data-f="next">↓ —</span><span class="wxc-clock" data-f="clock"></span>
+                </button>
+                <div class="wxpin-card" role="group" aria-label="Pattaya weather detail">
+                  <div class="wxpc-h"><b>PATTAYA · TH</b><span class="wxc-temp" data-f="temp">—°</span><span class="wxc-sym" data-f="sym"></span><span class="wxc-clock" data-f="clock"></span></div>
+                  <div class="wxc-r"><span data-f="feel">feels —</span><span data-f="hum">💧 —</span><span data-f="wind">🌬 —</span></div>
+                  <div class="wxc-r"><span data-f="uv">☀ UV —</span><span data-f="aqi">AQI —</span></div>
+                  <div class="wxc-r wxc-sun"><span data-f="rise">↑ —</span><span data-f="set">↓ —</span><span class="wxc-gold" data-f="gold"></span></div>
+                </div>
+              </div>
+              <div class="wxfoot" id="wxfoot"><span id="zoomr">ZOOM 1.0×</span><span class="wxmoon" id="wxmoon">🌙 —</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT -->
+        <div class="col">
+          <section class="panel" style="flex:1">
+            <div class="tb"><span class="led on"></span><span class="n">03 Projects</span><span class="sp"></span><span class="s">DEMO</span></div>
+            <div class="bd">
+              <div class="row"><span class="k" style="font-size:11px">WESTERN STATE HOSPITAL</span></div>
+              <div class="row"><span class="k" style="font-size:11px">Wall Shops</span><span class="v">62%</span></div>
+              <div class="bar"><span style="width:62%"></span></div>
+              <div class="row"><span class="k">DEADLINE</span><span class="v warn">T−38d</span></div>
+            </div>
+          </section>
+          <section class="panel" style="flex:1.1">
+            <div class="tb"><span class="led on"></span><span class="n">04 Agent Ops</span><span class="sp"></span><span class="s">3 LIVE</span></div>
+            <div class="bd" style="gap:6px">
+              <div class="ag"><span class="led on"></span><span class="nm">hal-openclaw</span><span class="st">HEARTBEAT</span></div>
+              <div class="ag"><span class="led on"></span><span class="nm">mail-agent</span><span class="st">IDLE</span></div>
+              <div class="ag"><span class="led amb"></span><span class="nm">market-agent</span><span class="st">RUN</span></div>
+              <div class="row" style="margin-top:auto;font-size:10px"><span class="k">UPTIME</span><span class="v">99.4%</span></div>
+            </div>
+          </section>
+          <section class="panel" id="panel-bills" style="flex:1.7" title="Tap to open the calendar">
+            <div class="tb"><span class="led amb"></span><span class="n">06 Bills</span><span class="sp"></span><span class="s" id="bills-stat">…</span></div>
+            <div class="bd" id="bills-bd" style="gap:3px"><div class="row"><span class="k muted">loading your Bill Calendar…</span></div></div>
+          </section>
+        </div>
+
+        <!-- BOTTOM BAND : VOICE SCOPE + GAME -->
+        <div class="bottom">
+          <section class="panel" id="panel-voice">
+            <div class="tb"><span id="hal-eye" title="HAL 9000"></span><span class="n">Voice Scope · HAL</span><span class="sp"></span>
+              <button class="btn" id="stopBtn" style="padding:2px 8px;color:var(--red);border-color:var(--red)" title="stop talking">■ STOP</button>
+              <button class="btn" id="voiceCfgBtn" style="padding:2px 7px;margin-left:6px" title="voice settings">⚙</button>
+              <button class="btn" id="talkBtn" style="margin-left:6px">WAKE HAL ▸</button></div>
+            <div class="bd" style="padding:4px"><div class="scope-bd"><canvas id="voice"></canvas><div id="heard"></div></div></div>
+          </section>
+          <section class="panel" id="panel-game">
+            <div class="tb"><span class="led amb"></span><span class="n">Sniper Scope · Overwatch</span><span class="sp"></span>
+              <button class="btn" id="sniperBtn" style="padding:2px 8px;font-size:10px">▶ DEPLOY ⛶</button></div>
+            <div class="bd" style="padding:4px"><div class="game-bd"><canvas id="game"></canvas></div></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- HAL overlays -->
+      <div id="flash"></div>
+      <div id="jarvisBanner"><span id="jarvisText"></span></div>
+      <div id="voiceCfg" class="hidden">
+        <div class="vc-box">
+          <div class="vc-title">HAL VOICE — on-device · free · unlimited</div>
+          <div class="vc-line"><span class="vc-k">ENGINE</span><span id="vcStatus" class="vc-s">browser fallback (tap LOAD for the free neural voice)</span>
+            <button class="btn" id="vcLoad">LOAD FREE VOICE</button></div>
+          <div class="vc-bar"><span id="vcBar"></span></div>
+          <div class="vc-line"><span class="vc-k">VOICE</span>
+            <select id="vcVoice">
+              <option value="am_michael">Michael — US male (calm)</option>
+              <option value="am_onyx">Onyx — US male (deep)</option>
+              <option value="am_fenrir">Fenrir — US male (resonant)</option>
+              <option value="am_adam">Adam — US male</option>
+              <option value="am_eric">Eric — US male</option>
+              <option value="bm_george">George — UK male (measured)</option>
+              <option value="bm_daniel">Daniel — UK male</option>
+            </select></div>
+          <div class="vc-grid">
+            <div><label>PACE <b id="vcPaceV"></b></label><input type="range" id="vcPace" min="0.6" max="1.2" step="0.02"></div>
+            <div><label>DEPTH <b id="vcDepthV"></b></label><input type="range" id="vcDepth" min="0.8" max="1.06" step="0.01"></div>
+            <div><label>REVERB <b id="vcReverbV"></b></label><input type="range" id="vcReverb" min="0" max="0.6" step="0.02"></div>
+            <div><label>WARMTH <b id="vcWarmthV"></b></label><input type="range" id="vcWarmth" min="2200" max="9000" step="100"></div>
+          </div>
+          <div class="vc-line vc-btns">
+            <button class="btn" id="vcTest">🔊 TEST</button>
+            <button class="btn amb" id="vcPreset">↺ HAL preset</button>
+            <button class="btn" id="vcDone">DONE</button>
+          </div>
+          <div class="vc-note">Free neural voice (Kokoro) running on your device — no quota, no cost. Changes apply to Hal instantly. First LOAD downloads the model once, then it’s cached &amp; offline. Until loaded, Hal uses the browser voice.</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- geo libs for the globe -->
+  <!-- pinned versions + integrity hashes: the browser refuses the file if the CDN copy ever changes -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
+  <!-- Sniper Scope // Overwatch — ENHANCED ×5, R1 MIDNIGHT RECON (window.SniperGame); loads before mission.js so the launcher can see it. Classic build kept at js/sniper.js -->
+  <script defer src="js/sniper-x.js"></script>
+  <!-- Mission Control interactive layer (voice scope, HAL, sniper launcher) -->
+  <script defer src="js/mission.js"></script>
+  <!-- GLOBAL TRACK SYS globe engine v2 (night lights, live seismic + ISS, satellites, aurora, target lock) -->
+  <script defer src="js/globe.js"></script>
+  <!-- fullscreen Globe Deck (window.GlobeDeck) — rails, boot show, cinema tour, ISS pass alerts -->
+  <script defer src="js/deck.js"></script>
+  <!-- visual flourishes (heartbeat, HAL eye, boot, ambient, haptics, fullscreen) -->
+  <script defer src="js/effects.js"></script>
+  <!-- globe weather station: sun times, temps, UV/AQI, moon, Pattaya clock (Open-Meteo) -->
+  <script defer src="js/weather.js"></script>
+  <!-- living page backdrop (Grid Chamber 3D background behind the panels) -->
+  <script defer src="js/backdrop.js"></script>
+  <!-- iPhone motion lightsaber (window.Saber) — launcher injected on iPhone only -->
+  <script defer src="js/saber.js"></script>
+  <!-- clickable panel detail views -->
+  <script defer src="js/panels.js"></script>
+  <!-- tasteful micro-interactions (readout "update" flicker) -->
+  <script defer src="js/enhance.js"></script>
+  <!-- cinema pass driver (panel power-on stagger, roaming scan sweep, backdrop parallax) -->
+  <script defer src="js/cinema.js"></script>
+  <!-- full-screen email console (window.EmailConsole) -->
+  <script defer src="js/email.js"></script>
+  <!-- optional Neon Noir glass theme activator (only runs with ?noir) -->
+  <script defer src="js/noir.js"></script>
+  <!-- auth + live data wiring -->
+  <script type="module" src="js/app.js"></script>
+  <!-- live board: tasks / projects / agents / life items from Supabase, realtime (window.CC) -->
+  <script type="module" src="js/board.js"></script>
+  <!-- bills from the Bill Calendar app + Hal's events + task due dates → 06 Bills panel, Daily Brief rows, calendar overlay (window.CCal) -->
+  <script type="module" src="js/bills.js"></script>
+  <!-- Gmail bridge for the email console (window.Gmail → Supabase edge functions) -->
+  <script type="module" src="js/gmail.js"></script>
+  <!-- Hal bridge for the voice assistant (window.Hal → hal-chat edge function) -->
+  <script type="module" src="js/hal.js"></script>
+  <!-- PWA plumbing (service worker) -->
+  <script defer src="js/mobile.js"></script>
+  <div id="old-badge" style="position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:99999;font:11px ui-monospace,Menlo,monospace;letter-spacing:2px;color:#ffb347;background:rgba(0,0,0,.72);border:1px solid #ffb347;padding:4px 9px;border-radius:4px;pointer-events:none">OLD VERSION · BEFORE THE QUICK WINS</div>
+</body>
+</html>

@@ -1,0 +1,160 @@
+/* ============================================================
+   MOBILE / TABLET  ·  responsive overrides for Mission Control
+   ------------------------------------------------------------
+   Desktop layout (the #hub deck grid) is defined in mission.css.
+   This file only adjusts that layout on touch / narrow screens
+   and adds the installable-PWA bits. Everything is scoped to #hub
+   so the login screen and desktop are untouched.
+   ============================================================ */
+
+/* the fullscreen button lives in the header on every device; it is
+   only hidden once the app is already running full-screen (installed PWA) */
+
+/* ============================================================
+   TOUCH / NARROW  ·  phone + tablet portrait
+   ============================================================ */
+@media (pointer: coarse), (max-width: 880px) {
+  body { padding: 6px; }
+  .crt { padding: 10px; min-height: calc(100vh - 12px); }
+
+  #hub { height: auto; }
+
+  /* touch-friendly hit areas — audit found many controls at ~20-30px
+     (Voice Scope STOP/⚙/WAKE HAL, MORNING DIGEST, sniper launch, HUM/FULLSCREEN/LOG OUT,
+     panel-detail CLOSE/RUN DIGEST). Give them a 40px floor + center the glyph. */
+  #hub .btn, #hub .tb .btn, #hub .tools button {
+    min-height: 40px; display: inline-flex; align-items: center; justify-content: center;
+  }
+  #hub .tb .btn { padding: 6px 10px; }
+  #hub #amb-vol { height: 26px; }            /* fatter volume slider for thumbs */
+  .bolt { display: none; }                    /* decorative corner dots overlapped the header on phones */
+
+  /* stack the deck into one scrolling column */
+  #hub .deck {
+    display: flex; flex-direction: column; gap: 10px;
+    grid-template-columns: none; grid-template-rows: none;
+  }
+  #hub .col { gap: 10px; }
+
+  /* the globe becomes a hero up top */
+  #hub .center { order: -1; }
+  #hub .globe-wrap { height: 44vh; min-height: 260px; }
+  /* let a vertical swipe that starts on the globe SCROLL the page (JS still spins it on
+     a horizontal drag + pinch-zooms); without this the globe ate the scroll gesture */
+  #hub #globe { touch-action: pan-y; }
+  /* avoid the corner caption labels colliding on a narrow globe */
+  #hub .globe-wrap .lab2 { display: none; }
+
+  /* heartbeat: on phones show the inline pulse after the title, hide the bigger
+     one by SYSTEM ONLINE to keep the header tidy */
+  #hub .ekg-inline { display: inline-block; }
+  #hub #ekg-sys { display: none; }
+
+  /* panels get comfortable tap heights */
+  #hub .panel { min-height: 0; }
+  #hub .row { font-size: 14px; }
+
+  /* voice + game stack full width, generous canvas height */
+  #hub .bottom { grid-column: auto; grid-template-columns: 1fr; height: auto; gap: 10px; }
+  #hub .scope-bd { height: 22vh; min-height: 150px; }
+  #hub .game-bd  { height: 30vh; min-height: 200px; }
+
+  /* header wraps cleanly; trim the city clock strip on small screens */
+  #hub .hdr { flex-wrap: wrap; gap: 10px 12px; }
+  #hub .hdr .title { font-size: 16px; }
+  #hub .cities { order: 3; flex-basis: 100%; margin-left: 0; justify-content: space-between; gap: 8px; }
+  #hub .tools button { font-size: 11px; padding: 6px 10px; }
+}
+
+/* very small phones: drop the city strip entirely to save room */
+@media (pointer: coarse) and (max-width: 480px) {
+  #hub .cities { display: none; }
+}
+
+/* ============================================================
+   PHONE PORTRAIT  ·  Hal right under the globe
+   The bottom band dissolves (display:contents) so its two panels
+   join the main stack; Voice Scope is ordered directly after the
+   globe, the game drops to the end. Tablets/landscape untouched.
+   ============================================================ */
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 600px) {
+  /* both side columns dissolve too, so every panel is its own flex child and can be
+     ordered freely: globe → Voice Scope · HAL → Bills → Daily Brief → the rest */
+  #hub .bottom, #hub .col { display: contents; }
+  #hub .center { order: -3; }
+  #hub #panel-voice { order: -2; }
+  #hub #panel-bills { order: -1; }
+  #hub .deck > .panel, #hub .col > .panel { flex: none !important; }
+}
+
+/* ============================================================
+   TABLET PORTRAIT (iPad-ish)  ·  two-up panels, bigger globe
+   ============================================================ */
+@media (pointer: coarse) and (min-width: 700px) and (orientation: portrait) {
+  #hub .deck { }
+  #hub .col { flex-direction: row; flex-wrap: wrap; }
+  #hub .col > .panel { flex: 1 1 45% !important; min-width: 240px; }
+  #hub .globe-wrap { height: 46vh; }
+  #hub .bottom { grid-template-columns: 1.3fr 1fr; }
+  #hub .scope-bd, #hub .game-bd { height: 24vh; }
+}
+
+/* ============================================================
+   PHONE LANDSCAPE  ·  immersive cockpit
+   rotate the phone → globe dominates, panels scroll beside it
+   ============================================================ */
+@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  body { padding: 4px; }
+  .crt { padding: 8px; min-height: calc(100vh - 8px); }
+
+  #hub { height: calc(100vh - 24px); }
+  #hub .deck {
+    display: grid; gap: 8px; min-height: 0;
+    grid-template-columns: 1.5fr 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas:
+      "globe  panels"
+      "bottom bottom";
+  }
+  #hub .center { order: 0; grid-area: globe; min-height: 0; }
+  #hub .globe-wrap { height: 100%; min-height: 0; }
+  #hub .col:nth-of-type(1) { grid-area: panels; }
+  /* fold both panel columns into the one scrolling side rail */
+  #hub .col { grid-area: panels; flex-direction: column; overflow-y: auto; gap: 8px; }
+  #hub .col:nth-of-type(3) { display: none; }            /* keep one rail; globe + voice carry the rest */
+  #hub .bottom { grid-area: bottom; grid-template-columns: 1.3fr 1fr; height: 26vh; min-height: 150px; }
+  #hub .hdr { flex-wrap: nowrap; }
+  #hub .cities { display: none; }
+  #hub .hdr .title { font-size: 14px; }
+}
+
+/* ============================================================
+   DETAIL OVERLAY on phones  ·  full-screen, single column
+   ============================================================ */
+@media (pointer: coarse), (max-width: 880px) {
+  #hub #detail { padding: 8px; }
+  #hub .dx-box { width: 100%; max-height: 96vh; border-radius: 10px; }
+  #hub .dx-grid { grid-template-columns: 1fr; gap: 10px; }
+  #hub .dx-card.dx-wide { grid-column: auto; }
+  #hub .dx-body { padding: 12px; }
+}
+
+/* ============================================================
+   STANDALONE (installed PWA)  ·  respect the notch, hide the
+   in-page fullscreen button (already full screen)
+   ============================================================ */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  body {
+    padding-top: max(6px, env(safe-area-inset-top));
+    padding-left: max(6px, env(safe-area-inset-left));
+    padding-right: max(6px, env(safe-area-inset-right));
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+}
+/* Hide the fullscreen button ONLY for an installed standalone PWA (already
+   chrome-less, nothing to exit). Do NOT hide it for display-mode:fullscreen —
+   the JS Fullscreen API sets that mode, and the button must stay visible there
+   so it can flip to "⤡ EXIT FULLSCREEN". (This rule was the exit-button bug.) */
+@media (display-mode: standalone) {
+  #fs-btn { display: none !important; }
+}
