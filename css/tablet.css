@@ -1,0 +1,204 @@
+/* ============================================================
+   TABLET  ·  "FLIGHT DECK"  ·  iPad portrait + landscape
+   ------------------------------------------------------------
+   Loads after mobile.css and overrides its touch-stack rules for
+   iPad-class screens only (coarse pointer, ≥700px wide, ≥601px tall
+   — phone landscape is capped at 600px tall and never lands here).
+
+   PORTRAIT  · a full-width WINDSHIELD (the globe), a two-column
+               instrument grid (Brief spans two rows, Bills top-right
+               so a red lamp lands first), Sniper letterboxed, Markets
+               last, and HAL as a fixed PEDESTAL on the bottom edge with
+               his keys on the very bottom where the thumb rests.
+   LANDSCAPE · one locked COCKPIT, no page scroll: left rail = Brief /
+               Bills / Life, centre = globe over the Sniper preview,
+               right rail = Projects / Agents / Markets over HAL.
+   13" portrait gets a third column.
+   Every idle animation stays on the board's one heartbeat (--beat).
+   ============================================================ */
+
+/* ---------- shared: both orientations ---------- */
+@media (pointer: coarse) and (min-width: 700px) and (min-height: 601px) {
+  /* header: two disciplined rows — [title · clock · SYSTEM ONLINE] / [city clocks · tools] */
+  #hub .hdr {
+    display: grid; grid-template-columns: auto 1fr auto auto;
+    grid-template-areas: "title gap clock master" "cities cities tools tools";
+    align-items: center; column-gap: 14px; row-gap: 6px;
+  }
+  #hub .hdr .title  { grid-area: title; font-size: 18px; }
+  #hub .hdr .spacer { grid-area: gap; }
+  #hub .hdr .clock  { grid-area: clock; }
+  #hub .master      { grid-area: master; }
+  #hub .cities      { grid-area: cities; justify-self: start; margin-left: 0; gap: 12px; flex-basis: auto; order: 0; }
+  #hub .tools       { grid-area: tools; justify-self: end; border-left: 0; padding-left: 0; }
+  #hub .tools #fs-btn { min-width: 0; }
+  /* there is room for the big heartbeat by SYSTEM ONLINE again; drop the inline one */
+  #hub .ekg-inline { display: none; }
+  #hub #ekg-sys { display: block; }
+
+  /* the globe is ≥500px wide here: the DRAG · ZOOM · CLICK hint earns its place back */
+  #hub .globe-wrap .lab2 { display: block; }
+  #hub .globe-wrap { overflow: hidden; }
+
+  /* WINDSHIELD WIPE — one phosphor band crosses the globe once (at reveal, and again on
+     every rotation because each orientation block names its own keyframes) */
+  #hub .globe-wrap::before {
+    content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    background: linear-gradient(100deg, transparent 36%, rgba(65,255,126,.22) 50%, transparent 64%);
+    transform: translateX(-110%);
+  }
+  /* HAL's frame blushes while he speaks (uses the existing --red) */
+  #hub #panel-voice { transition: border-color .35s ease, box-shadow .35s ease; }
+  #hub #panel-voice:has(#hal-eye.awake) { border-color: rgba(255,107,90,.55); box-shadow: 0 0 22px rgba(255,107,90,.18); }
+
+  /* HAL's spoken caption must follow the viewport, not a 1800px page */
+  #hub #jarvisBanner { position: fixed; top: 38%; }
+  /* long error label ('VOICE SERVICE BLOCKED · USE CHROME') wraps instead of blowing the bar */
+  #hub #talkBtn { max-width: 100%; white-space: normal; }
+  #hub #heard { white-space: normal; line-height: 1.25; }
+}
+/* narrow tablets (iPad mini portrait): keep the city row to one line by dropping the 12-hour line */
+@media (pointer: coarse) and (min-width: 700px) and (max-width: 779px) and (min-height: 601px) {
+  #hub .cities .t12 { display: none; }
+}
+
+/* ---------- PORTRAIT · windshield + instrument grid + HAL pedestal ---------- */
+@media (pointer: coarse) and (orientation: portrait) and (min-width: 700px) and (min-height: 601px) {
+  #hub .deck {
+    display: grid; gap: 10px; min-height: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: clamp(380px, 42vh, 560px) minmax(200px, auto) minmax(140px, auto) minmax(180px, auto) auto auto;
+    grid-template-areas:
+      "globe    globe"
+      "brief    bills"
+      "brief    life"
+      "projects agents"
+      "game     game"
+      "markets  markets";
+    /* parking space for the fixed HAL dock */
+    padding-bottom: calc(212px + 26px + env(safe-area-inset-bottom, 0px));
+  }
+  #hub.dock-parked .deck { padding-bottom: calc(56px + 26px + env(safe-area-inset-bottom, 0px)); }
+  /* the columns and the bottom band dissolve: every panel is placed by name */
+  #hub .col, #hub .bottom { display: contents; }
+  #hub .center { grid-area: globe; order: 0; flex: none; min-height: 0; display: flex; }
+  #hub .globe-wrap { flex: 1; height: auto; min-height: 0; }
+  #hub #panel-brief    { grid-area: brief; }
+  #hub #panel-bills    { grid-area: bills; }
+  #hub #panel-life     { grid-area: life; }
+  #hub #panel-projects { grid-area: projects; }
+  #hub #panel-agents   { grid-area: agents; }
+  #hub #panel-game     { grid-area: game; }
+  #hub #panel-markets  { grid-area: markets; }
+  #hub .deck .panel { min-width: 0; }
+  #hub .game-bd { flex: none; height: clamp(200px, 24vh, 280px); min-height: 0; }   /* flex:none — flex:1 in an auto-height panel collapsed it */
+  /* full-width Markets strip: quotes big enough to read as a ticker */
+  #hub .mkt-q { font-size: 11px; }
+  #hub .mkt-q .v { margin-left: 6px; }
+
+  /* the windshield wipe, portrait edition */
+  #hub .globe-wrap::before { animation: tb-wipe-p .9s ease-out .15s 1 both; }
+  @keyframes tb-wipe-p { to { transform: translateX(110%); } }
+
+  /* ---- HAL PEDESTAL: fixed to the bottom edge, keys on the very bottom ---- */
+  #hub #panel-voice {
+    position: fixed; left: 16px; right: 16px;
+    bottom: max(16px, calc(10px + env(safe-area-inset-bottom, 0px)));
+    height: 212px; z-index: 30; margin: 0;
+    display: flex; flex-direction: column;
+    background: rgba(8, 18, 11, .94);
+  }
+  #hub #panel-voice .bd { order: 1; flex: 1; min-height: 0; }
+  #hub #panel-voice .tb { order: 2; border-top: 1px solid var(--faint); border-bottom: 0; }
+  #hub #panel-voice .scope-bd { height: auto; min-height: 0; flex: 1; }
+  #hub #talkBtn { min-width: 150px; }
+  /* tap the name to park the dock to its key bar (and back) — js/mobile.js toggles #hub.dock-parked */
+  #hub #panel-voice .tb .n { cursor: pointer; }
+  #hub #panel-voice .tb .n::after { content: "▾ PARK"; margin-left: 9px; font-size: 9px; letter-spacing: 1px; color: var(--faint); text-shadow: none; }
+  #hub.dock-parked #panel-voice { height: auto; }
+  #hub.dock-parked #panel-voice .bd { display: none; }
+  #hub.dock-parked #panel-voice .tb { border-top: 0; }
+  #hub.dock-parked #panel-voice .tb .n::after { content: "▴ HAL"; color: var(--g); }
+  /* a phosphor seam along the top of the scope, breathing every second heartbeat */
+  #hub #panel-voice .scope-bd::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; z-index: 2; pointer-events: none;
+    background: linear-gradient(90deg, transparent, var(--g), transparent);
+    animation: tb-seam calc(var(--beat, 3.333s) * 2) ease-in-out infinite;
+  }
+  @keyframes tb-seam { 0%, 100% { opacity: .25; } 50% { opacity: .7; } }
+  #hub #panel-voice:has(#hal-eye.awake) .scope-bd::after { animation-play-state: paused; opacity: .7; }
+  /* power-on: the dock RISES from the bottom edge as the last beat of the stagger
+     (full shorthand so cinema.js's --i delay survives; specificity beats cinema.css) */
+  #hub.cn-boot #panel-voice { animation: tb-dock-in .7s cubic-bezier(.2,.7,.3,1) calc(var(--i, 9) * 90ms) both; }
+  @keyframes tb-dock-in {
+    from { opacity: 0; transform: translateY(110%); filter: brightness(2); }
+    to   { opacity: 1; transform: none; filter: none; }
+  }
+  /* Neon Noir's .crt filter would make .crt the containing block for the fixed dock */
+  html[data-fx="2"] .crt { filter: none; }
+}
+
+/* 13" iPad portrait: a third column — Brief double-width, Markets beside the work panels */
+@media (pointer: coarse) and (orientation: portrait) and (min-width: 980px) and (min-height: 601px) {
+  #hub .deck {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: clamp(380px, 42vh, 560px) minmax(200px, auto) minmax(140px, auto) minmax(180px, auto) auto;
+    grid-template-areas:
+      "globe    globe  globe"
+      "brief    brief  bills"
+      "brief    brief  life"
+      "projects agents markets"
+      "game     game   game";
+  }
+  #hub .panel .bd.mkt { flex: 1; height: auto; min-height: 54px; }
+}
+
+/* ---------- LANDSCAPE · the locked cockpit ---------- */
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 900px) and (min-height: 601px) {
+  body { overscroll-behavior: none; }
+  .crt { min-height: 0; }
+  /* one frame, exactly the viewport: body padding (6 / safe-area) + .crt padding (10) each side */
+  #hub { height: calc(100vh - 32px); height: calc(100dvh - 20px - max(6px, env(safe-area-inset-top, 0px)) - max(6px, env(safe-area-inset-bottom, 0px))); }
+  #hub .deck {
+    display: grid; gap: 10px; min-height: 0; padding: 0;
+    grid-template-columns: minmax(250px, 1fr) minmax(380px, 2.2fr) minmax(320px, 1.4fr);
+    grid-template-rows: minmax(0, 1fr) clamp(200px, 26vh, 250px);
+    grid-template-areas:
+      "left globe right"
+      "left game  hal";
+  }
+  #hub .col { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
+  #hub .col:nth-of-type(1) { grid-area: left; }
+  #hub .col:nth-of-type(3) { grid-area: right; }
+  #hub .center { grid-area: globe; order: 0; flex: 1; min-height: 0; display: flex; }
+  #hub .globe-wrap { flex: 1; height: 100%; min-height: 0; }
+  #hub .bottom { display: contents; }
+  #hub #panel-game  { grid-area: game; }
+  #hub #panel-voice { grid-area: hal; }
+  #hub .deck .panel { min-height: 0; min-width: 0; }
+  #hub .scope-bd, #hub .game-bd { height: auto; min-height: 0; flex: 1; }
+  /* nothing scrolls but panel bodies, so the globe can own the whole touch */
+  #hub #globe { touch-action: none; }
+  /* HAL's station is 320-400px wide: the red eye + "HAL" is the whole label, so the keys stay on one line
+     and the scope keeps its height */
+  #hub #panel-voice .tb .n { font-size: 0; }
+  #hub #panel-voice .tb .n::before { content: "HAL"; font-size: 12px; letter-spacing: 3px; color: var(--hi); text-shadow: 0 0 6px rgba(65,255,126,.5); }
+  #hub #panel-voice .tb .btn { padding: 6px 8px; }
+  /* the left rail is the "needs me" column: Brief gets the room its lanes need */
+  #hub .col:nth-of-type(1) #panel-brief { flex: 3.2 1 0 !important; }
+  #hub .col:nth-of-type(1) #panel-bills { flex: 1.7 1 0 !important; }
+  #hub .col:nth-of-type(1) #panel-life  { flex: 1 1 0 !important; }
+  /* the DRAG · ZOOM hint collides with the orbit label in a 500px globe; it returns on the 13" */
+  #hub .globe-wrap .lab2 { display: none; }
+  #hub .wxfoot { max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* the windshield wipe, landscape edition */
+  #hub .globe-wrap::before { animation: tb-wipe-l .9s ease-out .15s 1 both; }
+  @keyframes tb-wipe-l { to { transform: translateX(110%); } }
+}
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 1300px) and (min-height: 601px) {
+  #hub .globe-wrap .lab2 { display: block; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #hub .globe-wrap::before, #hub #panel-voice .scope-bd::after { animation: none; }
+}

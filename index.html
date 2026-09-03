@@ -24,6 +24,8 @@
   <link rel="stylesheet" href="css/layout.css" />
   <link rel="stylesheet" href="css/mission.css" />
   <link rel="stylesheet" href="css/mobile.css" />
+  <!-- iPad: the Flight Deck layout (portrait grid + HAL pedestal, landscape locked cockpit) -->
+  <link rel="stylesheet" href="css/tablet.css" />
   <!-- tasteful always-on polish (bloom, hover-glow, corner brackets, glowing progress edge) -->
   <link rel="stylesheet" href="css/enhance.css" />
   <!-- cinema pass: deeper panel atmosphere, LED pings, power-on boot, scan sweeps (with js/cinema.js) -->
@@ -128,7 +130,7 @@
             <div class="tb"><span class="led"></span><span class="n">02 Bills</span><span class="sp"></span><span class="s" id="bills-stat">…</span></div>
             <div class="bd" id="bills-bd" style="gap:3px"><div class="row"><span class="k muted">loading your Bill Calendar…</span></div></div>
           </section>
-          <section class="panel" style="flex:1">
+          <section class="panel" id="panel-life" style="flex:1">
             <div class="tb"><span class="led"></span><span class="n">03 Life Admin</span><span class="sp"></span><span class="s">…</span></div>
             <div class="bd" style="gap:4px"><div class="row"><span class="k muted">loading…</span></div></div>
           </section>
@@ -172,11 +174,11 @@
 
         <!-- RIGHT : work + agents, with the demo market strip last -->
         <div class="col">
-          <section class="panel" style="flex:1">
+          <section class="panel" id="panel-projects" style="flex:1">
             <div class="tb"><span class="led"></span><span class="n">04 Projects</span><span class="sp"></span><span class="s">…</span></div>
             <div class="bd"><div class="row"><span class="k muted">loading…</span></div></div>
           </section>
-          <section class="panel" style="flex:1.1">
+          <section class="panel" id="panel-agents" style="flex:1.1">
             <div class="tb"><span class="led"></span><span class="n">05 Agent Ops</span><span class="sp"></span><span class="s">STANDBY</span></div>
             <div class="bd" style="gap:6px"><div class="row"><span class="k muted">no agents registered — tell Claude</span></div></div>
           </section>

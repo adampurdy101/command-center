@@ -14,10 +14,10 @@
      for one load once). The version bump above precaches the new set
      atomically and reloads the page; a hard refresh bypasses all this.
    · cross-origin (CDN libs, Supabase, weather): untouched. */
-const CACHE = 'cc-shell-v70';
+const CACHE = 'cc-shell-v71';
 const SHELL = [
   '.', 'index.html',
-  'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css', 'css/enhance.css', 'css/cinema.css', 'css/email.css', 'css/noir.css', 'css/deck.css', 'css/board.css', 'css/calendar.css',
+  'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css', 'css/tablet.css', 'css/enhance.css', 'css/cinema.css', 'css/email.css', 'css/noir.css', 'css/deck.css', 'css/board.css', 'css/calendar.css',
   'js/mission.js', 'js/globe.js', 'js/deck.js', 'js/effects.js', 'js/weather.js', 'js/panels.js', 'js/mobile.js', 'js/sniper-x.js', 'js/cinema.js', 'js/backdrop.js', 'js/saber.js', 'js/enhance.js', 'js/email.js', 'js/gmail.js', 'js/hal.js', 'js/noir.js', 'js/app.js', 'js/board.js', 'js/bills.js', 'js/auth.js', 'js/supabase.js', 'js/config.js',
   'manifest.webmanifest', 'icons/icon.svg'
 ];

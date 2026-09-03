@@ -90,16 +90,9 @@
 }
 
 /* ============================================================
-   TABLET PORTRAIT (iPad-ish)  ·  two-up panels, bigger globe
+   TABLET (iPad)  ·  see css/tablet.css — the Flight Deck layout
+   (loaded after this file; it overrides the touch stack above)
    ============================================================ */
-@media (pointer: coarse) and (min-width: 700px) and (orientation: portrait) {
-  #hub .deck { }
-  #hub .col { flex-direction: row; flex-wrap: wrap; }
-  #hub .col > .panel { flex: 1 1 45% !important; min-width: 240px; }
-  #hub .globe-wrap { flex: none; height: 46vh; }
-  #hub .bottom { grid-template-columns: 1.3fr 1fr; }
-  #hub .scope-bd, #hub .game-bd { height: 24vh; }
-}
 
 /* ============================================================
    PHONE LANDSCAPE  ·  immersive cockpit

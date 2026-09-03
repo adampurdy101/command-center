@@ -59,6 +59,17 @@
     worker.addEventListener("statechange", maybeActivate);
   }
 
+  // iPad portrait (css/tablet.css): the HAL panel is a fixed dock on the bottom edge.
+  // Tapping its name parks it to the key bar and back; the voice trace refits after.
+  var dockQ = window.matchMedia ? window.matchMedia("(pointer: coarse) and (orientation: portrait) and (min-width: 700px)") : null;
+  document.addEventListener("click", function (e) {
+    if (!dockQ || !dockQ.matches || !e.target.closest) return;
+    if (!e.target.closest("#panel-voice .tb .n")) return;
+    var hub = document.getElementById("hub"); if (!hub) return;
+    hub.classList.toggle("dock-parked");
+    setTimeout(function () { window.dispatchEvent(new Event("resize")); }, 60);
+  });
+
   window.addEventListener("load", function () {
     navigator.serviceWorker.register("sw.js").then(function (reg) {
       swReg = reg;
