@@ -151,7 +151,7 @@
     }
   };
 
-  var TITLES = { brief: "01 · DAILY BRIEF", markets: "02 · MARKETS", projects: "03 · PROJECTS", agents: "04 · AGENT OPS", life: "05 · LIFE ADMIN" };
+  var TITLES = { brief: "01 · DAILY BRIEF", life: "03 · LIFE ADMIN", projects: "04 · PROJECTS", agents: "05 · AGENT OPS", markets: "06 · MARKETS" };
 
   /* ---------- overlay ---------- */
   var overlay = null, openKey = null;

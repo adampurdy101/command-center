@@ -37,8 +37,10 @@
   #hub .col { gap: 10px; }
 
   /* the globe becomes a hero up top */
-  #hub .center { order: -1; }
-  #hub .globe-wrap { height: 44vh; min-height: 260px; }
+  #hub .center { order: -1; flex: none; }
+  /* flex:none — with the desktop flex:1 (basis 0) the wrap collapsed to its 260px minimum
+     and the 44vh hero never actually rendered */
+  #hub .globe-wrap { flex: none; height: 44vh; min-height: 260px; }
   /* let a vertical swipe that starts on the globe SCROLL the page (JS still spins it on
      a horizontal drag + pinch-zooms); without this the globe ate the scroll gesture */
   #hub #globe { touch-action: pan-y; }
@@ -94,7 +96,7 @@
   #hub .deck { }
   #hub .col { flex-direction: row; flex-wrap: wrap; }
   #hub .col > .panel { flex: 1 1 45% !important; min-width: 240px; }
-  #hub .globe-wrap { height: 46vh; }
+  #hub .globe-wrap { flex: none; height: 46vh; }
   #hub .bottom { grid-template-columns: 1.3fr 1fr; }
   #hub .scope-bd, #hub .game-bd { height: 24vh; }
 }
@@ -117,7 +119,8 @@
       "bottom bottom";
   }
   #hub .center { order: 0; grid-area: globe; min-height: 0; }
-  #hub .globe-wrap { height: 100%; min-height: 0; }
+  #hub .center { flex: 1; }
+  #hub .globe-wrap { flex: 1; height: 100%; min-height: 0; }
   #hub .col:nth-of-type(1) { grid-area: panels; }
   /* fold both panel columns into the one scrolling side rail */
   #hub .col { grid-area: panels; flex-direction: column; overflow-y: auto; gap: 8px; }

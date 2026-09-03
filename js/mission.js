@@ -24,24 +24,22 @@ window.CC_PTT=(function(){
 function fit(cv){const r=cv.getBoundingClientRect();cv.width=Math.max(2,r.width*DPR);cv.height=Math.max(2,r.height*DPR);return cv.getContext('2d');}
 
 /* ---------- clocks ---------- */
-const CITIES=[["LOCAL",0],["LAX",0],["NYC",3],["LDN",8],["BKK",14],["TYO",16]];
+// real time zones (DST-correct via Intl) — the old fixed hour offsets were an hour wrong for BKK/TYO every winter
+const CITIES=[["LAX","America/Los_Angeles"],["NYC","America/New_York"],["LDN","Europe/London"],["BKK","Asia/Bangkok"],["TYO","Asia/Tokyo"]];
 const citiesEl=document.getElementById('cities');
-CITIES.forEach(c=>{const d=document.createElement('div');d.innerHTML=`<div class="c">${c[0]}</div><div class="t" data-off="${c[1]}">--:--</div><div class="t12" data-off="${c[1]}">--:-- --</div>`;citiesEl.appendChild(d);});
+CITIES.forEach(c=>{const d=document.createElement('div');d.innerHTML=`<div class="c">${c[0]}</div><div class="t" data-tz="${c[1]}">--:--</div><div class="t12">--:-- --</div>`;citiesEl.appendChild(d);});
 function tick(){
   const now=new Date();
-  document.getElementById('clk').textContent=now.toLocaleTimeString('en-US',{hour12:false});
+  document.getElementById('clk').textContent=now.toLocaleTimeString('en-US',{hourCycle:'h23'});   // h23: never shows 24:xx at midnight
   document.getElementById('clk12').textContent=now.toLocaleTimeString('en-US',{hour12:true,hour:'2-digit',minute:'2-digit'});
   document.getElementById('dt').textContent=now.toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'2-digit'}).toUpperCase();
-  const baseH=now.getHours();
-  const mm=String(now.getMinutes()).padStart(2,'0');
   citiesEl.querySelectorAll('.t').forEach(el=>{
-    const h=((baseH+ +el.dataset.off)%24+24)%24;
-    el.textContent=String(h).padStart(2,'0')+':'+mm;                 // 24-hour, on top
-    const t12=el.nextElementSibling;                                  // 12-hour AM/PM, underneath
-    if(t12&&t12.classList.contains('t12')){
-      const h12=h%12===0?12:h%12, ap=h<12?'AM':'PM';
-      t12.textContent=String(h12).padStart(2,'0')+':'+mm+' '+ap;
-    }
+    const tz=el.dataset.tz; if(!tz) return;
+    try{
+      el.textContent=now.toLocaleTimeString('en-US',{timeZone:tz,hourCycle:'h23',hour:'2-digit',minute:'2-digit'});          // 24-hour, on top
+      const t12=el.nextElementSibling;                                                                                          // 12-hour AM/PM, underneath
+      if(t12&&t12.classList.contains('t12')) t12.textContent=now.toLocaleTimeString('en-US',{timeZone:tz,hour12:true,hour:'2-digit',minute:'2-digit'});
+    }catch(e){}
   });
 }
 tick();setInterval(tick,1000);

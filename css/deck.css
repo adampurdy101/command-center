@@ -50,7 +50,7 @@ html.cc-deck.dk-idle #deck .dk-fade{opacity:0!important;pointer-events:none!impo
   display:flex;align-items:center;gap:10px;padding:0 calc(10px + env(safe-area-inset-right)) 0 calc(10px + env(safe-area-inset-left));
   pointer-events:none}
 #deck .dk-title{color:var(--dhi);font-size:11px;letter-spacing:2.4px;
-  text-shadow:0 0 8px rgba(65,255,126,.5);pointer-events:none;white-space:nowrap}
+  text-shadow:0 0 8px rgba(65,255,126,.5),var(--fringe,none);pointer-events:none;white-space:nowrap}
 #deck .dk-title small{color:var(--dfaint);letter-spacing:1.2px;margin-left:8px;font-size:9px}
 #deck .dk-sp{flex:1}
 #deck .dk-exit{pointer-events:auto;cursor:pointer;font-family:inherit;

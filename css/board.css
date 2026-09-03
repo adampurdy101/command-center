@@ -37,7 +37,7 @@
 #hub .chip{font-size:9px;letter-spacing:.6px;padding:1px 6px;border-radius:9px;border:1px solid currentColor;line-height:1.5;white-space:nowrap}
 #hub .chip.ok{color:var(--dim)}
 #hub .chip.warn{color:var(--next);text-shadow:0 0 5px rgba(255,210,74,.5)}
-#hub .chip.down{color:var(--now);text-shadow:0 0 5px rgba(255,107,90,.55);animation:mc-pulse 1.6s ease-in-out infinite}
+#hub .chip.down{color:var(--now);text-shadow:0 0 5px rgba(255,107,90,.55);animation:mc-pulse calc(var(--beat, 3.333s) / 2) ease-in-out infinite}
 
 /* the ☐ tick — a real button so it works on touch and keyboards */
 #hub .tick{background:transparent;border:0;padding:0;margin:0;color:var(--lane,var(--dim));font-family:inherit;font-size:14px;line-height:1;

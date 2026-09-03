@@ -30,7 +30,7 @@
 #hub .cal-head{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--faint);
   background:rgba(65,255,126,.05);flex:none;flex-wrap:wrap}
 #hub .cal-head .btn{padding:6px 12px;font-size:12px}
-#hub .cal-title{color:var(--hi);letter-spacing:3px;font-size:18px;text-shadow:var(--glow2) var(--hi);min-width:230px;text-align:center}
+#hub .cal-title{color:var(--hi);letter-spacing:3px;font-size:18px;text-shadow:var(--glow2) var(--hi),var(--fringe);min-width:230px;text-align:center}
 #hub .cal-sum{color:var(--dim);font-size:12px;letter-spacing:1px;margin-left:6px}
 #hub .cal-legend{color:var(--faint);font-size:10px;letter-spacing:1px;display:flex;gap:12px}
 #hub .cal-legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
@@ -73,7 +73,7 @@
 #hub .cal-add .cal-add-time{width:110px;color-scheme:dark}
 #hub .cal-add .btn{min-height:36px}
 /* confirmation toast (paid / event added) */
-#hub #cc-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);z-index:130;opacity:0;pointer-events:none;
+#hub #cc-toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(16px);z-index:130;opacity:0;pointer-events:none;
   background:rgba(6,16,10,.94);border:1px solid var(--g);border-radius:9px;padding:9px 16px;color:var(--hi);font-size:12px;letter-spacing:.5px;
   box-shadow:0 0 18px rgba(65,255,126,.35);transition:opacity .18s ease,transform .18s ease;max-width:92vw;text-align:center}
 #hub #cc-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}

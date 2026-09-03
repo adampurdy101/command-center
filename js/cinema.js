@@ -17,6 +17,7 @@
   var REDUCE = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var FINE   = !!(window.matchMedia && window.matchMedia('(pointer: fine)').matches);
   var hub = null;
+  var BEAT = 3333;   // ms — the EKG period (18 bpm); every idle animation locks to it via --beat in the css
 
   function hubVisible() {
     hub = hub || document.getElementById('hub');
@@ -28,22 +29,36 @@
   function desyncLeds() {
     var leds = document.querySelectorAll('#hub .led.on, #hub .led.amb');
     for (var i = 0; i < leds.length; i++) {
-      var d = -(Math.random() * 2.6).toFixed(2) + 's';
+      var d = -(Math.floor(Math.random() * 4) * BEAT / 4 / 1000).toFixed(2) + 's';   // on a sub-beat, never in between
       leds[i].style.animationDelay = d;              /* the mc-pulse */
       leds[i].style.setProperty('--cn-d', d);        /* the ping ring */
     }
   }
 
-  /* ---------- 1 · panel power-on stagger ---------- */
+  /* ---------- 1 · panel power-on stagger — plays AFTER the boot splash, in story order ---------- */
   var booted = false;
+  function stageOrder() {
+    var seq = [];
+    var add = function (sel) { [].slice.call(document.querySelectorAll(sel)).forEach(function (el) { if (seq.indexOf(el) < 0) seq.push(el); }); };
+    add('#hub .hdr'); add('#hub .globe-wrap');                                    // clocks, then the planet
+    add('#hub .deck .col .panel');                                              // stations, left column then right
+    add('#hub #panel-game'); add('#hub #panel-voice');                            // HAL's eye lights last
+    return seq;
+  }
   function bootPanels() {
     if (booted || REDUCE || !hubVisible()) { return; }
+    if (!window.CC_BOOT_DONE) { document.addEventListener('boot:done', bootPanels, { once: true }); return; }
     booted = true;
-    var seq = document.querySelectorAll('#hub .deck .panel, #hub .globe-wrap');
-    for (var i = 0; i < seq.length; i++) seq[i].style.setProperty('--i', String(i));
+    var seq = stageOrder();
+    seq.forEach(function (el, i) {
+      el.style.setProperty('--i', String(i));
+      el.classList.toggle('cn-hot', !!el.querySelector('.tb .led.red'));   // a red lamp lands brighter
+    });
     hub.classList.add('cn-boot');
+    var f = document.getElementById('flash');
+    if (f) { f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
     /* drop the class once the stagger is done so hover transforms are clean */
-    setTimeout(function () { hub.classList.remove('cn-boot'); }, 80 * seq.length + 900);
+    setTimeout(function () { hub.classList.remove('cn-boot'); seq.forEach(function (el) { el.classList.remove('cn-hot'); }); }, 90 * seq.length + 900);
   }
 
   /* ---------- 2 · roaming scan sweep ---------- */
@@ -64,8 +79,12 @@
       if (document.hidden || !hubVisible()) return;
       var p = panels[(Math.random() * panels.length) | 0];
       if (!p || p.classList.contains('cn-scan')) return;
-      p.classList.add('cn-scan');
-      setTimeout(function () { p.classList.remove('cn-scan'); }, 1300);
+      // launch on the next heartbeat boundary so the sweep rides the same pulse as the lamps
+      var wait = BEAT - (performance.now() % BEAT);
+      setTimeout(function () {
+        p.classList.add('cn-scan');
+        setTimeout(function () { p.classList.remove('cn-scan'); }, 1300);
+      }, wait);
     }
     scanTimer = setTimeout(once, 7000 + Math.random() * 6000);
   }

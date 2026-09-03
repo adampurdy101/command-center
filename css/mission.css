@@ -13,6 +13,11 @@
   --amb:#ffd24a; --red:#ff6b5a; --bg:#0a1409; --bg2:#0d1b0c; --deep:#06100a;
   --mono:ui-monospace,"SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
   --glow2:0 0 6px;
+  /* one heartbeat: every idle animation (lamp pulses, pings, glint, bar shimmer) is a multiple of the EKG period */
+  --beat:3.333s;
+  /* CRT misconvergence: a hair of red on one edge, blue on the other, on hero text and panel edges */
+  --fringe:1px 0 1px rgba(255,60,60,.24),-1px 0 1px rgba(60,140,255,.24);
+  --fringe-soft:1px 0 0 rgba(255,60,60,.12),-1px 0 0 rgba(60,140,255,.12);
 
   position:relative; z-index:10;
   display:flex; flex-direction:column; gap:8px;
@@ -73,8 +78,11 @@
 
 /* ---------- LED dots (mission style: .on / .amb) ---------- */
 #hub .led{width:9px;height:9px;border-radius:50%;background:#14361f;display:inline-block;flex:none;box-shadow:none}
-#hub .led.on{background:var(--g);box-shadow:0 0 8px var(--g);animation:mc-pulse 1.6s ease-in-out infinite}
-#hub .led.amb{background:var(--amb);box-shadow:0 0 8px var(--amb);animation:mc-pulse 1.6s ease-in-out infinite}
+#hub .led.on{background:var(--g);box-shadow:0 0 8px var(--g);animation:mc-pulse calc(var(--beat) / 2) ease-in-out infinite}
+#hub .led.amb{background:var(--amb);box-shadow:0 0 8px var(--amb);animation:mc-pulse calc(var(--beat) / 2) ease-in-out infinite}
+/* the SYSTEM ONLINE lamp kicks on every R-wave of the heartbeat (js/effects.js) */
+#hub .master .led{transition:box-shadow .12s ease,filter .12s ease}
+#hub .master .led.beat{box-shadow:0 0 16px var(--g),0 0 4px #e9fff1;filter:brightness(1.7)}
 #hub .led.red{background:var(--red);box-shadow:0 0 8px var(--red)}
 @keyframes mc-pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
@@ -122,6 +130,16 @@
 #hub .bar{height:9px;border:1px solid var(--faint);border-radius:3px;background:var(--deep);overflow:hidden}
 #hub .bar>span{display:block;height:100%;background:var(--g);box-shadow:var(--glow2) var(--g)}
 #hub .spark{width:100%;height:30px}
+/* 06 Markets as one thin scope strip: the four quotes on a line, the trace underneath, a sweeping head */
+#hub .panel .bd.mkt{position:relative;padding:6px 9px 4px;flex:0 0 54px;height:54px;gap:0;overflow:hidden}   /* flex:0 0 — the base .bd is flex:1 (basis 0), which let the strip collapse */
+#hub .mkt-q{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;font-size:9px;letter-spacing:.2px;color:var(--dim);position:relative;z-index:2}
+#hub .mkt-q>span{white-space:nowrap;overflow:hidden}
+#hub .mkt-q b{color:var(--g);font-weight:400}
+#hub .mkt-q .v{font-style:normal;margin-left:3px;font-variant-numeric:tabular-nums}
+#hub .mkt-q .v.tick{animation:mc-tick .55s ease-out}
+#hub .mkt .spark{position:absolute;left:0;right:0;bottom:0;height:22px;opacity:.9}
+#hub .mkt-head{position:absolute;top:0;bottom:0;width:2px;pointer-events:none;background:linear-gradient(to bottom,transparent,rgba(125,255,176,.85),transparent);box-shadow:0 0 8px var(--g);animation:mkt-sweep var(--beat) linear infinite}
+@keyframes mkt-sweep{from{left:0}to{left:100%}}
 #hub .ag{display:flex;align-items:center;gap:7px;font-size:12px}
 #hub .ag .nm{color:var(--g);min-width:96px} #hub .ag .st{color:var(--dim);margin-left:auto;font-size:10px}
 
@@ -142,7 +160,7 @@
 #hub #globe{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
 #hub .globe-wrap .lab,#hub .globe-wrap .lab2,#hub .globe-wrap .readout,#hub .globe-wrap .continent{pointer-events:none}
 #hub .globe-wrap .continent{position:absolute;top:13%;left:0;right:0;text-align:center;z-index:3;
-  color:#7dffb0;font-size:18px;letter-spacing:5px;text-shadow:0 0 12px var(--g);opacity:0;transition:opacity .25s}
+  color:#7dffb0;font-size:18px;letter-spacing:5px;text-shadow:0 0 12px var(--g),var(--fringe);opacity:0;transition:opacity .25s}
 /* ---- globe WEATHER PINS: corner badge -> hover-peek / click-pin / tap-open card ---- */
 #hub .readout{position:absolute;inset:0;z-index:3;pointer-events:none;letter-spacing:.4px}
 #hub .wxpin{position:absolute;bottom:24px;pointer-events:auto;font-size:11px}
@@ -245,6 +263,9 @@
 #hub #jarvisBanner{position:absolute;left:6%;right:6%;top:44%;transform:translateY(-50%);z-index:85;
   text-align:center;pointer-events:none;opacity:0;transition:opacity .35s}
 #hub #jarvisBanner.show{opacity:1}
+/* every answer is visibly HAL's: his red lens sits at the head of the reply */
+#hub #jarvisText::before{content:"";display:inline-block;width:13px;height:13px;border-radius:50%;margin:0 10px 0 0;vertical-align:-2px;
+  background:radial-gradient(circle at 50% 45%,rgba(255,240,235,.9) 0 14%,#ff3b25 16% 46%,#8c0d05 60% 100%);box-shadow:0 0 10px rgba(255,70,50,.8)}
 #hub #jarvisText{display:inline-block;background:rgba(6,16,10,.86);border:1px solid var(--g);border-radius:10px;
   padding:16px 24px;color:var(--hi);font-size:19px;line-height:1.55;max-width:720px;
   text-shadow:0 0 8px var(--g);box-shadow:0 0 34px rgba(65,255,126,.45),inset 0 0 18px rgba(65,255,126,.12);
@@ -287,8 +308,9 @@
   box-shadow:0 0 calc(6px + var(--eye)*16px) rgba(255,70,50,calc(0.4 + var(--eye)*0.6)),
              inset 0 0 5px rgba(0,0,0,.6);
   transition:box-shadow .12s linear}
-#hub #hal-eye.awake{animation:hal-flicker .5s steps(2) infinite}
-@keyframes hal-flicker{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+/* while HAL speaks the iris blooms slowly (the old 2 Hz flicker read as a faulty bulb) */
+#hub #hal-eye.awake{animation:hal-bloom 1.7s ease-in-out infinite}
+@keyframes hal-bloom{0%,100%{filter:brightness(1)}50%{filter:brightness(1.3) saturate(1.15)}}
 
 /* ---- ambient toggle active state ---- */
 #hub #amb-btn.active{color:var(--hi);border-color:var(--hi);box-shadow:0 0 8px rgba(65,255,126,.4)}
@@ -344,9 +366,8 @@
 #hub .col .panel{cursor:pointer;transition:transform .16s ease,box-shadow .16s ease}
 #hub .col .panel:hover{transform:translateY(-3px) scale(1.015);z-index:12;
   box-shadow:0 10px 28px rgba(0,0,0,.5),0 0 0 1px var(--hi),0 0 22px rgba(65,255,126,.3)}
-#hub .col .panel.dx-clickable::after{content:"⤢";position:absolute;top:6px;right:9px;z-index:3;
-  font-size:11px;color:var(--faint);opacity:0;transition:opacity .16s}
-#hub .col .panel.dx-clickable:hover::after{opacity:1;color:var(--hi);text-shadow:0 0 6px var(--hi)}
+#hub .col .panel.dx-clickable .tb::after{content:"⤢";margin-left:8px;font-size:11px;color:var(--faint);opacity:0;transition:opacity .16s;text-shadow:none}
+#hub .col .panel.dx-clickable:hover .tb::after{opacity:1;color:var(--hi);text-shadow:0 0 6px var(--hi)}
 
 /* deeper CRT vignette + phosphor bloom over the hub */
 #hub::after{background:radial-gradient(120% 120% at 50% 50%,transparent 55%,rgba(0,0,0,.34) 100%);
@@ -363,7 +384,7 @@
   box-shadow:0 0 55px rgba(65,255,126,.3);overflow:hidden;animation:dx-in .18s ease}
 @keyframes dx-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
 #hub .dx-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--faint);background:rgba(65,255,126,.05);flex:none}
-#hub .dx-title{color:var(--hi);letter-spacing:2px;font-size:14px;text-shadow:var(--glow2) var(--hi)}
+#hub .dx-title{color:var(--hi);letter-spacing:2px;font-size:14px;text-shadow:var(--glow2) var(--hi),var(--fringe)}
 #hub .dx-sp{flex:1}
 #hub .dx-body{padding:14px 16px;overflow:auto}
 #hub .dx-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -454,7 +475,7 @@
    ============================================================ */
 #hub .col .panel.touch-hover{transform:translateY(-3px) scale(1.015);z-index:12;
   box-shadow:0 10px 28px rgba(0,0,0,.5),0 0 0 1px var(--hi),0 0 22px rgba(65,255,126,.3)}
-#hub .col .panel.dx-clickable.touch-hover::after{opacity:1;color:var(--hi);text-shadow:0 0 6px var(--hi)}
+#hub .col .panel.dx-clickable.touch-hover .tb::after{opacity:1;color:var(--hi);text-shadow:0 0 6px var(--hi)}
 #hub .col .panel .bd .row.touch-hover,#hub .col .panel .bd .ag.touch-hover{
   transform:translateY(-2px) scale(1.012);background:rgba(65,255,126,.07);
   box-shadow:0 6px 14px rgba(0,0,0,.4),0 0 10px rgba(65,255,126,.12)}
@@ -465,14 +486,14 @@
 /* first tap arms the panel: amber lift + "tap again" hint */
 #hub .col .panel.dx-armed{transform:translateY(-3px) scale(1.015);z-index:13;
   box-shadow:0 10px 28px rgba(0,0,0,.5),0 0 0 1px var(--amb),0 0 22px rgba(255,210,74,.35)}
-#hub .col .panel.dx-armed::after{content:"⤢ TAP AGAIN";opacity:1;color:var(--amb);
-  text-shadow:0 0 6px var(--amb);font-size:9px;letter-spacing:.5px;top:6px;right:9px}
+#hub .col .panel.dx-armed .tb::after{content:"⤢ TAP AGAIN";opacity:1;color:var(--amb);
+  text-shadow:0 0 6px var(--amb);font-size:9px;letter-spacing:.5px}
 
 /* on real touch devices, kill the sticky tap-hover so only .touch-hover/.dx-armed show */
 @media (hover:none){
   #hub .col .panel:hover{transform:none;
     box-shadow:inset 0 0 0 1px rgba(65,255,126,.05),inset 0 20px 34px rgba(0,0,0,.28)}
-  #hub .col .panel.dx-clickable:hover::after{opacity:0}
+  #hub .col .panel.dx-clickable:hover .tb::after{opacity:0}
   #hub .col .panel .bd .row:hover,#hub .col .panel .bd .ag:hover{transform:none;background:none;box-shadow:none}
   #hub .col .panel .bd .row:hover::before,#hub .col .panel .bd .ag:hover::before{opacity:0}
   #hub .col .panel .bd .row:hover::after,#hub .col .panel .bd .ag:hover::after{animation:none;opacity:0}

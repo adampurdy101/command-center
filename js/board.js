@@ -43,6 +43,7 @@ const setStatus = (panel, text, ledClass) => {
   const led = panel.querySelector(".tb .led");
   if (led && ledClass) { led.classList.remove("on", "amb", "red"); led.classList.add(ledClass); }
 };
+const setLed = (panel, cls) => { const led = panel && panel.querySelector(".tb .led"); if (led) { led.classList.remove("on", "amb", "red"); if (cls) led.classList.add(cls); } };
 const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
 const parseDate = (s) => { if (!s) return null; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
 const daysUntil = (s) => { const d = parseDate(s); return d ? Math.round((d - today()) / 86400000) : null; };
@@ -126,6 +127,9 @@ export function laneCounts(open) {
 function paintBrief() {
   const open = D.tasks.filter((t) => !t.done);
   const c = laneCounts(open);
+  // the lamp tells the truth: red = something overdue, amber = due today, green = clear
+  const overdue = open.some((t) => dueLabel(t.due).cls === "down"), dueToday = open.some((t) => dueLabel(t.due).text === "TODAY");
+  setLed($("panel-brief"), overdue ? "red" : dueToday ? "amb" : "on");
   const el = $("brief-tasks");
   if (el) {
     el.innerHTML = open.length === 0 ? "ALL CLEAR"
@@ -172,15 +176,17 @@ function paintProjects() {
 }
 
 function paintAgents() {
-  const panel = panelByName("agent"); if (!panel || !D.agents.length) return;
+  const panel = panelByName("agent"); if (!panel) return;
   const bd = panel.querySelector(".bd"); if (!bd) return;
+  if (!D.agents.length) { setStatus(panel, "NONE", ""); return; }   // dark lamp, honest label
   const led = (s) => /online|run|heartbeat/i.test(s) ? "on" : /err|fail|down/i.test(s) ? "red" : "amb";
   bd.innerHTML = D.agents.map((a) =>
     `<div class="ag" title="${esc(a.kind)}"><span class="led ${led(a.status)}"></span><span class="nm">${esc(a.name)}</span><span class="st">${esc(a.status)}${a.last_run ? " · " + fmtWhen(a.last_run) : ""}</span></div>`
   ).join("") + (D.log[0]
     ? `<div class="row" style="margin-top:auto;font-size:10px"><span class="k">LAST</span><span class="v" style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%">${esc(D.log[0].action)}</span></div>`
     : "");
-  setStatus(panel, `${D.agents.filter((a) => led(a.status) === "on").length} LIVE`, "on");
+  const live = D.agents.filter((a) => led(a.status) === "on").length;
+  setStatus(panel, live ? `${live} LIVE` : "STANDBY", live ? "on" : "amb");
 }
 
 function paintLife() {

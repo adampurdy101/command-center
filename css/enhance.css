@@ -6,8 +6,8 @@
    ============================================================ */
 
 /* hero bloom — make the important numbers feel important */
-#hub .hdr .title{ text-shadow:0 0 7px rgba(125,255,176,.55), 0 0 18px rgba(65,255,126,.25); }
-#hub .clock .time{ text-shadow:0 0 8px rgba(125,255,176,.6); }
+#hub .hdr .title{ text-shadow:0 0 7px rgba(125,255,176,.55), 0 0 18px rgba(65,255,126,.25), var(--fringe); }
+#hub .clock .time{ text-shadow:0 0 8px rgba(125,255,176,.6), var(--fringe); }
 #hub .row .v.big{ text-shadow:0 0 9px currentColor, 0 0 18px rgba(65,255,126,.25); }
 
 /* panels — a touch more depth, hover-glow, and corner brackets that light up */

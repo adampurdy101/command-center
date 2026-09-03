@@ -9,12 +9,13 @@ my agents and my life are doing, with a command line to tell it to do things.
 - **Morning job:** GitHub Actions cron (~6:00 AM PT) writes a fresh email digest
   to Supabase; the page reads it.
 
-## The five stations
-1. **Daily Brief** — unread/flagged mail, next event, open tasks, morning digest.
-2. **Markets** — watchlist with % change + sparkline, S&P, open/closed.
-3. **Projects** — active project, progress bar, deadline countdown.
-4. **Agent Ops** — status LED per agent + a scrolling action log.
-5. **Life Admin** — personal threads with a status tag each.
+## The six stations
+1. **Daily Brief** — mail, next event, next bill, tasks in NOW / NEXT / LATER lanes, the digest.
+2. **Bills** — the Bill Calendar app's bills, tap to mark paid, month totals; tap the panel for the calendar.
+3. **Life Admin** — personal threads with a status tag each.
+4. **Projects** — active projects, progress bars, deadline countdown.
+5. **Agent Ops** — status LED per agent + the last log line.
+6. **Markets** — a demo quote strip until a live feed exists (dark LED = demo).
 
 ## File map
 ```

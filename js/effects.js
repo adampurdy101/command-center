@@ -42,7 +42,7 @@
     refit();
     window.addEventListener("resize", refit); window.addEventListener("orientationchange", refit);
     var BPM = 18, T = 60 / BPM;                  // slow, calm monitor sweep (~3.3s across) — was 43, was 65
-    var ekgLast = 0;
+    var ekgLast = 0, ekgPrev = 0;
     function frame(now) {
       requestAnimationFrame(frame);
       if (document.hidden || window.CC_GAME_OPEN || window.CC_DECK_OPEN) return; // pause when hidden / game / globe deck
@@ -50,6 +50,13 @@
       var t = now / 1000;
       var phase = (t % T) / T;                    // 0..1 sweep position (stationary trace)
       var sweepX = phase;
+      // the R-wave is the board's heartbeat: the SYSTEM ONLINE lamp kicks for 90 ms on each beat
+      if (ekgPrev > phase) ekgPrev = -1;
+      if (ekgPrev < 0.33 && phase >= 0.33) {
+        var ml = document.querySelector("#hub .master .led");
+        if (ml) { ml.classList.add("beat"); setTimeout(function () { ml.classList.remove("beat"); }, 90); }
+      }
+      ekgPrev = phase;
       for (var ci = 0; ci < cans.length; ci++) {
         var c = cans[ci]; if (!c.ctx) continue;   // no per-frame getBoundingClientRect; refit() handles new canvases
         var ctx = c.ctx, w = c.cv.width / DPR, h = c.cv.height / DPR, mid = h * 0.56, amp = h * 0.44;
@@ -102,7 +109,9 @@
      ============================================================ */
   function startBoot() {
     var boot = document.getElementById("boot"), log = document.getElementById("boot-log");
-    if (!boot) return;
+    // pages without the splash (studio) are "booted" at once; the hub's power-on stagger
+    // (js/cinema.js) waits for this flag / event so it plays AFTER the curtain, not under it
+    if (!boot) { window.CC_BOOT_DONE = true; return; }
     var lines = [
       "▸ POWER ON", "▸ CRT WARM-UP … OK", "▸ LOADING STAR FIELD",
       "▸ GLOBAL TRACK SYS … LOCKED", "▸ HAL 9000 … STANDBY", "▸ ALL STATIONS NOMINAL", "▸ SYSTEM ONLINE"
@@ -114,14 +123,15 @@
       }
       i++;
       if (i <= lines.length) setTimeout(next, 230);
-      else setTimeout(function () { boot.classList.add("gone"); setTimeout(function(){ if(boot.parentNode) boot.parentNode.removeChild(boot); }, 700); }, 360);
+      else setTimeout(function () {
+        boot.classList.add("gone");
+        window.CC_BOOT_DONE = true;
+        try { document.dispatchEvent(new CustomEvent("boot:done")); } catch (e) {}
+        setTimeout(function(){ if(boot.parentNode) boot.parentNode.removeChild(boot); }, 700);
+      }, 360);
     }
     setTimeout(next, 260);
-    // a quick green flash when the hub appears after login
-    document.addEventListener("hub:ready", function () {
-      var f = document.getElementById("flash");
-      if (f) { f.classList.remove("go"); void f.offsetWidth; f.classList.add("go"); }
-    });
+    // (the green flash now fires with the power-on stagger in js/cinema.js, after the curtain)
   }
 
   /* ============================================================
@@ -259,7 +269,7 @@
     }
     var mk = panelByName("market");
     if (!mk) return;
-    var cells = [].slice.call(mk.querySelectorAll(".bd .row .v"));
+    var cells = [].slice.call(mk.querySelectorAll(".bd .v"));
     var poly = mk.querySelector("svg.spark polyline");
     if (!cells.length) return;
     // seed from whatever the markup currently shows (markup uses a Unicode
@@ -291,7 +301,7 @@
         poly.setAttribute("points", pts);
       }
     }
-    setInterval(step, 2600);
+    setInterval(step, 13320);   // once every four heartbeats — demo data should not compete with real money
   }
 
   /* ---------- boot ---------- */
