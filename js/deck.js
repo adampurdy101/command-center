@@ -26,6 +26,7 @@ var G=function(){return window.CC_GLOBE||null;};
 
 /* ---------- tiny helpers ---------- */
 function el(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}   // USGS text is third-party — never inject it as HTML
 function fmtT(sec){sec=Math.max(0,Math.round(sec));
   var h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
   return h>0?(h+'h '+String(m).padStart(2,'0')+'m'):(String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'));}
@@ -293,7 +294,7 @@ function renderQuakes(quakes){
     var b=el('button','dk-q'+(qk.m>=5?' big':''),
       '<b>M'+qk.m.toFixed(1)+'</b> · <span class="ag">'+age(qk.t)+'</span> · '+Math.round(qk.depth)+'km'+
       (qk.tsu?' · <span class="tsu">TSUNAMI</span>':'')+
-      '<span class="pl">'+(qk.place||'—')+'</span>');
+      '<span class="pl">'+esc(qk.place||'—')+'</span>');
     b.addEventListener('click',function(){var g=G();if(!g)return;
       g.flyTo(qk.lon,qk.lat,2.2,1400);g.setTarget(qk.lon,qk.lat);});
     list.appendChild(b);});

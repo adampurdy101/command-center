@@ -91,8 +91,17 @@ progress, deadline, notes) · `life_items` (label, status, tag, notes) ·
 
 ## Security rules (non-negotiable)
 - Only the Supabase **publishable** key is in the front end — safe with RLS + login on.
-- **No secrets in the repo.** Gmail tokens etc. live in GitHub Actions Secrets.
+- **No secrets in the repo.** Gmail tokens etc. live in GitHub Actions Secrets / Supabase secrets.
 - `.gitignore` blocks `.env` and key files.
+- **Owner only.** Every table is Row-Level-Security owner-only, and on top of that the page
+  (js/auth.js) and every edge function (hal-*, gmail-*) refuse any login except
+  `CONFIG.OWNER_ID` — the Supabase project is shared with the Bill Calendar app, so a
+  Bill Calendar user can log in there but can never use, see or spend anything here.
+  There is no sign-up on the login screen; extra allowed ids go in the `HAL_ALLOWED_USERS`
+  edge-function secret if ever needed.
+- CDN libraries are pinned to exact versions with integrity hashes.
+- Redeploying `hal-ics` must keep Verify JWT OFF (Apple fetches the feed with no headers;
+  the feed URL's HMAC token is the credential and the feed only contains the owner's rows).
 
 ## Status
 - [x] Milestone 1 — retro shell, login, 5 panels, command console, live on Pages

@@ -6,13 +6,15 @@
    installed phone app picks up a new build without a hard refresh.
 
    Strategy:
-   · pages (index.html / navigations): network-first, so a deploy
-     shows on the next open; the cached shell only serves offline.
-   · js / css / icons / data: stale-while-revalidate — answered from
-     the cache instantly (no waiting on 30+ round trips), refreshed
-     in the background. The version bump above keeps it honest.
+   · EVERYTHING same-origin (the page, js, css, icons, data) is
+     stale-while-revalidate — answered from the cache instantly (no
+     waiting on 30+ round trips), refreshed in the background. The page
+     and its scripts always come from the same cached set, so a deploy
+     can never mix a new index.html with old js (that skew broke login
+     for one load once). The version bump above precaches the new set
+     atomically and reloads the page; a hard refresh bypasses all this.
    · cross-origin (CDN libs, Supabase, weather): untouched. */
-const CACHE = 'cc-shell-v62';
+const CACHE = 'cc-shell-v64';
 const SHELL = [
   '.', 'index.html',
   'css/theme.css', 'css/layout.css', 'css/mission.css', 'css/mobile.css', 'css/enhance.css', 'css/cinema.css', 'css/email.css', 'css/noir.css', 'css/deck.css', 'css/board.css',
@@ -59,24 +61,19 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return;   // CDN / Supabase / weather go straight out
 
   const isPage = req.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('.html');
-  if (isPage) {
-    // network-first ({cache:'no-cache'} forces a revalidation so a fresh deploy really shows)
-    e.respondWith(
-      fetch(req, { cache: 'no-cache' })
-        .then((res) => { store(req, res); return res; })
-        .catch(() => caches.match(req).then((m) => m || caches.match('index.html')))
-    );
-    return;
-  }
+  // pages are keyed WITHOUT their query string (?v=… cache-busters, ?gmail=connected) so
+  // they always hit the precached copy; everything else is keyed as requested
+  const key = isPage ? new Request(url.origin + url.pathname) : req;
 
-  // static assets: cache first, refresh in the background
   e.respondWith(
-    caches.match(req).then((cached) => {
+    caches.match(key).then((cached) => {
       const refresh = fetch(req, { cache: 'no-cache' })
-        .then((res) => { store(req, res); return res; })
+        .then((res) => { store(key, res); return res; })
         .catch(() => null);
       e.waitUntil(refresh);                       // keep the worker alive until the refresh lands
-      return cached || refresh.then((res) => res || Response.error());
+      if (cached) return cached;
+      return refresh.then((res) => res || (isPage ? caches.match('index.html') : null))
+        .then((res) => res || Response.error());
     })
   );
 });

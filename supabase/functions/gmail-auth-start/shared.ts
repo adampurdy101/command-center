@@ -19,6 +19,16 @@ export const APP_URL = "https://adampurdy101.github.io/command-center/";
 export const SCOPES = "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send";
 const GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
 
+/* ---- the only account allowed to use the Command Center functions ----
+   The owner, plus any ids in the optional HAL_ALLOWED_USERS secret (comma-separated).
+   A user id is not a secret; the check just stops any other login on this Supabase
+   project (e.g. a Bill Calendar user) from driving the Gmail / Hal machinery. */
+export const OWNER_IDS = new Set(
+  ["30cbcbfa-7261-47de-8c91-3d97557fc5f9", ...(Deno.env.get("HAL_ALLOWED_USERS") || "").split(",")]
+    .map((s) => s.trim()).filter(Boolean),
+);
+export const isOwner = (uid: string): boolean => OWNER_IDS.has(uid);
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;

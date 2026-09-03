@@ -2,13 +2,14 @@
 // The front-end fetches this (with the user's Supabase JWT) and gets back a
 // signed Google consent URL, then navigates the browser to it. The JWT never
 // appears in a URL.
-import { getUser, signState, SCOPES, REDIRECT_URI, corsFor, json } from "./shared.ts";
+import { getUser, isOwner, signState, SCOPES, REDIRECT_URI, corsFor, json } from "./shared.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsFor(req) });
 
   const user = await getUser(req);
   if (!user) return json(req, { error: "unauthorized" }, 401);
+  if (!isOwner(user.id)) return json(req, { error: "forbidden" }, 403);
 
   const state = await signState(user.id);
   const params = new URLSearchParams({

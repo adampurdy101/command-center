@@ -6,7 +6,6 @@
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#0a1409" />
   <!-- open the connections the hub needs first, in parallel with the HTML parse -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://fzsfizqkolkxkorgvtcl.supabase.co" crossorigin />
   <link rel="dns-prefetch" href="https://api.open-meteo.com" />
@@ -70,7 +69,6 @@
               <button id="login-submit" type="submit" class="btn">LOG IN ▸</button>
             </div>
           </form>
-          <button id="login-toggle" class="toggle">first time here? create an account</button>
           <div id="login-msg" class="msg"></div>
         </div>
       </div>
@@ -267,8 +265,9 @@
   </main>
 
   <!-- geo libs for the globe -->
-  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+  <!-- pinned versions + integrity hashes: the browser refuses the file if the CDN copy ever changes -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
   <!-- Sniper Scope // Overwatch — ENHANCED ×5, R1 MIDNIGHT RECON (window.SniperGame); loads before mission.js so the launcher can see it. Classic build kept at js/sniper.js -->
   <script defer src="js/sniper-x.js"></script>
   <!-- Mission Control interactive layer (voice scope, HAL, sniper launcher) -->

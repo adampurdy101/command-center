@@ -1,20 +1,25 @@
 // ============================================================
-//  AUTH  ·  Supabase email login
-//  Handles: show login vs hub, sign in, sign up, sign out.
+//  AUTH  ·  Supabase email login — OWNER ONLY
+//  Handles: show login vs hub, sign in, sign out.
+//  There is no sign-up path any more: this dashboard belongs to one
+//  account (CONFIG.OWNER_ID). Any other valid login is signed straight
+//  back out. (Row Level Security already keeps data private; this lock
+//  keeps strangers from even using the page.)
 // ============================================================
 import { db } from "./supabase.js";
+import { CONFIG } from "./config.js";
 
 const loginScreen = () => document.getElementById("login-screen");
 const hub         = () => document.getElementById("hub");
 const msg         = () => document.getElementById("login-msg");
-
-let mode = "signin"; // or "signup"
 
 function setMsg(text, kind = "") {
   const m = msg();
   m.textContent = text;
   m.className = "msg " + kind;
 }
+
+const isOwner = (session) => !!(session && session.user && session.user.id === CONFIG.OWNER_ID);
 
 // Supabase fires several auth events (INITIAL_SESSION, SIGNED_IN,
 // TOKEN_REFRESHED…). We only want to react when the view actually changes,
@@ -38,36 +43,36 @@ function showLogin() {
   document.dispatchEvent(new CustomEvent("hub:left"));
 }
 
-export async function initAuth() {
-  // wire the form
-  const form = document.getElementById("login-form");
-  const toggle = document.getElementById("login-toggle");
-  const submitBtn = document.getElementById("login-submit");
+// a real login that is not the owner's: drop it immediately
+let rejecting = false;
+async function rejectStranger() {
+  if (rejecting) return;
+  rejecting = true;
+  showLogin();
+  setMsg("This dashboard is private to its owner.", "err");
+  try { await db.auth.signOut(); } catch (_) {}
+  rejecting = false;
+}
 
-  toggle.addEventListener("click", () => {
-    mode = mode === "signin" ? "signup" : "signin";
-    submitBtn.textContent = mode === "signin" ? "LOG IN ▸" : "CREATE ACCOUNT ▸";
-    toggle.textContent = mode === "signin"
-      ? "first time here? create an account"
-      : "already have an account? log in";
-    setMsg("");
-  });
+function route(session) {
+  if (!session) { showLogin(); return; }
+  if (isOwner(session)) showHub(session); else rejectStranger();
+}
+
+export async function initAuth() {
+  const form = document.getElementById("login-form");
+  const submitBtn = document.getElementById("login-submit");
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = document.getElementById("login-email").value.trim();
     const password = document.getElementById("login-password").value;
     if (!email || !password) { setMsg("Enter email and password.", "err"); return; }
-
+    submitBtn.disabled = true;
     setMsg("Working…");
-    if (mode === "signin") {
-      const { error } = await db.auth.signInWithPassword({ email, password });
-      if (error) setMsg(error.message, "err");
-    } else {
-      const { error } = await db.auth.signUp({ email, password });
-      if (error) { setMsg(error.message, "err"); }
-      else { setMsg("Account made. Check your email if confirmation is on, then log in.", "ok"); }
-    }
+    const { error } = await db.auth.signInWithPassword({ email, password });
+    submitBtn.disabled = false;
+    if (error) setMsg(error.message, "err");
   });
 
   // logout button (in header)
@@ -76,11 +81,9 @@ export async function initAuth() {
   });
 
   // react to login state changes
-  db.auth.onAuthStateChange((_event, session) => {
-    if (session) showHub(session); else showLogin();
-  });
+  db.auth.onAuthStateChange((_event, session) => route(session));
 
   // initial check
   const { data } = await db.auth.getSession();
-  if (data.session) showHub(data.session); else showLogin();
+  route(data.session);
 }

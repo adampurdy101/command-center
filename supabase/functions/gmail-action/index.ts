@@ -1,7 +1,7 @@
 // gmail-action  ·  verify_jwt = TRUE
 // Performs one action on a message (archive / read / flag / unflag / snooze /
 // trash / send) against Gmail, then reflects it in email_cache.
-import { getUser, accessTokenFor, admin, corsFor, json } from "./shared.ts";
+import { getUser, isOwner, accessTokenFor, admin, corsFor, json } from "./shared.ts";
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 
@@ -19,6 +19,7 @@ Deno.serve(async (req) => {
 
   const user = await getUser(req);
   if (!user) return json(req, { error: "unauthorized" }, 401);
+  if (!isOwner(user.id)) return json(req, { error: "forbidden" }, 403);
 
   const body = await req.json().catch(() => ({}));
   const action: string = body.action;

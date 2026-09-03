@@ -2,7 +2,7 @@
 // Pulls recent inbox messages (metadata only — no bodies), upserts the slim
 // rows into email_cache, and returns the list. Bodies are fetched live by the
 // client when a thread is opened, never stored here.
-import { getUser, accessTokenFor, admin, corsFor, json } from "./shared.ts";
+import { getUser, isOwner, accessTokenFor, admin, corsFor, json } from "./shared.ts";
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 const MAX = 25;          // small cap — personal app
@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
 
   const user = await getUser(req);
   if (!user) return json(req, { error: "unauthorized" }, 401);
+  if (!isOwner(user.id)) return json(req, { error: "forbidden" }, 403);
 
   let access: string;
   try {

@@ -8,6 +8,12 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+// The feed is the owner's calendar and nobody else's: only the owner's login may ask for
+// the feed URL, and the feed itself only ever contains the owner's rows.
+const OWNER_ID = "30cbcbfa-7261-47de-8c91-3d97557fc5f9";
+const OWNER_IDS = new Set(
+  [OWNER_ID, ...(Deno.env.get("HAL_ALLOWED_USERS") || "").split(",")].map((s) => s.trim()).filter(Boolean),
+);
 
 const ALLOW = [
   "https://adampurdy101.github.io",
@@ -51,6 +57,7 @@ Deno.serve(async (req) => {
     const db = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: `Bearer ${jwt}` } }, auth: { persistSession: false } });
     const { data, error } = await db.auth.getUser();
     if (error || !data?.user) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsFor(req), "Content-Type": "application/json" } });
+    if (!OWNER_IDS.has(data.user.id)) return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsFor(req), "Content-Type": "application/json" } });
     const feed = `${SUPABASE_URL}/functions/v1/hal-ics?t=${token}`;
     return new Response(JSON.stringify({ url: feed, webcal: feed.replace(/^https:/, "webcal:") }), { headers: { ...corsFor(req), "Content-Type": "application/json" } });
   }
@@ -63,6 +70,7 @@ Deno.serve(async (req) => {
   const { data: events, error } = await admin
     .from("hal_events")
     .select("id,title,on_date,at_time,duration_min,notes,created_at")
+    .eq("user_id", OWNER_ID)
     .gte("on_date", since)
     .order("on_date")
     .limit(500);
@@ -72,6 +80,7 @@ Deno.serve(async (req) => {
   const { data: todos } = await admin
     .from("tasks")
     .select("id,title,done,due,priority,notes,completed_at")
+    .eq("user_id", OWNER_ID)
     .or(`done.eq.false,completed_at.gte.${new Date(Date.now() - 7 * 86400000).toISOString()}`)
     .order("due", { ascending: true, nullsFirst: false })
     .limit(200);
