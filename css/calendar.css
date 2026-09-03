@@ -5,6 +5,8 @@
 /* ---- 06 Bills panel rows ---- */
 #hub .bill-i{display:flex;align-items:center;gap:7px;font-size:12px;padding:2px 7px 2px 9px;margin-left:-7px;
   border-left:2px solid var(--bc,var(--faint));border-radius:0 4px 4px 0}
+#hub .bill-i .tick,#hub .cal-item .tick{color:var(--bc,var(--cc,var(--dim)));font-size:15px;min-width:22px;min-height:22px;display:inline-flex;align-items:center;justify-content:center}
+#hub .bill-i.paid .tick,#hub .cal-item.paid .tick{color:var(--g)}
 #hub .bill-i .k{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px;color:var(--g)}
 #hub .bill-i .k .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #hub .bill-i .k small{color:var(--faint);font-size:9px;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -53,7 +55,7 @@
 #hub .cal-cell .dots{display:none}
 #hub .cal-day{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:2px}
 #hub .cal-day h3{font-size:13px;letter-spacing:2.5px;color:var(--hi);font-weight:400;margin-bottom:8px;text-shadow:var(--glow2) var(--hi)}
-#hub .cal-item{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:8px 0 8px 10px;
+#hub .cal-item{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;padding:8px 0 8px 10px;
   border-bottom:1px solid rgba(28,143,70,.22);border-left:2px solid var(--cc,var(--faint))}
 #hub .cal-item .k{color:var(--g);min-width:0}
 #hub .cal-item .k small{display:block;color:var(--faint);font-size:11px;margin-top:2px}
@@ -63,6 +65,19 @@
 #hub .cal-item.task{--cc:#ffd24a} #hub .cal-item.task .v{color:var(--amb)}
 #hub .cal-item.paid .v{text-decoration:line-through;color:var(--dim)}
 #hub .cal-empty{color:var(--faint);font-size:12px}
+/* add-an-event form under the day list */
+#hub .cal-add{display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(28,143,70,.3);flex-wrap:wrap}
+#hub .cal-add input{background:var(--deep);color:var(--g);border:1px solid var(--faint);border-radius:5px;font-family:var(--mono);font-size:12px;padding:7px 8px;outline:none;min-height:36px}
+#hub .cal-add input:focus{border-color:var(--g);box-shadow:var(--glow2) var(--g)}
+#hub .cal-add .cal-add-title{flex:1 1 140px;min-width:0}
+#hub .cal-add .cal-add-time{width:110px;color-scheme:dark}
+#hub .cal-add .btn{min-height:36px}
+/* confirmation toast (paid / event added) */
+#hub #cc-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);z-index:130;opacity:0;pointer-events:none;
+  background:rgba(6,16,10,.94);border:1px solid var(--g);border-radius:9px;padding:9px 16px;color:var(--hi);font-size:12px;letter-spacing:.5px;
+  box-shadow:0 0 18px rgba(65,255,126,.35);transition:opacity .18s ease,transform .18s ease;max-width:92vw;text-align:center}
+#hub #cc-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#hub #cc-toast.bad{border-color:var(--red);color:var(--red);box-shadow:0 0 18px rgba(255,107,90,.35)}
 
 /* ---- phones + tablets (any touch device): the calendar takes the whole screen ---- */
 @media (pointer:coarse), (max-width:760px){

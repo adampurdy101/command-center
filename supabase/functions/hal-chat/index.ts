@@ -137,6 +137,56 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "mark_bill_paid",
+    description:
+      "Mark one of Adam's bills paid (or, with paid=false, undo a paid mark). Matches the bill by name. By default marks the oldest unpaid occurrence (for undo: the most recent paid one); pass date (YYYY-MM-DD) to target the occurrence in a specific month. Writes straight to the Bill Calendar app.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "The bill's name, or part of it" },
+        paid: { type: "boolean", description: "true = mark paid (default), false = mark not paid" },
+        date: { type: "string", description: "Optional YYYY-MM-DD inside the month to mark" },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "add_bill",
+    description:
+      "Add a new bill to Adam's Bill Calendar. Needs a name and amount; due_day is the day of the month (1-31) for a monthly bill, or give due_date (YYYY-MM-DD) for the first occurrence. recur defaults to monthly. account is the paying account's nickname or bank, matched loosely. Confirm the details back to Adam in your reply.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        amount: { type: "number", description: "Dollar amount" },
+        due_day: { type: "number", description: "Day of the month it is due (1-31)" },
+        due_date: { type: "string", description: "First due date as YYYY-MM-DD (alternative to due_day)" },
+        recur: { type: "string", enum: ["monthly", "biweekly", "once"], description: "Default monthly" },
+        account: { type: "string", description: "Nickname or bank of the account it pays from, if Adam said" },
+        remind_days: { type: "number", description: "Days before the due date to alert; default 2" },
+      },
+      required: ["name", "amount"],
+    },
+  },
+  {
+    name: "update_bill",
+    description:
+      "Change an existing bill: new amount, new due day, the account it pays from, its recurrence, or its name. Matches the bill by name. Only the fields given change; paid history is kept. Never deletes.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "The bill's current name, or part of it" },
+        amount: { type: "number" },
+        due_day: { type: "number", description: "New day of the month (1-31)" },
+        due_date: { type: "string", description: "New anchor date YYYY-MM-DD (biweekly / once)" },
+        account: { type: "string", description: "Nickname or bank of the paying account" },
+        recur: { type: "string", enum: ["monthly", "biweekly", "once"] },
+        new_name: { type: "string" },
+      },
+      required: ["name"],
+    },
+  },
+  {
     name: "delete_task",
     description:
       "Permanently delete one task by its id. ONLY when Adam explicitly says to delete or remove a task (e.g. a duplicate or a mistake) — finishing a task is complete_task, never this. Call list_tasks first to find the right id.",
@@ -179,6 +229,29 @@ function occDays(b: Bill, y: number, m: number): number[] {
 function isPaidOcc(b: Bill, y: number, m: number, d: number): boolean {
   const pm = b.paidMonths || [];
   return b.recur === "biweekly" ? pm.includes(`${y}-${m}-${d}`) : pm.includes(`${y}-${m}`);
+}
+const paidKey = (b: Bill, y: number, m: number, d: number) => b.recur === "biweekly" ? `${y}-${m}-${d}` : `${y}-${m}`;
+const ymdStr = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+const norm = (s: unknown) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+// loose name match: exact, then starts-with, then contains (either direction)
+function findBill(bills: Bill[], name: string): { bill?: Bill; candidates?: Bill[] } {
+  const q = norm(name); if (!q) return { candidates: [] };
+  const exact = bills.filter((b) => norm(b.name) === q); if (exact.length === 1) return { bill: exact[0] };
+  const starts = bills.filter((b) => norm(b.name).startsWith(q)); if (starts.length === 1) return { bill: starts[0] };
+  const contains = bills.filter((b) => norm(b.name).includes(q) || q.includes(norm(b.name)));
+  if (contains.length === 1) return { bill: contains[0] };
+  return { candidates: exact.length ? exact : starts.length ? starts : contains };
+}
+function findAcct(accounts: Acct[], q: unknown): { acct?: Acct; candidates?: Acct[] } {
+  const n = norm(q); if (!n) return { candidates: [] };
+  const hit = accounts.filter((a) => norm(a.nick).includes(n) || norm(a.bank).includes(n) || norm(a.last4).includes(n) || n.includes(norm(a.nick)));
+  return hit.length === 1 ? { acct: hit[0] } : { candidates: hit };
+}
+const BILL_COLORS = ["#e8736a", "#f2a541", "#41ff7e", "#7df7ff", "#c792ea", "#ffd24a", "#5fb3ff", "#ff8fb1"];
+async function loadBillRow(db: ReturnType<typeof userClient>) {
+  const { data, error } = await db.from("billdata").select("bills,accounts").maybeSingle();
+  if (error) return { error: error.message };
+  return { bills: (data && Array.isArray(data.bills) ? data.bills : []) as Bill[], accounts: (data && Array.isArray(data.accounts) ? data.accounts : []) as Acct[] };
 }
 
 // deno-lint-ignore no-explicit-any
@@ -271,6 +344,87 @@ async function runTool(db: ReturnType<typeof userClient>, name: string, input: a
     out.sort();
     return out.length ? out.join("\n") : `No bills due in the next ${days} days.`;
   }
+  if (name === "mark_bill_paid") {
+    const row = await loadBillRow(db); if ("error" in row) return "ERROR: " + row.error;
+    const f = findBill(row.bills, String(input?.name || ""));
+    if (!f.bill) return f.candidates && f.candidates.length ? "AMBIGUOUS: which one — " + f.candidates.map((b) => b.name).join(", ") + "?" : "ERROR: no bill matches that name";
+    const b = f.bill, paid = input?.paid !== false;
+    const [ty, tm, td] = today.split("-").map(Number);
+    const t0 = new Date(ty, tm - 1, td);
+    // every occurrence in a ±45-day window, with its paid key
+    const occ: { date: Date; key: string; paid: boolean }[] = [];
+    for (let k = (ty * 12 + tm - 1) - 2; k <= (ty * 12 + tm - 1) + 2; k++) {
+      const y = Math.floor(k / 12), m = k % 12;
+      for (const d of occDays(b, y, m)) occ.push({ date: new Date(y, m, d), key: paidKey(b, y, m, d), paid: isPaidOcc(b, y, m, d) });
+    }
+    let target: { date: Date; key: string; paid: boolean } | undefined;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(input?.date || ""))) {
+      const [dy, dm] = String(input.date).split("-").map(Number);
+      target = occ.find((o) => o.date.getFullYear() === dy && o.date.getMonth() === dm - 1);
+    } else {
+      const win = occ.filter((o) => Math.abs((o.date.getTime() - t0.getTime()) / 86400000) <= 45);
+      target = paid ? win.find((o) => !o.paid) : win.filter((o) => o.paid).pop();
+    }
+    if (!target) return paid ? `Nothing to mark — every ${b.name} occurrence near today is already paid.` : `Nothing to undo — no paid ${b.name} occurrence near today.`;
+    if (target.paid === paid) return `${b.name} for ${ymdStr(target.date.getFullYear(), target.date.getMonth(), target.date.getDate())} is already ${paid ? "paid" : "not paid"}.`;
+    const { error } = await db.rpc("bill_set_paid", { p_bill_id: Number(b.id), p_key: target.key, p_paid: paid });
+    if (error) return "ERROR: " + error.message;
+    return `${paid ? "Marked PAID" : "Marked NOT paid"}: ${b.name} $${Number(b.amount || 0).toFixed(2)} due ${ymdStr(target.date.getFullYear(), target.date.getMonth(), target.date.getDate())}. The Bill Calendar app and the dashboard both show it now.`;
+  }
+  if (name === "add_bill") {
+    const row = await loadBillRow(db); if ("error" in row) return "ERROR: " + row.error;
+    const nm = String(input?.name || "").trim().slice(0, 80), amount = Number(input?.amount);
+    if (!nm) return "ERROR: missing name";
+    if (!Number.isFinite(amount) || amount < 0) return "ERROR: missing amount";
+    const dup = findBill(row.bills, nm); if (dup.bill && norm(dup.bill.name) === norm(nm)) return `A bill called ${dup.bill.name} already exists ($${Number(dup.bill.amount || 0).toFixed(2)}). Use update_bill to change it.`;
+    const [ty, tm, td] = today.split("-").map(Number);
+    let dueDate = "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(input?.due_date || ""))) dueDate = String(input.due_date);
+    else {
+      const day = Math.round(Number(input?.due_day));
+      if (!(day >= 1 && day <= 31)) return "ERROR: need due_day (1-31) or due_date";
+      // next time that day comes around: this month if still ahead, otherwise next month
+      let y = ty, m = tm - 1; if (day < td) { m++; if (m > 11) { m = 0; y++; } }
+      dueDate = ymdStr(y, m, Math.min(day, new Date(y, m + 1, 0).getDate()));
+    }
+    const recur = ["monthly", "biweekly", "once"].includes(input?.recur) ? input.recur : "monthly";
+    let acctId: number | null = null, acctNote = "";
+    if (input?.account) {
+      const fa = findAcct(row.accounts, input.account);
+      if (fa.acct) { acctId = fa.acct.id; acctNote = ` · pays from ${fa.acct.nick || fa.acct.bank}`; }
+      else acctNote = fa.candidates && fa.candidates.length ? ` · account not set (which one: ${fa.candidates.map((a) => a.nick).join(", ")}?)` : " · account not set (no account matched)";
+    }
+    const remind = Number.isFinite(Number(input?.remind_days)) ? Math.max(0, Math.min(30, Math.round(Number(input.remind_days)))) : 2;
+    const bill = { id: Date.now(), name: nm, amount: Math.round(amount * 100) / 100, dueDate, recur, paidMonths: [], remindDays: remind, acct: acctId,
+      color: BILL_COLORS[row.bills.length % BILL_COLORS.length], photo: null, domain: null };
+    const { error } = await db.rpc("bill_upsert", { p_bill: bill });
+    if (error) return "ERROR: " + error.message;
+    return `Added bill: ${nm} $${bill.amount.toFixed(2)} ${recur} from ${dueDate}${acctNote}, reminder ${remind} day(s) before. It is in the Bill Calendar app now.`;
+  }
+  if (name === "update_bill") {
+    const row = await loadBillRow(db); if ("error" in row) return "ERROR: " + row.error;
+    const f = findBill(row.bills, String(input?.name || ""));
+    if (!f.bill) return f.candidates && f.candidates.length ? "AMBIGUOUS: which one — " + f.candidates.map((b) => b.name).join(", ") + "?" : "ERROR: no bill matches that name";
+    const b = f.bill, patch: Record<string, unknown> = { id: b.id }, changes: string[] = [];
+    if (input?.amount != null) { const a = Number(input.amount); if (!Number.isFinite(a) || a < 0) return "ERROR: bad amount"; patch.amount = Math.round(a * 100) / 100; changes.push(`amount $${Number(b.amount || 0).toFixed(2)} → $${(patch.amount as number).toFixed(2)}`); }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(input?.due_date || ""))) { patch.dueDate = String(input.due_date); changes.push(`due date → ${patch.dueDate}`); }
+    else if (input?.due_day != null) {
+      const day = Math.round(Number(input.due_day)); if (!(day >= 1 && day <= 31)) return "ERROR: bad due_day";
+      const [oy, om] = String(b.dueDate).split("-").map(Number);
+      patch.dueDate = ymdStr(oy, om - 1, Math.min(day, new Date(oy, om, 0).getDate())); changes.push(`due day → ${day}`);
+    }
+    if (["monthly", "biweekly", "once"].includes(input?.recur)) { patch.recur = input.recur; changes.push(`recurrence → ${input.recur}`); }
+    if (input?.new_name) { patch.name = String(input.new_name).trim().slice(0, 80); changes.push(`name → ${patch.name}`); }
+    if (input?.account) {
+      const fa = findAcct(row.accounts, input.account);
+      if (!fa.acct) return fa.candidates && fa.candidates.length ? "AMBIGUOUS account: " + fa.candidates.map((a) => a.nick).join(", ") : "ERROR: no account matches that name";
+      patch.acct = fa.acct.id; changes.push(`pays from → ${fa.acct.nick || fa.acct.bank}`);
+    }
+    if (!changes.length) return "ERROR: nothing to change — give an amount, due day, account, recurrence, or new name";
+    const { error } = await db.rpc("bill_upsert", { p_bill: patch });
+    if (error) return "ERROR: " + error.message;
+    return `Updated ${b.name}: ${changes.join("; ")}. Paid history kept. The Bill Calendar app shows it now.`;
+  }
   if (name === "delete_task") {
     const id = Number(input?.id);
     if (!Number.isFinite(id)) return "ERROR: missing id";
@@ -302,7 +456,7 @@ function systemPrompt(today: string, now: string): string {
     "Calendar: use add_event for appointments and anything at a specific time of day, including timed reminders ('remind me at 6 pm…') — those ring his phone. Times are Adam's local time in 24-hour HH:MM.",
     "Reminders: when Adam says 'add to my reminders' or wants a reminder with no time of day, use add_task (with a due date if he gave one) — his iPhone Reminders app shows the task list. For a timed reminder, do BOTH: add_event so it rings, and add_task so it appears in Reminders.",
     `Today is ${weekday}, ${today}${now ? `, and Adam's clock reads ${now} right now` : ""}. Upcoming days: ${cal.join("; ")}. When Adam names a day, use the date from this list exactly — never compute dates yourself.`,
-    "Bills: use list_bills for anything about bills, what is due, how much money is due, or payday planning. It is read-only — Adam marks bills paid in his Bill Calendar app. Round dollar amounts naturally when speaking.",
+    "Bills (they live in Adam's Bill Calendar app and every change lands there instantly): list_bills for what is due or how much; mark_bill_paid when Adam says he paid something (paid=false to undo); add_bill for a new bill; update_bill to change an amount, due day, account, or name. If a tool answers AMBIGUOUS, ask Adam which one. Never invent amounts or dates — ask if he did not say. Always say back the bill name, amount and date you acted on. There is no delete; he removes bills in the app. Round dollar amounts naturally when speaking.",
     "For anything that is not a task request, simply answer helpfully and concisely as HAL.",
   ].join("\n");
 }

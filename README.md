@@ -35,7 +35,8 @@ js/auth.js            login / signup / logout → fires hub:ready / hub:left
 js/app.js             boots auth + fills the Daily Brief digest row
 js/board.js           LIVE data: tasks / projects / agents / life items → panels (realtime, window.CC)
 js/bills.js           06 Bills panel + Daily Brief NEXT EVENT / BILLS rows + the calendar overlay (window.CCal);
-                      reads the Bill Calendar app's billdata row + hal_events — read-only, same paid-month logic
+                      reads the Bill Calendar app's billdata row + hal_events; ☐ marks a bill paid and a day's
+                      form adds an event — writes go through bill_set_paid / bill_upsert (one bill at a time)
 css/calendar.css      bills rows + calendar overlay
 js/panels.js          click-a-panel detail views (draw from window.CC)
 js/mission.js         clocks, Voice Scope canvas, HAL voice engine + speech routing, sniper launcher

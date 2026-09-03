@@ -7,9 +7,11 @@
 //    · 06 Bills panel        next bills due, paid state, month totals
 //    · Daily Brief rows      NEXT EVENT (Hal's calendar) + BILLS (next due)
 //    · the calendar overlay  tap the panel, a row, or ▦ CALENDAR → month view
-//  Read-only by design: bills are marked paid in the Bill Calendar app. The
-//  occurrence + paid-month logic below is a straight port of that app (and
-//  its ICS feed) so the two always agree. window.CCal = { open, close, refresh }.
+//  Writes go through two small database functions (bill_set_paid, bill_upsert)
+//  that edit ONE bill inside the list, so this page and the Bill Calendar app
+//  never overwrite each other; the app hears the change live. The occurrence +
+//  paid-month logic below is a straight port of that app (and its ICS feed) so
+//  the two always agree. window.CCal = { open, close, refresh, setPaid }.
 // ============================================================
 import { db } from "./supabase.js";
 
@@ -80,7 +82,8 @@ function occurrences(from, to) {
         const dt = new Date(y, m, d);
         if (dt < from || dt > to) continue;
         out.push({ type: "bill", date: dt, ymd: ymd(dt), name: b.name || "bill", amount: +b.amount || 0,
-          paid: isPaidOcc(b, y, m, d), color: b.color || "#41ff7e", acct: acctLabel(b.acct) });
+          paid: isPaidOcc(b, y, m, d), color: b.color || "#41ff7e", acct: acctLabel(b.acct),
+          billId: b.id, key: b.recur === "biweekly" ? `${y}-${m}-${d}` : `${y}-${m}` });
       }
     }
   }
@@ -148,10 +151,61 @@ function paintPanel() {
   bd.innerHTML = rows.map((o) => {
     const c = dueChip(o, t0);
     return `<div class="bill-i${o.paid ? " paid" : ""}" style="--bc:${esc(o.color)}" title="${esc(o.name)}${o.acct ? " · " + esc(o.acct) : ""}">
-      <span class="k"><span class="nm">${esc(o.name)}</span>${o.acct ? `<small>${esc(o.acct)}</small>` : ""}</span>
+      ${tickBtn(o)}<span class="k"><span class="nm">${esc(o.name)}</span>${o.acct ? `<small>${esc(o.acct)}</small>` : ""}</span>
       <span class="v"><span class="amt">${money(o.amount)}</span><span class="chip ${c.cls}">${c.text}</span></span></div>`;
   }).join("") +
-    `<div class="bill-foot"><span>${MONTHS[t0.getMonth()].slice(0, 3)} · ${money(paidSum)} PAID</span><span>${leftSum ? money(leftSum) + " LEFT" : "ALL PAID"}</span><span>▦ TAP FOR CALENDAR</span></div>`;
+    `<div class="bill-foot"><span>${MONTHS[t0.getMonth()].slice(0, 3)} · ${money(paidSum)} PAID</span><span>${leftSum ? money(leftSum) + " LEFT" : "ALL PAID"}</span><span>☐ = MARK PAID · ▦ CALENDAR</span></div>`;
+}
+
+// ---------- writes: mark paid / not paid (one bill, one occurrence, atomically) ----------
+function tickBtn(o) {
+  return `<button class="tick" type="button" data-bill="${esc(o.billId)}" data-key="${esc(o.key)}" data-paid="${o.paid ? 1 : 0}" title="${o.paid ? "tap to mark NOT paid" : "tap to mark paid"}" aria-label="${o.paid ? "mark not paid" : "mark paid"}">${o.paid ? "☑" : "☐"}</button>`;
+}
+let toastTO = 0;
+function toast(msg, bad) {
+  let t = $("cc-toast");
+  if (!t) { t = document.createElement("div"); t.id = "cc-toast"; ($("hub") || document.body).appendChild(t); }
+  t.textContent = msg; t.classList.toggle("bad", !!bad); t.classList.add("show");
+  clearTimeout(toastTO); toastTO = setTimeout(() => t.classList.remove("show"), 3200);
+}
+async function setPaid(billId, key, paid) {
+  const b = S.bills.find((x) => String(x.id) === String(billId));
+  if (!b) return false;
+  // paint the new state right away, then let the database confirm it
+  const before = (b.paidMonths || []).slice();
+  const pm = before.filter((k) => k !== key); if (paid) pm.push(key);
+  b.paidMonths = pm; paint();
+  const { data, error } = await db.rpc("bill_set_paid", { p_bill_id: Number(billId), p_key: key, p_paid: !!paid });
+  if (error || !Array.isArray(data)) {
+    b.paidMonths = before; paint();
+    console.warn("[bills] set paid failed:", error && error.message);
+    toast("Couldn't save that — try again", true);
+    return false;
+  }
+  S.bills = data; paint();
+  toast(`${b.name} · ${paid ? "marked PAID" : "marked NOT paid"} · Bill Calendar updated`);
+  try { navigator.vibrate && navigator.vibrate(8); } catch (_) {}
+  return true;
+}
+// one delegated handler covers the panel rows and the calendar's day list
+document.addEventListener("click", (e) => {
+  const t = e.target.closest && e.target.closest(".tick[data-bill]");
+  if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  setPaid(t.dataset.bill, t.dataset.key, t.dataset.paid !== "1");
+}, true);
+
+// ---------- writes: add a calendar event from a day (goes to the iPhone through Hal's feed) ----------
+async function addEvent(dateStr, title, time) {
+  title = String(title || "").trim().slice(0, 300);
+  if (!title) { toast("Type what the event is first", true); return false; }
+  const row = { title, on_date: dateStr };
+  if (/^\d{2}:\d{2}$/.test(time || "")) row.at_time = time;
+  const { error } = await db.from("hal_events").insert(row);
+  if (error) { console.warn("[bills] add event failed:", error.message); toast("Couldn't add that event", true); return false; }
+  toast(`Added “${title}” · on your phone within ~15 min`);
+  await load().catch(() => {});
+  return true;
 }
 
 function paintBrief() {
@@ -206,7 +260,7 @@ function itemsFor(from, to) {
   const map = {};
   const push = (k, it) => { (map[k] = map[k] || []).push(it); };
   const t0 = today();
-  occurrences(from, to).forEach((o) => push(o.ymd, { type: "bill", label: o.name, sub: o.acct, amt: money(o.amount), color: o.color, paid: o.paid, over: !o.paid && o.date < t0, sort: 1 }));
+  occurrences(from, to).forEach((o) => push(o.ymd, { type: "bill", label: o.name, sub: o.acct, amt: money(o.amount), color: o.color, paid: o.paid, over: !o.paid && o.date < t0, sort: 1, occ: o }));
   const a = ymd(from), z = ymd(to);
   S.events.forEach((e) => { if (e.on_date >= a && e.on_date <= z) push(e.on_date, { type: "ev", label: e.title, sub: e.notes || "", amt: e.at_time ? fmtTime(e.at_time) : "ALL DAY", time: e.at_time || "", sort: 0 }); });
   openTasks().forEach((t) => { if (t.due >= a && t.due <= z) push(t.due, { type: "task", label: t.title, sub: t.priority === "high" ? "high priority" : "", amt: "☐ TO-DO", sort: 2 }); });
@@ -239,8 +293,19 @@ function renderCal() {
   if (!selected) selected = tKey;
   const sd = parseYMD(selected), list = items[selected] || (itemsFor(sd, sd)[selected] || []);
   day.innerHTML = `<h3>${shortDate(sd)}${selected === tKey ? " · TODAY" : ""}</h3>` + (list.length
-    ? list.map((it) => `<div class="cal-item ${it.type}${it.paid ? " paid" : ""}" style="${it.color ? "--cc:" + esc(it.color) : ""}"><span class="k">${esc(it.label)}${it.sub ? `<small>${esc(it.sub)}</small>` : ""}</span><span class="v ${it.over ? "down" : ""}">${esc(it.amt)}${it.type === "bill" ? (it.paid ? " ✓" : it.over ? " · OVERDUE" : "") : ""}</span></div>`).join("")
-    : `<div class="cal-empty">nothing on this day</div>`);
+    ? list.map((it) => `<div class="cal-item ${it.type}${it.paid ? " paid" : ""}" style="${it.color ? "--cc:" + esc(it.color) : ""}">${it.occ ? tickBtn(it.occ) : ""}<span class="k">${esc(it.label)}${it.sub ? `<small>${esc(it.sub)}</small>` : ""}</span><span class="v ${it.over ? "down" : ""}">${esc(it.amt)}${it.type === "bill" ? (it.paid ? " ✓" : it.over ? " · OVERDUE" : "") : ""}</span></div>`).join("")
+    : `<div class="cal-empty">nothing on this day</div>`) +
+    // add an event to this day — it reaches the iPhone through Hal's calendar feed
+    `<form class="cal-add" autocomplete="off"><input class="cal-add-title" type="text" maxlength="300" placeholder="＋ add an event to this day…" /><input class="cal-add-time" type="time" title="time (optional)" /><button class="btn" type="submit">ADD</button></form>`;
+  const form = day.querySelector(".cal-add");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector("button"); btn.disabled = true;
+    const ok = await addEvent(selected, form.querySelector(".cal-add-title").value, form.querySelector(".cal-add-time").value);
+    btn.disabled = false;
+    if (ok) renderCal();
+  });
+  form.addEventListener("click", (e) => e.stopPropagation());
 }
 function open(dateStr) {
   if (!S.ready) return;
@@ -284,7 +349,7 @@ function start() {
   load().catch((e) => console.warn("[bills]", e));
   subscribe();
 }
-window.CCal = { open, close, refresh: load, occurrences, data: S };
+window.CCal = { open, close, refresh: load, occurrences, setPaid, addEvent, data: S };
 document.addEventListener("hub:ready", start);
 document.addEventListener("hub:left", () => { S.ready = false; close(); unsubscribe(); });
 document.addEventListener("board:updated", () => { if (S.loaded) paint(); });   // task due dates changed
