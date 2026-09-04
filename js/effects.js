@@ -4,7 +4,7 @@
    1. Heartbeat / EKG trace (system-online pulse) — all .ekg canvases
    2. HAL 9000 eye — pulses, flares when HAL speaks
    3. Boot / power-on splash (also kills the white launch flash)
-   4. Ambient sci-fi hum + beeps (toggle)
+   4. Ambient sci-fi hum + beeps (toggle + volume; voiced for phone/laptop speakers)
    5. Live weather — Renton + Pattaya (Open-Meteo)
    6. Tilt parallax — cursor (desktop) / device tilt (mobile)
    7. Fullscreen enter + explicit exit (graceful where unsupported)
@@ -135,71 +135,228 @@
   }
 
   /* ============================================================
-     4 · AMBIENT HUM + BEEPS  (toggle)
+     4 · AMBIENT HUM + BEEPS  (toggle + volume)
+     ------------------------------------------------------------
+     2026-09-04 re-voice. The old hum was three pure sines at 55 / 82 / 110 Hz.
+     Phone and laptop speakers reproduce almost nothing below ~180 Hz, so on an
+     iPhone it was silent and on a MacBook a whisper (measured: 99% of its energy
+     sat under the speaker band). The new voice keeps the same A-power-chord
+     character but puts real energy where small speakers live (a low-passed saw
+     stack at 110 / 165 Hz + a breath of band-passed "air"), then runs through a
+     limiter so the slider can go genuinely loud without clipping.
+     iPhone rules honoured here:
+       · the AudioContext is created / resumed only inside real activation events
+         (touchend / pointerup / click — NOT pointerdown, which is not an activation
+         on touch), and re-resumed after iOS interruptions (calls, Siri, background)
+       · a looping silent <audio> nudges the audio session towards "playback" so the
+         ring/silent switch is less likely to mute Web Audio (no API can force it)
+       · the button shows ◌ while armed-but-blocked and ● once sound is really flowing
      ============================================================ */
+  function silentWavURI(sr) {
+    sr = sr || 48000;
+    var n = Math.floor(sr * 0.1), buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
+    function wr(o, s) { for (var i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); }
+    wr(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); wr(8, "WAVE"); wr(12, "fmt "); dv.setUint32(16, 16, true);
+    dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true);
+    dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); wr(36, "data"); dv.setUint32(40, n * 2, true);
+    var u8 = new Uint8Array(buf), bin = ""; for (var i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+    return "data:audio/wav;base64," + btoa(bin);
+  }
   function startAmbient() {
     var btn = document.getElementById("amb-btn");
     if (!btn) return;
-    var ac = null, nodes = [], beepTimer = null, on = false;
-    // user-controllable volume (0..1 slider). 0.5 maps to the old 0.05 "perfect" default; 1.0 is really loud.
-    var vol = 0.5; try { var sv = parseFloat(localStorage.getItem("cc_ambient_vol")); if (!isNaN(sv)) vol = Math.max(0, Math.min(1, sv)); } catch (e) {}
-    function gainFor() { return vol * vol * 0.2; }
+    var wrap = (btn.parentNode && btn.parentNode.classList && btn.parentNode.classList.contains("amb-wrap")) ? btn.parentNode : null;
+    var pop = wrap ? wrap.querySelector(".amb-pop") : null;
+    var slider = document.getElementById("amb-vol");
+    var isApple = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    var ac = null, master = null, on = false, beepTimer = null, silentEl = null, popTimer = null;
+
+    // volume 0..1 (persisted). v2: the re-voiced hum is ~10x louder in the audible band than
+    // the old one, so a value stored before the re-voice is reset ONCE to a clear default.
+    var vol = 0.6;
+    try {
+      if (localStorage.getItem("cc_ambient_v") === "2") {
+        var sv = parseFloat(localStorage.getItem("cc_ambient_vol")); if (!isNaN(sv)) vol = Math.max(0, Math.min(1, sv));
+      } else { localStorage.setItem("cc_ambient_v", "2"); localStorage.setItem("cc_ambient_vol", String(vol)); }
+    } catch (e) {}
+    function gainFor() { return vol * vol * 0.85; }   // gentle at the bottom, near full scale at the top (limiter + 1.5 dB headroom)
+
     function build() {
       ac = new (window.AudioContext || window.webkitAudioContext)();
-      var master = ac.createGain(); master.gain.value = 0.0; master.connect(ac.destination);
-      [55, 82.4, 110].forEach(function (f, idx) {
-        var o = ac.createOscillator(); o.type = "sine"; o.frequency.value = f;
-        var g = ac.createGain(); g.gain.value = idx === 0 ? 0.6 : 0.22;
-        o.connect(g); g.connect(master); o.start();
-      });
-      // slow shimmer LFO on master
-      var lfo = ac.createOscillator(); lfo.frequency.value = 0.07;
-      var lg = ac.createGain(); lg.gain.value = 0.012;
-      lfo.connect(lg); lg.connect(master.gain); lfo.start();
-      master.gain.setTargetAtTime(gainFor(), ac.currentTime, 1.2);
-      nodes = [master];
+      var mix = ac.createGain(); mix.gain.value = 1;
+      var lim = ac.createDynamicsCompressor();          // a soft brick wall: loud slider, no crackle
+      lim.threshold.value = -8; lim.knee.value = 4; lim.ratio.value = 20; lim.attack.value = 0.003; lim.release.value = 0.25;
+      master = ac.createGain(); master.gain.value = 0;
+      mix.connect(lim); lim.connect(master); master.connect(ac.destination);
+
+      // the engine tone: two detuned saws on A2 (110 Hz, a slow 0.7 Hz throb between them) + a saw on
+      // E3 (165 Hz) through a resonant low-pass -> harmonics at 220–900 Hz, the band small speakers play
+      var lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 760; lp.Q.value = 1.4; lp.connect(mix);
+      function saw(f, det, g) {
+        var o = ac.createOscillator(), gg = ac.createGain();
+        o.type = "sawtooth"; o.frequency.value = f; o.detune.value = det; gg.gain.value = g;
+        o.connect(gg); gg.connect(lp); o.start();
+      }
+      saw(110, -5, 0.30); saw(110, 6, 0.30); saw(164.8, 2, 0.16);
+      // the sub body (55 Hz) for headphones / desk speakers — small speakers simply ignore it
+      var sub = ac.createOscillator(), sg = ac.createGain();
+      sub.type = "sine"; sub.frequency.value = 55; sg.gain.value = 0.35; sub.connect(sg); sg.connect(mix); sub.start();
+      // a breath of pink-ish noise through a band-pass = ventilation "air"; reads as room tone on any speaker
+      var nb = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = nb.getChannelData(0), b0 = 0, b1 = 0, b2 = 0;
+      for (var i = 0; i < d.length; i++) {
+        var w = Math.random() * 2 - 1;
+        b0 = 0.99765 * b0 + w * 0.0990460; b1 = 0.96300 * b1 + w * 0.2965164; b2 = 0.57000 * b2 + w * 1.0526913;
+        d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.11;
+      }
+      var noise = ac.createBufferSource(); noise.buffer = nb; noise.loop = true;
+      var bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 420; bp.Q.value = 0.9;
+      var ng = ac.createGain(); ng.gain.value = 0.22;
+      noise.connect(bp); bp.connect(ng); ng.connect(mix); noise.start();
+      // slow drift so it feels alive: the filter breathes (0.05 Hz), the air swells (0.09 Hz)
+      var l1 = ac.createOscillator(), l1g = ac.createGain(); l1.frequency.value = 0.05; l1g.gain.value = 140;
+      l1.connect(l1g); l1g.connect(lp.frequency); l1.start();
+      var l2 = ac.createOscillator(), l2g = ac.createGain(); l2.frequency.value = 0.09; l2g.gain.value = 0.07;
+      l2.connect(l2g); l2g.connect(ng.gain); l2.start();
+
+      // an occasional console blip (~20–40 s apart) — through the master so the slider owns it too
       function blip() {
         if (!on) return;
         var o = ac.createOscillator(), g = ac.createGain();
         o.type = "sine"; o.frequency.value = 880 + Math.random() * 600;
-        g.gain.value = 0.0; o.connect(g); g.connect(ac.destination);
+        g.gain.value = 0.0; o.connect(g); g.connect(master);
         var n = ac.currentTime; g.gain.setValueAtTime(0.0, n);
-        g.gain.linearRampToValueAtTime(0.03, n + 0.02);
+        g.gain.linearRampToValueAtTime(0.18, n + 0.02);
         g.gain.exponentialRampToValueAtTime(0.0001, n + 0.18);
         o.start(n); o.stop(n + 0.2);
-        beepTimer = setTimeout(blip, 20000 + Math.random() * 20000);  // an occasional accent, ~20–40s apart
+        beepTimer = setTimeout(blip, 20000 + Math.random() * 20000);
       }
       beepTimer = setTimeout(blip, 9000);
+
+      ac.onstatechange = function () {
+        // iOS parks the context ("interrupted" / "suspended") after a call, Siri or backgrounding
+        if (on && ac.state !== "running") { try { var p = ac.resume(); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
+        label();
+      };
     }
-    function set(v) {
-      on = v; btn.classList.toggle("active", on);
-      btn.textContent = on ? "♪ HUM ●" : "♪ HUM";
-      try { localStorage.setItem("cc_ambient", on ? "1" : "0"); } catch (e) {}
+    function ensureCtx() {
+      if (!ac) build();
+      if (ac.state !== "running") { try { var p = ac.resume(); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
+    }
+    function live() { return on && !!ac && ac.state === "running"; }
+    function label() {
+      var l = live();
+      btn.textContent = !on ? "♪ HUM" : (l ? "♪ HUM ●" : "♪ HUM ◌");
+      btn.classList.toggle("active", on);
+      btn.classList.toggle("armed", on && !l);
+      btn.title = on
+        ? ("Ambient hum " + (l ? "on" : "armed — tap once to start") + " · volume " + Math.round(vol * 100) + "% — " + (coarse ? "tap for the volume slider" : "hover for volume"))
+        : ("Ambient sound — " + (coarse ? "tap to turn on" : "click to turn on, hover for volume"));
+      var hint = pop ? pop.querySelector(".amb-hint") : null;
+      if (hint) hint.textContent = (on && !l) ? "TAP ANYWHERE TO START" : "IF SILENT: FLIP THE RING SWITCH";
+    }
+    // iOS: a looping silent <audio> keeps the audio session in "playback" so the ring/silent
+    // switch is less likely to mute Web Audio. Harmless elsewhere, so only Apple touch devices run it.
+    function nudgeSession() {
+      if (!isApple) return;
       try {
-        if (on) { if (!ac) build(); else { ac.resume(); nodes[0] && nodes[0].gain.setTargetAtTime(gainFor(), ac.currentTime, 1.0); } }
-        else if (ac && nodes[0]) { nodes[0].gain.setTargetAtTime(0.0, ac.currentTime, 0.4); }
+        if (!silentEl) {
+          silentEl = document.createElement("audio");
+          silentEl.loop = true; silentEl.preload = "auto";
+          silentEl.setAttribute("playsinline", ""); silentEl.setAttribute("webkit-playsinline", "");
+          silentEl.src = silentWavURI(ac ? ac.sampleRate : 48000);
+        }
+        var p = silentEl.play(); if (p && p.catch) p.catch(function () {});
       } catch (e) {}
     }
-    btn.addEventListener("click", function () { set(!on); });
-    // volume slider — live, persisted, works whether the hum is on or off
-    var slider = document.getElementById("amb-vol");
+    function set(v) {
+      on = v;
+      try { localStorage.setItem("cc_ambient", on ? "1" : "0"); } catch (e) {}
+      try {
+        if (on) {
+          ensureCtx();
+          master.gain.cancelScheduledValues(ac.currentTime);
+          master.gain.setTargetAtTime(gainFor(), ac.currentTime, 1.0);
+          nudgeSession();
+        } else if (ac && master) {
+          master.gain.cancelScheduledValues(ac.currentTime);
+          master.gain.setTargetAtTime(0.0, ac.currentTime, 0.4);
+          if (silentEl) { try { silentEl.pause(); } catch (e) {} }
+        }
+      } catch (e) {}
+      label();
+    }
+
+    /* the volume flyout: hover on desktop (css), tap-to-open on touch (this .open class) */
+    function place() {   // nudge the flyout back inside the viewport (the button sits at an edge on narrow layouts)
+      if (!pop || !wrap) return;
+      // measured from the (untransformed) wrap + the flyout's layout width, so the flyout's own
+      // slide transition can never feed a stale position back into the maths
+      var wr = wrap.getBoundingClientRect(), pw = pop.offsetWidth, vw = window.innerWidth, pad = 8;
+      var left = wr.left + wr.width / 2 - pw / 2, right = left + pw, dx = 0;
+      if (pw && left < pad) dx = pad - left; else if (pw && right > vw - pad) dx = (vw - pad) - right;
+      pop.style.setProperty("--amb-dx", Math.round(dx) + "px");
+    }
+    function openPop(ms) { if (!wrap) return; place(); wrap.classList.add("open"); clearTimeout(popTimer); if (ms) popTimer = setTimeout(closePop, ms); }
+    // no hover available (phone / tablet finger) -> the flyout opens on tap; checked live, not cached at load
+    function noHover() { try { return window.matchMedia("(hover: none)").matches || window.matchMedia("(pointer: coarse)").matches; } catch (e) { return coarse; } }
+    if (wrap) wrap.addEventListener("pointerenter", place);
+    function closePop() { if (!wrap) return; clearTimeout(popTimer); wrap.classList.remove("open"); }
+    if (pop && isApple && !pop.querySelector(".amb-hint")) {
+      var h = document.createElement("span"); h.className = "amb-hint"; h.textContent = "IF SILENT: FLIP THE RING SWITCH"; pop.appendChild(h);
+    }
+    btn.addEventListener("click", function () {
+      // armed but blocked by the autoplay policy? this click IS the activation — start, don't toggle off
+      if (on && !live()) set(true); else set(!on);
+      if (noHover()) { if (on) openPop(6000); else closePop(); }
+    });
     if (slider) {
       slider.value = vol;
       var apply = function () {
         vol = Math.max(0, Math.min(1, parseFloat(slider.value) || 0));
         try { localStorage.setItem("cc_ambient_vol", String(vol)); } catch (e) {}
-        if (on && ac && nodes[0]) nodes[0].gain.setTargetAtTime(gainFor(), ac.currentTime, 0.12);
+        if (!on) set(true);                                   // moving the volume is asking to hear it
+        else if (ac && master) { master.gain.cancelScheduledValues(ac.currentTime); master.gain.setTargetAtTime(gainFor(), ac.currentTime, 0.08); }
+        label();
+        openPop(noHover() ? 6000 : 0);                        // hold the flyout open while adjusting
       };
       slider.addEventListener("input", apply);
-      slider.addEventListener("change", apply);
+      slider.addEventListener("change", function () { apply(); if (!noHover()) popTimer = setTimeout(closePop, 1200); });
+      slider.addEventListener("pointerdown", function () { openPop(0); });
+      slider.addEventListener("pointerup", function () { popTimer = setTimeout(closePop, noHover() ? 6000 : 1200); });
     }
-    // if the user had it on before, arm it and resume on first interaction (autoplay policy)
+    document.addEventListener("pointerdown", function (e) {
+      if (wrap && wrap.classList.contains("open") && !wrap.contains(e.target)) closePop();
+    }, true);
+
+    /* keep it flowing: after iOS interruptions the next tap resumes it; coming back to the tab re-arms it */
+    ["touchend", "click", "keydown"].forEach(function (ev) {
+      window.addEventListener(ev, function () { if (on && ac && ac.state !== "running") { ensureCtx(); nudgeSession(); } }, { passive: true });
+    });
+    function onShow() { if (on && ac) { ensureCtx(); nudgeSession(); label(); } }
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) { if (silentEl) { try { silentEl.pause(); } catch (e) {} } }
+      else onShow();
+    });
+    window.addEventListener("pageshow", onShow);
+
+    /* remembered ON from last time: show it armed (◌) and start on the first real activation.
+       touchend / pointerup / click all count as activations; pointerdown on touch does NOT (that was
+       the old bug: the context was born suspended on iPhone and stayed silent). */
     try {
       if (localStorage.getItem("cc_ambient") === "1") {
-        var arm = function () { set(true); window.removeEventListener("pointerdown", arm); };
-        window.addEventListener("pointerdown", arm, { once: true });
+        on = true; label();
+        var evs = ["pointerup", "touchend", "click"];
+        var arm = function (e) {
+          if (wrap && e && wrap.contains(e.target)) return;   // the HUM control handles itself
+          evs.forEach(function (ev) { window.removeEventListener(ev, arm, true); });
+          set(true);
+        };
+        evs.forEach(function (ev) { window.addEventListener(ev, arm, true); });
       }
     } catch (e) {}
+
+    // tiny read-only hook for testing / Hal ("is the hum on?")
+    window.CC_AMBIENT = { isOn: function () { return on; }, isLive: live, volume: function () { return vol; }, ctxState: function () { return ac ? ac.state : "none"; } };
   }
 
   /* Live weather moved to js/weather.js — the richer globe weather station

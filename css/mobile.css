@@ -26,7 +26,10 @@
     min-height: 40px; display: inline-flex; align-items: center; justify-content: center;
   }
   #hub .tb .btn { padding: 6px 10px; }
-  #hub #amb-vol { height: 26px; }            /* fatter volume slider for thumbs */
+  #hub #amb-vol { height: 26px; width: 150px; }   /* fatter + longer volume slider for thumbs */
+  /* the volume flyout opens on TAP (no hover on touch; js/effects.js adds .open and keeps it
+     on screen via --amb-dx); padding gives the thumb room */
+  #hub .amb-pop { padding: 10px 12px; }
   .bolt { display: none; }                    /* decorative corner dots overlapped the header on phones */
 
   /* stack the deck into one scrolling column */
