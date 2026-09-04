@@ -4,7 +4,7 @@
    1. Heartbeat / EKG trace (system-online pulse) — all .ekg canvases
    2. HAL 9000 eye — pulses, flares when HAL speaks
    3. Boot / power-on splash (also kills the white launch flash)
-   4. Ambient sci-fi hum + beeps (toggle + volume; voiced for phone/laptop speakers)
+   4. Ambient sci-fi hum + beeps (toggle + volume) — the original low three-note murmur
    5. Live weather — Renton + Pattaya (Open-Meteo)
    6. Tilt parallax — cursor (desktop) / device tilt (mobile)
    7. Fullscreen enter + explicit exit (graceful where unsupported)
@@ -137,20 +137,23 @@
   /* ============================================================
      4 · AMBIENT HUM + BEEPS  (toggle + volume)
      ------------------------------------------------------------
-     2026-09-04 re-voice. The old hum was three pure sines at 55 / 82 / 110 Hz.
-     Phone and laptop speakers reproduce almost nothing below ~180 Hz, so on an
-     iPhone it was silent and on a MacBook a whisper (measured: 99% of its energy
-     sat under the speaker band). The new voice keeps the same A-power-chord
-     character but puts real energy where small speakers live (a low-passed saw
-     stack at 110 / 165 Hz + a breath of band-passed "air"), then runs through a
-     limiter so the slider can go genuinely loud without clipping.
-     iPhone rules honoured here:
-       · the AudioContext is created / resumed only inside real activation events
-         (touchend / pointerup / click — NOT pointerdown, which is not an activation
-         on touch), and re-resumed after iOS interruptions (calls, Siri, background)
-       · a looping silent <audio> nudges the audio session towards "playback" so the
-         ring/silent switch is less likely to mute Web Audio (no API can force it)
-       · the button shows ◌ while armed-but-blocked and ● once sound is really flowing
+     THE SOUND IS THE ORIGINAL (2026-06-23) and stays that way by Adam's request:
+     three pure sines at 55 / 82.4 / 110 Hz (A1 · E2 · A2), a slow shimmer, an
+     occasional soft blip. He wants the LOW background murmur — do not re-voice it.
+     (A 2026-09-04 attempt to make it "phone-speaker friendly" with higher
+     harmonics was rejected as too high and overpowering and reverted.)
+     What changed on 2026-09-04 and stays:
+       · volume ceiling ×4: gain = vol² × 0.8, so the MIDDLE of the slider is the old
+         maximum (0.2) and the top is 0.8 (peaks ≈0.85, never clips)
+       · iPhone rules: the AudioContext is created / resumed only inside real
+         activation events (touchend / pointerup / click — NOT pointerdown, which is
+         not an activation on touch) and re-resumed after iOS interruptions; a
+         looping silent <audio> nudges the audio session on Apple touch devices
+       · the button shows ◌ while armed-but-blocked and ● once sound really flows
+       · the volume flyout opens on tap where there is no hover, clamped on screen
+     Physics note: 55–110 Hz is below what an iPhone speaker (and mostly a MacBook
+     speaker) can reproduce, so on those it stays faint however high the slider goes;
+     headphones / desk speakers get the full deep hum. Adam knows and chose pure+low.
      ============================================================ */
   function silentWavURI(sr) {
     sr = sr || 48000;
@@ -171,61 +174,38 @@
     var isApple = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     var ac = null, master = null, on = false, beepTimer = null, silentEl = null, popTimer = null;
 
-    // volume 0..1 (persisted). v2: the re-voiced hum is ~10x louder in the audible band than
-    // the old one, so a value stored before the re-voice is reset ONCE to a clear default.
-    var vol = 0.6;
+    // volume 0..1 (persisted). The curve changed on 2026-09-04 (ceiling ×4), so a value stored
+    // under an older curve is reset ONCE (cc_ambient_v = "3") to the middle = the old maximum.
+    var vol = 0.5;
     try {
-      if (localStorage.getItem("cc_ambient_v") === "2") {
+      if (localStorage.getItem("cc_ambient_v") === "3") {
         var sv = parseFloat(localStorage.getItem("cc_ambient_vol")); if (!isNaN(sv)) vol = Math.max(0, Math.min(1, sv));
-      } else { localStorage.setItem("cc_ambient_v", "2"); localStorage.setItem("cc_ambient_vol", String(vol)); }
+      } else { localStorage.setItem("cc_ambient_v", "3"); localStorage.setItem("cc_ambient_vol", String(vol)); }
     } catch (e) {}
-    function gainFor() { return vol * vol * 0.85; }   // gentle at the bottom, near full scale at the top (limiter + 1.5 dB headroom)
+    function gainFor() { return vol * vol * 0.8; }   // 0.5 -> 0.2 (the old max), 1.0 -> 0.8 (4x); sines sum to 1.04 so it never clips
 
     function build() {
       ac = new (window.AudioContext || window.webkitAudioContext)();
-      var mix = ac.createGain(); mix.gain.value = 1;
-      var lim = ac.createDynamicsCompressor();          // a soft brick wall: loud slider, no crackle
-      lim.threshold.value = -8; lim.knee.value = 4; lim.ratio.value = 20; lim.attack.value = 0.003; lim.release.value = 0.25;
-      master = ac.createGain(); master.gain.value = 0;
-      mix.connect(lim); lim.connect(master); master.connect(ac.destination);
-
-      // the engine tone: two detuned saws on A2 (110 Hz, a slow 0.7 Hz throb between them) + a saw on
-      // E3 (165 Hz) through a resonant low-pass -> harmonics at 220–900 Hz, the band small speakers play
-      var lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 760; lp.Q.value = 1.4; lp.connect(mix);
-      function saw(f, det, g) {
-        var o = ac.createOscillator(), gg = ac.createGain();
-        o.type = "sawtooth"; o.frequency.value = f; o.detune.value = det; gg.gain.value = g;
-        o.connect(gg); gg.connect(lp); o.start();
-      }
-      saw(110, -5, 0.30); saw(110, 6, 0.30); saw(164.8, 2, 0.16);
-      // the sub body (55 Hz) for headphones / desk speakers — small speakers simply ignore it
-      var sub = ac.createOscillator(), sg = ac.createGain();
-      sub.type = "sine"; sub.frequency.value = 55; sg.gain.value = 0.35; sub.connect(sg); sg.connect(mix); sub.start();
-      // a breath of pink-ish noise through a band-pass = ventilation "air"; reads as room tone on any speaker
-      var nb = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = nb.getChannelData(0), b0 = 0, b1 = 0, b2 = 0;
-      for (var i = 0; i < d.length; i++) {
-        var w = Math.random() * 2 - 1;
-        b0 = 0.99765 * b0 + w * 0.0990460; b1 = 0.96300 * b1 + w * 0.2965164; b2 = 0.57000 * b2 + w * 1.0526913;
-        d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.11;
-      }
-      var noise = ac.createBufferSource(); noise.buffer = nb; noise.loop = true;
-      var bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 420; bp.Q.value = 0.9;
-      var ng = ac.createGain(); ng.gain.value = 0.22;
-      noise.connect(bp); bp.connect(ng); ng.connect(mix); noise.start();
-      // slow drift so it feels alive: the filter breathes (0.05 Hz), the air swells (0.09 Hz)
-      var l1 = ac.createOscillator(), l1g = ac.createGain(); l1.frequency.value = 0.05; l1g.gain.value = 140;
-      l1.connect(l1g); l1g.connect(lp.frequency); l1.start();
-      var l2 = ac.createOscillator(), l2g = ac.createGain(); l2.frequency.value = 0.09; l2g.gain.value = 0.07;
-      l2.connect(l2g); l2g.connect(ng.gain); l2.start();
-
-      // an occasional console blip (~20–40 s apart) — through the master so the slider owns it too
+      master = ac.createGain(); master.gain.value = 0.0; master.connect(ac.destination);
+      // the original voice: three pure sines, A1 · E2 · A2 — the low murmur
+      [55, 82.4, 110].forEach(function (f, idx) {
+        var o = ac.createOscillator(); o.type = "sine"; o.frequency.value = f;
+        var g = ac.createGain(); g.gain.value = idx === 0 ? 0.6 : 0.22;
+        o.connect(g); g.connect(master); o.start();
+      });
+      // slow shimmer LFO on the master
+      var lfo = ac.createOscillator(); lfo.frequency.value = 0.07;
+      var lg = ac.createGain(); lg.gain.value = 0.012;
+      lfo.connect(lg); lg.connect(master.gain); lfo.start();
+      master.gain.setTargetAtTime(gainFor(), ac.currentTime, 1.2);
+      // an occasional soft console blip (~20–40 s apart) — through the master so the slider owns it too
       function blip() {
         if (!on) return;
         var o = ac.createOscillator(), g = ac.createGain();
         o.type = "sine"; o.frequency.value = 880 + Math.random() * 600;
         g.gain.value = 0.0; o.connect(g); g.connect(master);
         var n = ac.currentTime; g.gain.setValueAtTime(0.0, n);
-        g.gain.linearRampToValueAtTime(0.18, n + 0.02);
+        g.gain.linearRampToValueAtTime(0.15, n + 0.02);         // = the old fixed 0.03 at the middle of the slider, scales with it
         g.gain.exponentialRampToValueAtTime(0.0001, n + 0.18);
         o.start(n); o.stop(n + 0.2);
         beepTimer = setTimeout(blip, 20000 + Math.random() * 20000);
