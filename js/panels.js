@@ -131,6 +131,10 @@
         '<div class="dx-card dx-wide"><div class="dx-h">OPS LOG · LATEST FIRST</div><div class="dx-log">' + log + '</div></div>' +
         '</div>';
     },
+    dailies: function () {
+      var DL = window.Dailies;
+      return DL ? DL.detail() : '<div class="dx-grid"><div class="dx-card dx-wide"><div class="dx-h">DAILIES</div><div class="dx-note">loading…</div></div></div>';
+    },
     life: function () {
       var CC = live();
       if (!CC) return '<div class="dx-grid"><div class="dx-card dx-wide"><div class="dx-h">OPEN ITEMS</div><div class="dx-note">loading…</div></div></div>';
@@ -151,7 +155,7 @@
     }
   };
 
-  var TITLES = { brief: "01 · DAILY BRIEF", life: "03 · LIFE ADMIN", projects: "04 · PROJECTS", agents: "05 · AGENT OPS", markets: "06 · MARKETS" };
+  var TITLES = { brief: "01 · DAILY BRIEF", life: "03 · LIFE ADMIN", projects: "04 · PROJECTS", agents: "05 · AGENT OPS", markets: "06 · MARKETS", dailies: "07 · DAILIES" };
 
   /* ---------- overlay ---------- */
   var overlay = null, openKey = null;
@@ -191,6 +195,9 @@
   function close() { openKey = null; if (overlay) overlay.classList.add("hidden"); }
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
   // data changed while a detail view is open (Claude wrote a row) → redraw in place
+  document.addEventListener("dailies:updated", function () {
+    if (openKey === "dailies" && overlay && !overlay.classList.contains("hidden")) open(openKey);
+  });
   document.addEventListener("board:updated", function () {
     if (openKey && overlay && !overlay.classList.contains("hidden")) open(openKey);
   });
@@ -204,6 +211,7 @@
     if (s.indexOf("project") >= 0) return "projects";
     if (s.indexOf("agent") >= 0) return "agents";
     if (s.indexOf("life") >= 0) return "life";
+    if (s.indexOf("dailies") >= 0) return "dailies";
     return null;
   }
   var TOUCH = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0) ||
