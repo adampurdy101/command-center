@@ -47,3 +47,7 @@
 #hub .dl-paper .dl-lists{color:#2f4a34;font-size:12px;line-height:1.55}
 #hub .dl-paper .dx-notes{color:#5b6f5e}
 #hub .dl-paper .dx-note{color:#5b6f5e}
+
+/* ---- while ANY detail popup is open, switch off the full-screen CRT scanlines (layout.css .crt::before)
+   they roll as dark bars across the light journal card and are hard on the eyes; they return on close ---- */
+.crt:has(#detail:not(.hidden))::before{display:none}
