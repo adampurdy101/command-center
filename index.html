@@ -40,6 +40,8 @@
   <link rel="stylesheet" href="css/board.css" />
   <!-- 02 Bills panel + the tap-to-enlarge calendar (js/bills.js) -->
   <link rel="stylesheet" href="css/calendar.css" />
+  <!-- 07 Dailies panel: morning plan, follow-ups, journal (js/dailies.js) -->
+  <link rel="stylesheet" href="css/dailies.css" />
 </head>
 <body>
   <!-- branded power-on splash / boot sequence (paints instantly, no white flash) -->
@@ -182,6 +184,10 @@
             <div class="tb"><span class="led"></span><span class="n">05 Agent Ops</span><span class="sp"></span><span class="s">STANDBY</span></div>
             <div class="bd" style="gap:6px"><div class="row"><span class="k muted">no agents registered — tell Claude</span></div></div>
           </section>
+          <section class="panel" id="panel-dailies" style="flex:1.6" title="Click for detail">
+            <div class="tb"><span class="led"></span><span class="n">07 Dailies</span><span class="sp"></span><span class="s">…</span></div>
+            <div class="bd" style="gap:2px"><div class="row"><span class="k muted">loading your plan…</span></div></div>
+          </section>
           <!-- DEMO quotes in one thin scope strip (a live feed comes later); the LED stays dark on purpose -->
           <section class="panel" id="panel-markets" style="flex:none" title="Demo quotes — a live feed comes later">
             <div class="tb"><span class="led"></span><span class="n">06 Markets</span><span class="sp"></span><span class="s">DEMO</span></div>
@@ -283,6 +289,8 @@
   <script type="module" src="js/board.js"></script>
   <!-- bills from the Bill Calendar app + Hal's events + task due dates → 02 Bills panel, Daily Brief rows, calendar overlay (window.CCal) -->
   <script type="module" src="js/bills.js"></script>
+  <!-- 07 Dailies: morning plan + follow-ups + journal from Supabase, realtime (window.Dailies) -->
+  <script type="module" src="js/dailies.js"></script>
   <!-- Gmail bridge for the email console (window.Gmail → Supabase edge functions) -->
   <script type="module" src="js/gmail.js"></script>
   <!-- Hal bridge for the voice assistant (window.Hal → hal-chat edge function) -->
