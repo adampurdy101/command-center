@@ -16,6 +16,8 @@ my agents and my life are doing, with a command line to tell it to do things.
 4. **Projects** — active projects, progress bars, deadline countdown.
 5. **Agent Ops** — status LED per agent + the last log line.
 6. **Markets** — a demo quote strip until a live feed exists (dark LED = demo).
+7. **Dailies** — this morning's plan (built 05:30 Mon–Fri by a Claude scheduled task from the
+   evening journal + tasks + calendar), open follow-ups (who owes what, age chips), journal history.
 
 ## File map
 ```
@@ -29,6 +31,7 @@ css/cinema.css        atmosphere pass (panel depth, LED pings, power-on, scan sw
 css/email.css         full-screen email console
 css/deck.css          fullscreen Globe Deck
 css/board.css         live to-do lanes + project / life rows
+css/dailies.css       07 Dailies panel
 css/noir.css          optional Neon Noir glass theme (only with ?noir)
 js/config.js          public Supabase URL + publishable key (safe to commit)
 js/supabase.js        shared Supabase client
@@ -39,7 +42,8 @@ js/bills.js           06 Bills panel + Daily Brief NEXT EVENT / BILLS rows + the
                       reads the Bill Calendar app's billdata row + hal_events; ☐ marks a bill paid and a day's
                       form adds an event — writes go through bill_set_paid / bill_upsert (one bill at a time)
 css/calendar.css      bills rows + calendar overlay
-js/panels.js          click-a-panel detail views (draw from window.CC)
+js/dailies.js         07 Dailies: daily_plans / commitments / daily_log → panel + detail (realtime, window.Dailies)
+js/panels.js          click-a-panel detail views (draw from window.CC / window.Dailies)
 js/mission.js         clocks, Voice Scope canvas, HAL voice engine + speech routing, sniper launcher
 js/hal.js             window.Hal → hal-chat / hal-ears / hal-voice edge functions
 js/globe.js           GLOBAL TRACK SYS globe engine (d3-geo, live ISS + USGS feeds)
@@ -92,7 +96,8 @@ Claude did and when. Ticking ☐ on the page writes back to `tasks` the same way
 
 Tables: `tasks` (title, done, due, priority, notes) · `projects` (name, phase,
 progress, deadline, notes) · `life_items` (label, status, tag, notes) ·
-`notes` (title, body, tags, pinned) · `agents` · `agent_log`. All RLS owner-only.
+`notes` (title, body, tags, pinned) · `agents` · `agent_log` · `daily_log` (evening journal) ·
+`commitments` (who owes what) · `daily_plans` (the 05:30 morning plan). All RLS owner-only.
 
 ## Security rules (non-negotiable)
 - Only the Supabase **publishable** key is in the front end — safe with RLS + login on.
@@ -118,3 +123,4 @@ progress, deadline, notes) · `life_items` (label, status, tag, notes) ·
       three secrets from docs/SETUP.md step 4 are missing or the app password expired)
 - [x] Milestone 6 — "how to use" note (see *Talking to it* above)
 - [x] Milestone 7 — Hal: the page itself takes spoken orders (hal-chat edge function → Claude, task + calendar tools)
+- [x] Milestone 8 — Dailies: evening journal → 05:30 morning plan (scheduled task) → 07 panel + follow-ups
