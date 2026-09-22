@@ -36,3 +36,14 @@
 #hub .dl-log b{color:var(--hi);font-weight:400;letter-spacing:1.5px;font-size:11px}
 #hub .dl-sum{color:var(--g);font-size:12px;line-height:1.4}
 #hub .dl-lists{color:var(--dim);font-size:11px;line-height:1.45;display:flex;flex-direction:column;gap:1px}
+
+/* ---- JOURNAL card: light "paper" mode (Adam's request — dark text on a pale background) ---- */
+#hub .dx-card.dl-paper{background:#eef2ea;border:1px solid #b9c9b4;box-shadow:none;color:#1a2b1c}
+#hub .dl-paper .dx-h{color:#1f3d26;text-shadow:none;border-bottom:1px solid #c6d3c1}
+#hub .dl-paper .dx-h small{color:#5b6f5e}
+#hub .dl-paper .dx-li{border-bottom:1px solid #d3ddcf}
+#hub .dl-paper .dl-log b{color:#0f3d1e;text-shadow:none}
+#hub .dl-paper .dl-sum{color:#1a2b1c;font-size:13px;line-height:1.5}
+#hub .dl-paper .dl-lists{color:#2f4a34;font-size:12px;line-height:1.55}
+#hub .dl-paper .dx-notes{color:#5b6f5e}
+#hub .dl-paper .dx-note{color:#5b6f5e}

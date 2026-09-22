@@ -101,7 +101,7 @@ function paint() {
 // ---------- detail view (panels.js calls this) ----------
 export function detail() {
   const plan = D.plan;
-  const card = (h, body, wide = true) => `<div class="dx-card${wide ? " dx-wide" : ""}"><div class="dx-h">${h}</div>${body}</div>`;
+  const card = (h, body, wide = true, cls = "") => `<div class="dx-card${wide ? " dx-wide" : ""}${cls ? " " + cls : ""}"><div class="dx-h">${h}</div>${body}</div>`;
   const list = (arr, f) => arr.length ? `<div class="dx-list">${arr.map(f).join("")}</div>` : `<div class="dx-note">nothing here.</div>`;
 
   let planHtml;
@@ -121,6 +121,7 @@ export function detail() {
       `<small class="dx-notes">${c.direction === "i_owe_them" ? "you promised" : "you asked"} · ${esc(fmtDate(c.asked_on))}${c.due ? " · due " + esc(fmtDate(c.due)) : ""}</small></span>` +
       `<span class="v"><span class="chip ${a.cls}">${a.text}</span></span></div>`;
   }));
+  // journal reads on light "paper" (dark text on a pale background) — easier on the eyes than green-on-black
   const log = card("JOURNAL <small>last 14 entries</small>", list(D.log, (e) => {
     const did = (e.did || []).map((x) => `<div>✓ ${esc(x)}</div>`).join("");
     const todo = (e.todo || []).map((x) => `<div>→ ${esc(x)}</div>`).join("");
@@ -128,7 +129,7 @@ export function detail() {
       (e.summary ? `<div class="dl-sum">${esc(e.summary)}</div>` : "") +
       (did || todo ? `<div class="dl-lists">${did}${todo}</div>` : "") +
       (e.people && e.people.length ? `<small class="dx-notes">${e.people.map(esc).join(" · ")}</small>` : "") + `</span></div>`;
-  }));
+  }), true, "dl-paper");
   return `<div class="dx-grid">${planHtml}${commits}${log}</div>` +
     `<div class="dx-note">Evening: open the Dailies project in Claude and talk through your day. Morning: the plan is here and in a new Dailies chat by 05:30. Ask Claude "did I tell Warner…?" any time.</div>`;
 }
