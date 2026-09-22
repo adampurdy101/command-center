@@ -1,0 +1,38 @@
+/* ============================================================
+   DAILIES  ·  07 panel — morning plan, follow-ups, journal
+   (js/dailies.js). Reuses the board.css colour language:
+     chip  ok = quiet · warn = amber (3d+) · down = red (7d+ / overdue)
+     follow-up rows: they_owe_me = amber edge · i_owe_them = red edge
+   ============================================================ */
+#hub #panel-dailies .bd{gap:2px}
+#hub .dl-head .k{color:var(--hi);letter-spacing:2px;font-size:10px}
+#hub .dl-head .k small{color:var(--faint);letter-spacing:.5px;text-transform:lowercase;margin-left:4px}
+#hub .dl-head .v{font-size:10px;letter-spacing:1px;color:var(--later)}
+#hub .dl-headline{color:var(--dim);font-size:11px;letter-spacing:.3px;white-space:normal;line-height:1.3}
+
+/* numbered plan line */
+#hub .dl-i{font-size:12px;padding:2px 7px 2px 9px;margin-left:-7px;border-left:2px solid var(--later);border-radius:0 4px 4px 0}
+#hub .dl-i .k{color:var(--g);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+#hub .dl-i .k b{color:var(--later);font-weight:400;margin-right:4px;text-shadow:0 0 6px var(--later)}
+#hub .dx-li.dl-i .k{white-space:normal}
+
+/* follow-ups header + rows */
+#hub .dl-h{font-size:9px;letter-spacing:2px;padding-top:6px;margin-top:3px;border-top:1px solid rgba(28,143,70,.35)}
+#hub .dl-h .k{color:var(--next);display:flex;align-items:center;gap:6px;text-shadow:0 0 6px var(--next)}
+#hub .dl-h .k small{color:var(--faint);letter-spacing:.5px;text-shadow:none;text-transform:lowercase}
+#hub .dl-h .k .led{width:7px;height:7px;background:var(--next);box-shadow:0 0 7px var(--next)}
+#hub .dl-h .v{color:var(--next);font-size:10px}
+#hub .dl-c{font-size:12px;padding:2px 7px 2px 9px;margin-left:-7px;border-left:2px solid var(--next);border-radius:0 4px 4px 0}
+#hub .dl-c.i_owe_them{border-left-color:var(--now)}
+#hub .dl-c .k{color:var(--g);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+#hub .dx-li.dl-c .k{white-space:normal;display:flex;flex-direction:column;gap:2px}
+#hub .dl-c .who{color:var(--hi)}
+#hub .dl-c .v{flex:none}
+#hub .dl-foot{margin-top:auto;padding-top:5px;border-top:1px solid rgba(28,143,70,.25);font-size:10px}
+#hub .dl-foot .v.muted{color:var(--faint);font-size:10px;letter-spacing:.3px}
+
+/* journal entries in the detail view */
+#hub .dl-log .k{display:flex;flex-direction:column;gap:3px;white-space:normal}
+#hub .dl-log b{color:var(--hi);font-weight:400;letter-spacing:1.5px;font-size:11px}
+#hub .dl-sum{color:var(--g);font-size:12px;line-height:1.4}
+#hub .dl-lists{color:var(--dim);font-size:11px;line-height:1.45;display:flex;flex-direction:column;gap:1px}
